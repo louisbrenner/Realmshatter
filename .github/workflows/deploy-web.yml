@@ -1,15 +1,14 @@
 # Exports the "Web" preset (export_presets.cfg) headless and publishes it to GitHub Pages.
 #
 # One-time setup on GitHub: Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
-# Run it manually from the Actions tab ("Run workflow"). After the GDScript port, uncomment
-# the push trigger below to deploy automatically on every push to main.
+# Runs on every push to main, or manually from the Actions tab ("Run workflow").
 
 name: Deploy Web build to GitHub Pages
 
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [main]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
