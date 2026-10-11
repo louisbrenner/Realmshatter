@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Pyromancer"
+description = "Burning. Conduit. When chained, its fire spreads in all 4 directions."
+card_type = 0
+role = 1
+ap_cost = 2
+movement = 1
+attack = 1
+hp = 3
+range = 2
+shield = 0
+ap_bonus = 0
+keywords = 33
+tint = Color(0.95, 0.3, 0.2, 1)

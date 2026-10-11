@@ -1,0 +1,178 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://Scripts/View/PieceView.gd" id="1_pieceview"]
+[ext_resource type="SystemFont" path="res://Resources/UI/CardFont.tres" id="2_font"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_glow"]
+size = Vector2(0.98, 1.06)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_select"]
+size = Vector2(1.04, 1.12)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_base"]
+top_radius = 0.33
+bottom_radius = 0.36
+height = 0.12
+radial_segments = 40
+rings = 1
+
+[sub_resource type="TorusMesh" id="TorusMesh_ring"]
+inner_radius = 0.285
+outer_radius = 0.35
+rings = 40
+ring_segments = 10
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_portrait"]
+size = Vector2(0.58, 0.58)
+
+[sub_resource type="SphereMesh" id="SphereMesh_bubble"]
+radius = 0.42
+height = 0.84
+radial_segments = 32
+rings = 16
+
+[sub_resource type="QuadMesh" id="QuadMesh_stat"]
+size = Vector2(0.4, 0.4)
+
+[sub_resource type="QuadMesh" id="QuadMesh_shield"]
+size = Vector2(0.3, 0.3)
+
+[sub_resource type="QuadMesh" id="QuadMesh_order"]
+size = Vector2(0.16, 0.16)
+
+[node name="Piece" type="Node3D"]
+script = ExtResource("1_pieceview")
+
+[node name="Visual" type="Node3D" parent="."]
+
+[node name="CanActGlow" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.012, -0.03)
+visible = false
+cast_shadow = 0
+mesh = SubResource("PlaneMesh_glow")
+
+[node name="SelectionRing" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.016, -0.03)
+visible = false
+cast_shadow = 0
+mesh = SubResource("PlaneMesh_select")
+
+[node name="Token" type="Node3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1.06, 0, 0, -0.06)
+
+[node name="Base" type="MeshInstance3D" parent="Visual/Token"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
+mesh = SubResource("CylinderMesh_base")
+
+[node name="OwnerRing" type="MeshInstance3D" parent="Visual/Token"]
+transform = Transform3D(1, 0, 0, 0, 0.55, 0, 0, 0, 1, 0, 0.12, 0)
+cast_shadow = 0
+mesh = SubResource("TorusMesh_ring")
+
+[node name="Portrait" type="MeshInstance3D" parent="Visual/Token"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.123, 0)
+cast_shadow = 0
+mesh = SubResource("PlaneMesh_portrait")
+
+[node name="ShieldBubble" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 0.72, 0, 0, 0, 1.06, 0, 0.08, -0.06)
+visible = false
+cast_shadow = 0
+mesh = SubResource("SphereMesh_bubble")
+
+[node name="Badges" type="Node3D" parent="."]
+
+[node name="AttackPlate" type="Node3D" parent="Badges"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0.2, 0.16)
+
+[node name="Badge" type="MeshInstance3D" parent="Badges/AttackPlate"]
+cast_shadow = 0
+mesh = SubResource("QuadMesh_stat")
+
+[node name="Label" type="Label3D" parent="Badges/AttackPlate"]
+pixel_size = 0.0045
+offset = Vector2(0, 1)
+no_depth_test = true
+render_priority = 30
+outline_render_priority = 29
+outline_modulate = Color(0.08, 0.04, 0.01, 1)
+text = "1"
+font = ExtResource("2_font")
+font_size = 64
+outline_size = 12
+
+[node name="HealthPlate" type="Node3D" parent="Badges"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0.2, 0.16)
+
+[node name="Badge" type="MeshInstance3D" parent="Badges/HealthPlate"]
+cast_shadow = 0
+mesh = SubResource("QuadMesh_stat")
+
+[node name="Label" type="Label3D" parent="Badges/HealthPlate"]
+pixel_size = 0.0045
+offset = Vector2(0, -6)
+no_depth_test = true
+render_priority = 30
+outline_render_priority = 29
+outline_modulate = Color(0.08, 0.02, 0.01, 1)
+text = "3"
+font = ExtResource("2_font")
+font_size = 64
+outline_size = 12
+
+[node name="ShieldPlate" type="Node3D" parent="Badges"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.34, 0.2, -0.17)
+visible = false
+
+[node name="Badge" type="MeshInstance3D" parent="Badges/ShieldPlate"]
+cast_shadow = 0
+mesh = SubResource("QuadMesh_shield")
+
+[node name="Label" type="Label3D" parent="Badges/ShieldPlate"]
+pixel_size = 0.0036
+offset = Vector2(0, 3)
+no_depth_test = true
+render_priority = 30
+outline_render_priority = 29
+outline_modulate = Color(0.06, 0.04, 0.02, 1)
+text = "0"
+font = ExtResource("2_font")
+font_size = 52
+outline_size = 10
+
+[node name="OrderPlate" type="Node3D" parent="Badges"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.38, 0.2, -0.41)
+visible = false
+
+[node name="Badge" type="MeshInstance3D" parent="Badges/OrderPlate"]
+cast_shadow = 0
+mesh = SubResource("QuadMesh_order")
+
+[node name="NamePlate" type="Node3D" parent="Badges"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0.45)
+
+[node name="Label" type="Label3D" parent="Badges/NamePlate"]
+pixel_size = 0.0034
+no_depth_test = true
+render_priority = 26
+outline_render_priority = 25
+outline_modulate = Color(0.06, 0.04, 0.02, 1)
+text = "Piece"
+font = ExtResource("2_font")
+font_size = 36
+outline_size = 10
+
+[node name="ZzzLabel" type="Label3D" parent="Badges"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.16, 0.42, -0.3)
+visible = false
+pixel_size = 0.003
+billboard = 1
+no_depth_test = true
+render_priority = 32
+outline_render_priority = 31
+modulate = Color(0.75, 0.85, 1, 1)
+outline_modulate = Color(0.05, 0.05, 0.15, 1)
+text = "Z z z"
+font = ExtResource("2_font")
+font_size = 52
+outline_size = 12

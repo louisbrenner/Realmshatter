@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Frostbite"
+description = "The piece is Frozen and has -1 Attack until your next turn ends."
+card_type = 1
+role = 0
+ap_cost = 1
+attack_delta = -1
+grant_status = 1
+tint = Color(0.6, 0.88, 1, 1)

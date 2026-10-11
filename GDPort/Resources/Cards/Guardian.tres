@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Guardian"
+description = "Slow defender. Its shield soaks damage first."
+card_type = 0
+role = 1
+ap_cost = 0
+movement = 1
+attack = 1
+hp = 4
+range = 1
+shield = 2
+ap_bonus = 0
+tint = Color(0.55, 0.7, 0.95, 1)

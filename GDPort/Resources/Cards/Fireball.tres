@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Fireball"
+description = "2 damage to an enemy on the tile, then Lava for 2 turns."
+card_type = 1
+role = 0
+ap_cost = 2
+spell_target = 1
+area_shape = 0
+tile_effect = 1
+tile_effect_duration = 2
+spell_damage = 2
+tint = Color(1, 0.42, 0.08, 1)

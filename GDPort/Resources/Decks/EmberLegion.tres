@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="DeckData" load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/DeckData.gd" id="1_deck"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberImp.tres" id="c_EmberImp"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="c_FlameArcher"]
+[ext_resource type="Resource" path="res://Resources/Cards/Pyromancer.tres" id="c_Pyromancer"]
+[ext_resource type="Resource" path="res://Resources/Cards/BatteringRam.tres" id="c_BatteringRam"]
+[ext_resource type="Resource" path="res://Resources/Cards/Swordsman.tres" id="c_Swordsman"]
+[ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
+[ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
+[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/Fireball.tres" id="c_Fireball"]
+[ext_resource type="Resource" path="res://Resources/Cards/Meteor.tres" id="c_Meteor"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameWall.tres" id="c_FlameWall"]
+[ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
+[ext_resource type="Resource" path="res://Resources/Cards/SparkTotem.tres" id="c_SparkTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/Cleric.tres" id="c_Cleric"]
+[ext_resource type="Resource" path="res://Resources/Cards/Blessing.tres" id="c_Blessing"]
+
+[resource]
+script = ExtResource("1_deck")
+name = "Ember Legion"
+cards = Array[ExtResource("2_card")]([ExtResource("c_EmberImp"), ExtResource("c_EmberImp"), ExtResource("c_FlameArcher"), ExtResource("c_FlameArcher"), ExtResource("c_Pyromancer"), ExtResource("c_BatteringRam"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Fireball"), ExtResource("c_Fireball"), ExtResource("c_Meteor"), ExtResource("c_FlameWall"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_SparkTotem"), ExtResource("c_Cleric"), ExtResource("c_Blessing")])
+description = "Scorch the board. Burning units and fire spells turn tiles into Lava that wears enemies down. Splash: a little healing."
+accent_color = Color(1, 0.45, 0.15, 1)
+showcase = ExtResource("c_Pyromancer")

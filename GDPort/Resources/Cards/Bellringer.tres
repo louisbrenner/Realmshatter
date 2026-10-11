@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Bellringer"
+description = "Echo. Its chain shots deal +1 damage."
+card_type = 0
+role = 1
+ap_cost = 1
+movement = 2
+attack = 1
+hp = 3
+range = 2
+shield = 0
+ap_bonus = 0
+keywords = 64
+tint = Color(0.85, 0.75, 0.45, 1)

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Merchant"
+description = "Mobile trader. +1 AP every turn while alive."
+card_type = 0
+role = 2
+ap_cost = 0
+movement = 2
+attack = 1
+hp = 2
+range = 1
+shield = 0
+ap_bonus = 1
+tint = Color(1, 0.85, 0.3, 1)

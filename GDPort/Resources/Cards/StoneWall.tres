@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Stone Wall"
+description = "Raise Walls on 3 tiles. They block moves, pushes and chains."
+card_type = 1
+role = 0
+ap_cost = 1
+spell_target = 2
+area_shape = 2
+tile_effect = 2
+tile_effect_duration = 2
+tint = Color(0.6, 0.6, 0.6, 1)

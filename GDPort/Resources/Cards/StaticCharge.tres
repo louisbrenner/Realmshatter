@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Static Charge"
+description = "+1 Attack and Overcharged: its next chain hits double."
+card_type = 1
+role = 0
+ap_cost = 2
+attack_delta = 1
+grant_status = 2
+tint = Color(0.55, 0.5, 1, 1)

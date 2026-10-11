@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="GameConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/GameConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+board_width = 10
+board_height = 8
+scoring_zone = Rect2i(2, 3, 6, 2)
+deploy_rows = 2
+base_ap = 3
+unit_ap_cost = 1
+spell_ap_cost = 2
+points_target = 20
+starting_hand_size = 3
+draft_offer_size = 3
+draw_ap_cost = 1
+order_ap_cost = 1
+max_vp_to_ap_per_turn = 2
+second_player_first_turn_bonus_ap = 1
+lava_damage = 1
+healing_tile_amount = 1
+burning_lava_duration = 2
+frost_duration = 1
+mending_heal = 1
+echo_bonus_damage = 1
+overcharge_multiplier = 2
+spell_status_duration = 2
+max_push_chain = 3

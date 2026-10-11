@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Wall of Flames"
+description = "Turns a row of 3 tiles into Lava for 2 turns."
+card_type = 1
+role = 0
+ap_cost = 1
+spell_target = 2
+area_shape = 2
+tile_effect = 1
+tile_effect_duration = 2
+tint = Color(1, 0.3, 0.05, 1)

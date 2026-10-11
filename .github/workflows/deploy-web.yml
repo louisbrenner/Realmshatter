@@ -1,4 +1,5 @@
-# Exports the "Web" preset (export_presets.cfg) headless and publishes it to GitHub Pages.
+# Exports the "Web" preset of the GDScript port (GDPort/export_presets.cfg) headless and publishes it to GitHub Pages.
+# The original C# project in the repo root is kept as-is; Godot 4 cannot web-export C#, so the web build comes from GDPort/.
 #
 # One-time setup on GitHub: Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
 # Runs on every push to main, or manually from the Actions tab ("Run workflow").
@@ -20,6 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  PROJECT_DIR: GDPort
   GODOT_VERSION: "4.5"
   GODOT_RELEASE: "stable"
 
@@ -36,6 +38,7 @@ jobs:
       # instead of a cryptic export error until the GDScript port is done.
       - name: Check project is web-exportable (no C#)
         run: |
+          cd "$PROJECT_DIR"
           CS_FILES=$(find . -name '*.cs' -not -path './.godot/*' -not -path './addons/*' | head -n 5)
           if ls ./*.csproj >/dev/null 2>&1 || [ -n "$CS_FILES" ]; then
             echo "::error::C# code found. Godot 4 cannot export C# projects to the Web - port to GDScript first."
@@ -59,10 +62,11 @@ jobs:
           godot --version
 
       - name: Import project resources
-        run: godot --headless --path . --import
+        run: godot --headless --path "$PROJECT_DIR" --import
 
       - name: Export Web build
         run: |
+          cd "$PROJECT_DIR"
           mkdir -p build/web
           touch build/.gdignore
           godot --headless --path . --export-release "Web" build/web/index.html
@@ -77,7 +81,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: build/web
+          path: ${{ env.PROJECT_DIR }}/build/web
 
   deploy:
     needs: build
