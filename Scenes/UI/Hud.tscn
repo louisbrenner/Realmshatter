@@ -1,0 +1,433 @@
+[gd_scene load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://Scripts/UI/Hud.cs" id="1_hud"]
+[ext_resource type="Script" path="res://Scripts/UI/HandView.cs" id="2_hand"]
+[ext_resource type="Script" path="res://Scripts/UI/DraftPopup.cs" id="3_draft"]
+[ext_resource type="PackedScene" path="res://Scenes/UI/Card.tscn" id="4_card"]
+[ext_resource type="Script" path="res://Scripts/UI/TurnIndicator.cs" id="5_turn"]
+[ext_resource type="Script" path="res://Scripts/UI/VictoryCoinStack.cs" id="6_coins"]
+[ext_resource type="Script" path="res://Scripts/UI/ManaCrystalBar.cs" id="7_mana"]
+[ext_resource type="Script" path="res://Scripts/UI/VpConvertButton.cs" id="8_convert"]
+[ext_resource type="Script" path="res://Scripts/UI/DeckPile.cs" id="9_deck"]
+[ext_resource type="Script" path="res://Scripts/UI/EndTurnButton.cs" id="10_endturn"]
+[ext_resource type="Script" path="res://Scripts/UI/CombatLog.cs" id="11_log"]
+[ext_resource type="Script" path="res://Scripts/UI/TurnBanner.cs" id="12_banner"]
+[ext_resource type="Script" path="res://Scripts/UI/VictoryBanner.cs" id="13_victory"]
+
+[node name="Hud" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1152.0
+offset_bottom = 648.0
+mouse_filter = 2
+
+[node name="TopBar" type="Panel" parent="Root"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 42.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="TurnIndicator" type="Control" parent="Root/TopBar"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -170.0
+offset_right = 170.0
+offset_bottom = 42.0
+grow_horizontal = 2
+mouse_filter = 2
+script = ExtResource("5_turn")
+
+[node name="ViewButton" type="Button" parent="Root/TopBar"]
+custom_minimum_size = Vector2(104, 30)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -114.0
+offset_top = 6.0
+offset_right = -10.0
+offset_bottom = 36.0
+grow_horizontal = 0
+focus_mode = 0
+tooltip_text = "Switch camera: 2D / 2.5D / 3D (V)"
+text = "View: 2D"
+
+
+[node name="AiPanel" type="PanelContainer" parent="Root"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 50.0
+offset_right = 208.0
+offset_bottom = 180.0
+mouse_filter = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/AiPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Root/AiPanel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="NameLabel" type="Label" parent="Root/AiPanel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "OPPONENT"
+
+[node name="VpLabel" type="Label" parent="Root/AiPanel/VBox/Header"]
+layout_mode = 2
+tooltip_text = "Victory points"
+mouse_filter = 1
+text = "0 / 20"
+
+[node name="Coins" type="Control" parent="Root/AiPanel/VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+script = ExtResource("6_coins")
+CoinRadius = 16.0
+Accent = Color(1, 0.38, 0.3, 1)
+
+[node name="Mana" type="Control" parent="Root/AiPanel/VBox"]
+layout_mode = 2
+size_flags_horizontal = 0
+mouse_filter = 2
+script = ExtResource("7_mana")
+CrystalSize = 16.0
+Gap = 3.0
+FontSize = 15
+
+[node name="LogPanel" type="PanelContainer" parent="Root"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 192.0
+offset_right = 208.0
+offset_bottom = 420.0
+script = ExtResource("11_log")
+
+[node name="VBox" type="VBoxContainer" parent="Root/LogPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="Button" parent="Root/LogPanel/VBox"]
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "Show / hide the combat log"
+text = "-  Combat Log"
+
+[node name="Body" type="RichTextLabel" parent="Root/LogPanel/VBox"]
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_following = true
+
+[node name="PlayerPanel" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -120.0
+offset_right = 208.0
+offset_bottom = -8.0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/PlayerPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Root/PlayerPanel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="NameLabel" type="Label" parent="Root/PlayerPanel/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "YOU"
+
+[node name="VpLabel" type="Label" parent="Root/PlayerPanel/VBox/Header"]
+layout_mode = 2
+tooltip_text = "Victory points"
+mouse_filter = 1
+text = "0 / 20"
+
+[node name="Coins" type="Control" parent="Root/PlayerPanel/VBox"]
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+script = ExtResource("6_coins")
+CoinRadius = 16.0
+
+[node name="DeckPile" type="Button" parent="Root"]
+custom_minimum_size = Vector2(110, 132)
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -142.0
+offset_top = -196.0
+offset_right = -32.0
+offset_bottom = -64.0
+grow_horizontal = 0
+grow_vertical = 2
+script = ExtResource("9_deck")
+
+[node name="EndTurnButton" type="Button" parent="Root"]
+custom_minimum_size = Vector2(164, 72)
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -172.0
+offset_top = -44.0
+offset_right = -8.0
+offset_bottom = 28.0
+grow_horizontal = 0
+grow_vertical = 2
+tooltip_text = "End your turn and resolve all orders (Enter)"
+script = ExtResource("10_endturn")
+
+[node name="CancelButton" type="Button" parent="Root"]
+custom_minimum_size = Vector2(96, 28)
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -138.0
+offset_top = 40.0
+offset_right = -42.0
+offset_bottom = 68.0
+grow_horizontal = 0
+grow_vertical = 2
+focus_mode = 0
+tooltip_text = "Cancel the current selection (Esc / right click)"
+text = "Cancel"
+
+[node name="ManaPanel" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -8.0
+offset_top = -8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="HBox" type="HBoxContainer" parent="Root/ManaPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="ManaBar" type="Control" parent="Root/ManaPanel/HBox"]
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Action points this turn"
+mouse_filter = 1
+script = ExtResource("7_mana")
+
+[node name="VpConvert" type="Button" parent="Root/ManaPanel/HBox"]
+layout_mode = 2
+size_flags_vertical = 4
+script = ExtResource("8_convert")
+
+[node name="HandView" type="HBoxContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 216.0
+offset_top = -250.0
+offset_right = -290.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 0
+alignment = 1
+script = ExtResource("2_hand")
+CardScene = ExtResource("4_card")
+
+
+[node name="TopStack" type="VBoxContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 46.0
+offset_bottom = 46.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="HintRow" type="CenterContainer" parent="Root/TopStack"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="HintRibbon" type="PanelContainer" parent="Root/TopStack/HintRow"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="HintLabel" type="Label" parent="Root/TopStack/HintRow/HintRibbon"]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="TickerRow" type="CenterContainer" parent="Root/TopStack"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Ticker" type="PanelContainer" parent="Root/TopStack/TickerRow"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TickerLabel" type="Label" parent="Root/TopStack/TickerRow/Ticker"]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="ToastRow" type="CenterContainer" parent="Root/TopStack"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Toast" type="PanelContainer" parent="Root/TopStack/ToastRow"]
+visible = false
+layout_mode = 2
+mouse_filter = 2
+
+[node name="MessageLabel" type="Label" parent="Root/TopStack/ToastRow/Toast"]
+layout_mode = 2
+horizontal_alignment = 1
+[node name="TurnBanner" type="Control" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("12_banner")
+
+[node name="DraftPopup" type="Control" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_draft")
+CardScene = ExtResource("4_card")
+
+[node name="Dim" type="ColorRect" parent="Root/DraftPopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Center" type="CenterContainer" parent="Root/DraftPopup"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="Root/DraftPopup/Center"]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Root/DraftPopup/Center/Panel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 28
+
+[node name="VBox" type="VBoxContainer" parent="Root/DraftPopup/Center/Panel/Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 32
+
+[node name="Title" type="Label" parent="Root/DraftPopup/Center/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Choose a card"
+horizontal_alignment = 1
+
+[node name="Cards" type="HBoxContainer" parent="Root/DraftPopup/Center/Panel/Margin/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="WinScreen" type="Control" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Dim" type="ColorRect" parent="Root/WinScreen"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="Center" type="CenterContainer" parent="Root/WinScreen"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="VBox" type="VBoxContainer" parent="Root/WinScreen/Center"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Banner" type="Control" parent="Root/WinScreen/Center/VBox"]
+custom_minimum_size = Vector2(560, 330)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("13_victory")
+
+[node name="RestartButton" type="Button" parent="Root/WinScreen/Center/VBox"]
+custom_minimum_size = Vector2(200, 48)
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 0
+text = "Play again"

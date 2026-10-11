@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="DeckData" load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/DeckData.cs" id="1_deck"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/Acolyte.tres" id="c_Acolyte"]
+[ext_resource type="Resource" path="res://Resources/Cards/Cleric.tres" id="c_Cleric"]
+[ext_resource type="Resource" path="res://Resources/Cards/Templar.tres" id="c_Templar"]
+[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
+[ext_resource type="Resource" path="res://Resources/Cards/BoneKnight.tres" id="c_BoneKnight"]
+[ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
+[ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
+[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/Blessing.tres" id="c_Blessing"]
+[ext_resource type="Resource" path="res://Resources/Cards/Sanctuary.tres" id="c_Sanctuary"]
+[ext_resource type="Resource" path="res://Resources/Cards/MendingRain.tres" id="c_MendingRain"]
+[ext_resource type="Resource" path="res://Resources/Cards/StoneWall.tres" id="c_StoneWall"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archer.tres" id="c_Archer"]
+[ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="c_FlameArcher"]
+
+[resource]
+script = ExtResource("1_deck")
+Name = "Dawn Covenant"
+Cards = Array[ExtResource("2_card")]([ExtResource("c_Acolyte"), ExtResource("c_Acolyte"), ExtResource("c_Cleric"), ExtResource("c_Cleric"), ExtResource("c_Templar"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_BoneKnight"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Blessing"), ExtResource("c_Blessing"), ExtResource("c_Sanctuary"), ExtResource("c_Sanctuary"), ExtResource("c_MendingRain"), ExtResource("c_StoneWall"), ExtResource("c_Archer"), ExtResource("c_BattleCry"), ExtResource("c_FlameArcher")])
+Description = "Outlast everything. Mending units, shields and sanctuaries keep your pieces alive in the zone. Splash: one fire archer."
+AccentColor = Color(1, 0.86, 0.45, 1)
+Showcase = ExtResource("c_Templar")

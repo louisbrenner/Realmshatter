@@ -1,0 +1,9 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Local export output (Web build for GitHub Pages)
+/build/
+
+# Private images, not part of the game
+/WhatsApp Image *

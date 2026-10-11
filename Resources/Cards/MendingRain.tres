@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Mending Rain"
+Description = "Heals each of your pieces in a cross 2 HP."
+CardType = 1
+Role = 0
+ApCost = 2
+SpellTarget = 2
+AreaShape = 1
+SpellHeal = 2
+Tint = Color(0.5, 0.95, 0.75, 1)

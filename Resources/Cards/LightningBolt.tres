@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Lightning Bolt"
+Description = "2 damage to an enemy on the target tile."
+CardType = 1
+Role = 0
+ApCost = 1
+SpellTarget = 1
+AreaShape = 0
+SpellDamage = 2
+Tint = Color(0.75, 0.8, 1, 1)

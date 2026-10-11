@@ -1,0 +1,5 @@
+[gd_resource type="SystemFont" format=3]
+
+[resource]
+font_names = PackedStringArray("Georgia", "Palatino Linotype", "Book Antiqua", "Times New Roman", "Serif")
+font_weight = 700

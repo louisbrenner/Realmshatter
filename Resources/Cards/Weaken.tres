@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Weaken"
+Description = "-1 Attack and -1 Move until the end of your next turn."
+CardType = 1
+Role = 0
+ApCost = 0
+AttackDelta = -1
+MovementDelta = -1
+Tint = Color(0.6, 0.3, 0.8, 1)

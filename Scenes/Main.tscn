@@ -1,0 +1,141 @@
+[gd_scene load_steps=31 format=3]
+
+[ext_resource type="Script" path="res://Scripts/GameManager.cs" id="1_gm"]
+[ext_resource type="Script" path="res://Scripts/View/BoardView.cs" id="2_board"]
+[ext_resource type="Script" path="res://Scripts/View/BoardAnimator.cs" id="3_anim"]
+[ext_resource type="Script" path="res://Scripts/View/CameraRig.cs" id="4_cam"]
+[ext_resource type="PackedScene" path="res://Scenes/UI/Hud.tscn" id="5_hud"]
+[ext_resource type="PackedScene" path="res://Scenes/Piece.tscn" id="6_piece"]
+[ext_resource type="Resource" path="res://Resources/GameConfig.tres" id="7_config"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="8_carddata"]
+[ext_resource type="Resource" path="res://Resources/Cards/Swordsman.tres" id="c1_swordsman"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archer.tres" id="c2_archer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c3_guardian"]
+[ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c4_scout"]
+[ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c5_miner"]
+[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c6_merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c7_battlecry"]
+[ext_resource type="Resource" path="res://Resources/Cards/Weaken.tres" id="c8_weaken"]
+
+[ext_resource type="Shader" path="res://Assets/Shaders/vignette.gdshader" id="9_vignette"]
+[ext_resource type="Script" path="res://Scripts/View/OrderOverlay.cs" id="10_overlay"]
+[ext_resource type="Resource" path="res://Resources/Decks/StarterDeck.tres" id="11_starterdeck"]
+[ext_resource type="Script" path="res://Scripts/Data/DeckData.cs" id="12_deckdata"]
+[ext_resource type="Resource" path="res://Resources/Decks/EmberLegion.tres" id="13_ember"]
+[ext_resource type="Resource" path="res://Resources/Decks/DawnCovenant.tres" id="14_dawn"]
+[ext_resource type="Resource" path="res://Resources/Decks/Frostbound.tres" id="15_frost"]
+[ext_resource type="Resource" path="res://Resources/Decks/StormCircuit.tres" id="16_storm"]
+
+[sub_resource type="ProceduralSkyMaterial" id="SkyMaterial_tavern"]
+sky_top_color = Color(0.16, 0.1, 0.07, 1)
+sky_horizon_color = Color(0.62, 0.42, 0.24, 1)
+ground_bottom_color = Color(0.07, 0.045, 0.03, 1)
+ground_horizon_color = Color(0.45, 0.3, 0.17, 1)
+sun_angle_max = 40.0
+
+[sub_resource type="Sky" id="Sky_tavern"]
+sky_material = SubResource("SkyMaterial_tavern")
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 2
+background_color = Color(0.06, 0.04, 0.03, 1)
+sky = SubResource("Sky_tavern")
+ambient_light_source = 3
+ambient_light_color = Color(1, 0.86, 0.7, 1)
+ambient_light_sky_contribution = 0.7
+ambient_light_energy = 0.75
+reflected_light_source = 2
+tonemap_mode = 2
+tonemap_exposure = 1.05
+ssao_enabled = true
+ssao_radius = 0.6
+ssao_intensity = 1.4
+glow_enabled = true
+glow_intensity = 0.75
+glow_strength = 1.05
+glow_bloom = 0.03
+glow_blend_mode = 1
+glow_hdr_threshold = 1.0
+adjustment_enabled = true
+adjustment_contrast = 1.06
+adjustment_saturation = 1.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vignette"]
+shader = ExtResource("9_vignette")
+
+[node name="Main" type="Node3D" node_paths=PackedStringArray("Board", "Animator", "CameraRig", "Hud", "Overlay")]
+script = ExtResource("1_gm")
+Config = ExtResource("7_config")
+PlayerDeck = Array[ExtResource("8_carddata")]([ExtResource("c1_swordsman"), ExtResource("c1_swordsman"), ExtResource("c2_archer"), ExtResource("c2_archer"), ExtResource("c3_guardian"), ExtResource("c3_guardian"), ExtResource("c4_scout"), ExtResource("c4_scout"), ExtResource("c5_miner"), ExtResource("c5_miner"), ExtResource("c6_merchant"), ExtResource("c6_merchant"), ExtResource("c7_battlecry"), ExtResource("c7_battlecry"), ExtResource("c8_weaken"), ExtResource("c8_weaken")])
+AiDeck = Array[ExtResource("8_carddata")]([ExtResource("c1_swordsman"), ExtResource("c1_swordsman"), ExtResource("c2_archer"), ExtResource("c2_archer"), ExtResource("c3_guardian"), ExtResource("c3_guardian"), ExtResource("c4_scout"), ExtResource("c4_scout"), ExtResource("c5_miner"), ExtResource("c5_miner"), ExtResource("c6_merchant"), ExtResource("c6_merchant"), ExtResource("c7_battlecry"), ExtResource("c7_battlecry"), ExtResource("c8_weaken"), ExtResource("c8_weaken")])
+PlayerDeckData = ExtResource("11_starterdeck")
+AiDeckData = ExtResource("11_starterdeck")
+ThemeDecks = Array[ExtResource("12_deckdata")]([ExtResource("13_ember"), ExtResource("14_dawn"), ExtResource("15_frost"), ExtResource("16_storm")])
+AiStepDelay = 0.6
+Board = NodePath("Board")
+Animator = NodePath("Animator")
+CameraRig = NodePath("CameraRig")
+Hud = NodePath("Hud")
+Overlay = NodePath("OrderOverlay")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.409576, 0.286788, 0, 0.573576, 0.819152, -0.5, -0.709406, 0.496732, 0, 8, 0)
+light_color = Color(1, 0.87, 0.7, 1)
+light_energy = 1.45
+light_angular_distance = 1.5
+shadow_enabled = true
+shadow_opacity = 0.8
+shadow_blur = 1.5
+
+[node name="FillLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.866025, 0.25, -0.433013, 0, 0.866025, 0.5, 0.5, 0.433013, -0.75, 0, 8, 0)
+light_color = Color(0.6, 0.7, 1, 1)
+light_energy = 0.28
+
+[node name="CandleLeft" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.4, 1.4, -4.6)
+light_color = Color(1, 0.62, 0.3, 1)
+light_energy = 1.6
+omni_range = 7.0
+omni_attenuation = 1.4
+
+[node name="CandleRight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.4, 1.4, -4.6)
+light_color = Color(1, 0.62, 0.3, 1)
+light_energy = 1.6
+omni_range = 7.0
+omni_attenuation = 1.4
+
+[node name="Vignette" type="CanvasLayer" parent="."]
+layer = 0
+
+[node name="VignetteRect" type="ColorRect" parent="Vignette"]
+material = SubResource("ShaderMaterial_vignette")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Board" type="Node3D" parent="."]
+script = ExtResource("2_board")
+
+[node name="Animator" type="Node" parent="." node_paths=PackedStringArray("Board")]
+script = ExtResource("3_anim")
+PieceScene = ExtResource("6_piece")
+Board = NodePath("../Board")
+
+[node name="OrderOverlay" type="Node3D" parent="."]
+script = ExtResource("10_overlay")
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("4_cam")
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+current = true
+
+[node name="Hud" parent="." instance=ExtResource("5_hud")]

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Miner"
+Description = "Doesn't fight, but gives +1 AP every turn while alive."
+CardType = 0
+Role = 2
+ApCost = 0
+Movement = 1
+Attack = 0
+Hp = 3
+Range = 1
+Shield = 0
+ApBonus = 1
+Tint = Color(0.7, 0.5, 0.3, 1)

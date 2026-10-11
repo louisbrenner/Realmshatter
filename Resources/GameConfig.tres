@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="GameConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/GameConfig.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+BoardWidth = 10
+BoardHeight = 8
+ScoringZone = Rect2i(2, 3, 6, 2)
+DeployRows = 2
+BaseAp = 3
+UnitApCost = 1
+SpellApCost = 2
+PointsTarget = 20
+StartingHandSize = 3
+DraftOfferSize = 3
+DrawApCost = 1
+OrderApCost = 1
+MaxVpToApPerTurn = 2
+SecondPlayerFirstTurnBonusAp = 1
+LavaDamage = 1
+HealingTileAmount = 1
+BurningLavaDuration = 2
+FrostDuration = 1
+MendingHeal = 1
+EchoBonusDamage = 1
+OverchargeMultiplier = 2
+SpellStatusDuration = 2
+MaxPushChain = 3

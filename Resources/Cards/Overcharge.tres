@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Overcharge"
+Description = "Its next chain trigger deals double damage."
+CardType = 1
+Role = 0
+ApCost = 1
+GrantStatus = 2
+Tint = Color(0.6, 0.45, 1, 1)

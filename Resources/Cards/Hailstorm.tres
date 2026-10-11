@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Hailstorm"
+Description = "1 damage to every enemy in a 2x2 square."
+CardType = 1
+Role = 0
+ApCost = 2
+SpellTarget = 2
+AreaShape = 4
+SpellDamage = 1
+Tint = Color(0.75, 0.9, 1, 1)

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Storm Caller"
+Description = "Conduit. Echo. When chained, it fires all around - harder."
+CardType = 0
+Role = 1
+ApCost = 2
+Movement = 1
+Attack = 1
+Hp = 3
+Range = 2
+Shield = 0
+ApBonus = 0
+Keywords = 96
+Tint = Color(0.55, 0.6, 1, 1)

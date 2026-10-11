@@ -1,0 +1,250 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://Scripts/UI/CardView.cs" id="1_cardview"]
+[ext_resource type="SystemFont" path="res://Resources/UI/CardFont.tres" id="2_font"]
+
+[node name="Card" type="Control"]
+custom_minimum_size = Vector2(150, 210)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 150.0
+offset_bottom = 210.0
+pivot_offset = Vector2(75, 210)
+mouse_filter = 0
+mouse_default_cursor_shape = 2
+script = ExtResource("1_cardview")
+
+[node name="Body" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(75, 105)
+mouse_filter = 2
+
+[node name="Glow" type="Panel" parent="Body"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Frame" type="ColorRect" parent="Body"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Art" type="ColorRect" parent="Body"]
+layout_mode = 0
+offset_left = 27.0
+offset_top = 10.0
+offset_right = 123.0
+offset_bottom = 84.0
+mouse_filter = 2
+
+[node name="Banner" type="ColorRect" parent="Body"]
+layout_mode = 0
+offset_left = 3.0
+offset_top = 76.0
+offset_right = 147.0
+offset_bottom = 104.0
+mouse_filter = 2
+
+[node name="NameLabel" type="Label" parent="Body"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 76.0
+offset_right = 136.0
+offset_bottom = 103.0
+theme_override_colors/font_color = Color(1, 0.98, 0.92, 1)
+theme_override_colors/font_outline_color = Color(0.1, 0.06, 0.02, 1)
+theme_override_constants/outline_size = 5
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 15
+text = "Card Name"
+horizontal_alignment = 1
+vertical_alignment = 1
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="StatsLabel" type="Label" parent="Body"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 107.0
+offset_right = 136.0
+offset_bottom = 122.0
+theme_override_colors/font_color = Color(0.36, 0.2, 0.06, 1)
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 11
+text = "Move 2 - Range 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DescriptionLabel" type="Label" parent="Body"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 122.0
+offset_right = 134.0
+offset_bottom = 185.0
+theme_override_colors/font_color = Color(0.16, 0.1, 0.05, 1)
+theme_override_constants/line_spacing = -2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 12
+text = "Description"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = true
+text_overrun_behavior = 3
+max_lines_visible = 4
+
+[node name="TypePlate" type="ColorRect" parent="Body"]
+layout_mode = 0
+offset_left = 42.0
+offset_top = 188.0
+offset_right = 108.0
+offset_bottom = 206.0
+mouse_filter = 2
+
+[node name="TypeLabel" type="Label" parent="Body"]
+layout_mode = 0
+offset_left = 42.0
+offset_top = 188.0
+offset_right = 108.0
+offset_bottom = 206.0
+theme_override_colors/font_color = Color(1, 0.95, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.05, 0.02, 1)
+theme_override_constants/outline_size = 3
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 10
+text = "Attack"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Gem" type="ColorRect" parent="Body"]
+layout_mode = 0
+offset_left = -10.0
+offset_top = -10.0
+offset_right = 36.0
+offset_bottom = 36.0
+mouse_filter = 2
+
+[node name="CostLabel" type="Label" parent="Body"]
+layout_mode = 0
+offset_left = -10.0
+offset_top = -11.0
+offset_right = 36.0
+offset_bottom = 35.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.04, 0.12, 1)
+theme_override_constants/outline_size = 7
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 24
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ApBadge" type="ColorRect" parent="Body"]
+visible = false
+layout_mode = 0
+offset_left = 118.0
+offset_top = -6.0
+offset_right = 154.0
+offset_bottom = 30.0
+mouse_filter = 2
+
+[node name="ApLabel" type="Label" parent="Body"]
+visible = false
+layout_mode = 0
+offset_left = 118.0
+offset_top = -6.0
+offset_right = 154.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.03, 0.12, 0.04, 1)
+theme_override_constants/outline_size = 5
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 13
+text = "+1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ShieldBadge" type="ColorRect" parent="Body"]
+visible = false
+layout_mode = 0
+offset_left = 118.0
+offset_top = 42.0
+offset_right = 154.0
+offset_bottom = 78.0
+mouse_filter = 2
+
+[node name="ShieldLabel" type="Label" parent="Body"]
+visible = false
+layout_mode = 0
+offset_left = 118.0
+offset_top = 43.0
+offset_right = 154.0
+offset_bottom = 77.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.06, 0.06, 0.08, 1)
+theme_override_constants/outline_size = 5
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 15
+text = "2"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AttackBadge" type="ColorRect" parent="Body"]
+layout_mode = 0
+offset_left = -10.0
+offset_top = 168.0
+offset_right = 36.0
+offset_bottom = 214.0
+mouse_filter = 2
+
+[node name="AttackLabel" type="Label" parent="Body"]
+layout_mode = 0
+offset_left = -10.0
+offset_top = 167.0
+offset_right = 36.0
+offset_bottom = 213.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.1, 0.05, 0.01, 1)
+theme_override_constants/outline_size = 7
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 24
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HealthBadge" type="ColorRect" parent="Body"]
+layout_mode = 0
+offset_left = 114.0
+offset_top = 166.0
+offset_right = 160.0
+offset_bottom = 212.0
+mouse_filter = 2
+
+[node name="HealthLabel" type="Label" parent="Body"]
+layout_mode = 0
+offset_left = 114.0
+offset_top = 169.0
+offset_right = 160.0
+offset_bottom = 213.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.02, 0.01, 1)
+theme_override_constants/outline_size = 7
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 24
+text = "3"
+horizontal_alignment = 1
+vertical_alignment = 1

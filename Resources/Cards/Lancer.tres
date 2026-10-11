@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Lancer"
+Description = "Pierce. Also hits the piece behind its target."
+CardType = 0
+Role = 0
+ApCost = 2
+Movement = 2
+Attack = 2
+Hp = 3
+Range = 1
+Shield = 0
+ApBonus = 0
+Keywords = 8
+Tint = Color(0.75, 0.75, 0.85, 1)

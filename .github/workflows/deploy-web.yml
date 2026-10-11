@@ -1,0 +1,92 @@
+# Exports the "Web" preset (export_presets.cfg) headless and publishes it to GitHub Pages.
+#
+# One-time setup on GitHub: Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+# Run it manually from the Actions tab ("Run workflow"). After the GDScript port, uncomment
+# the push trigger below to deploy automatically on every push to main.
+
+name: Deploy Web build to GitHub Pages
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.5"
+  GODOT_RELEASE: "stable"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # Godot 4 cannot export C# projects to the Web. Fail early with a clear message
+      # instead of a cryptic export error until the GDScript port is done.
+      - name: Check project is web-exportable (no C#)
+        run: |
+          CS_FILES=$(find . -name '*.cs' -not -path './.godot/*' -not -path './addons/*' | head -n 5)
+          if ls ./*.csproj >/dev/null 2>&1 || [ -n "$CS_FILES" ]; then
+            echo "::error::C# code found. Godot 4 cannot export C# projects to the Web - port to GDScript first."
+            echo "$CS_FILES"
+            exit 1
+          fi
+
+      - name: Install Godot ${{ env.GODOT_VERSION }} and export templates
+        run: |
+          V="${GODOT_VERSION}-${GODOT_RELEASE}"
+          BASE="https://github.com/godotengine/godot-builds/releases/download/${V}"
+          cd "$RUNNER_TEMP"
+          wget -q "${BASE}/Godot_v${V}_linux.x86_64.zip"
+          wget -q "${BASE}/Godot_v${V}_export_templates.tpz"
+          unzip -q "Godot_v${V}_linux.x86_64.zip"
+          sudo mv "Godot_v${V}_linux.x86_64" /usr/local/bin/godot
+          TEMPLATES="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}"
+          mkdir -p "$TEMPLATES"
+          unzip -q "Godot_v${V}_export_templates.tpz" -d tpl
+          mv tpl/templates/* "$TEMPLATES/"
+          godot --version
+
+      - name: Import project resources
+        run: godot --headless --path . --import
+
+      - name: Export Web build
+        run: |
+          mkdir -p build/web
+          touch build/.gdignore
+          godot --headless --path . --export-release "Web" build/web/index.html
+          # Godot can exit 0 even when the export failed, so verify the output exists.
+          test -f build/web/index.html
+          test -f build/web/index.wasm
+          test -f build/web/index.pck
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
