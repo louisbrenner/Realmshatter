@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Glyphs of fx_icon.gdshader / keyword_icon.gdshader (VfxAssets.CreateIcon, KeywordVisuals).</summary>
 public enum FxIconShape

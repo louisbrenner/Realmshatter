@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Emblem glyph and colors per keyword, shared by the piece tokens (PieceView) and the cards (CardView):

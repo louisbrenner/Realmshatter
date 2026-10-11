@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Draws order indicators on the board: a move arrow along the orthogonal path, a curved attack

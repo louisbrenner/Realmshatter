@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Kind of a tile highlight drawn by BoardView. Later values are drawn on top.</summary>
 public enum HighlightKind

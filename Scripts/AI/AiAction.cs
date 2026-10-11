@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// One step the AI already executed through the TurnController (for logging / animation).

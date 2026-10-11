@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// A map effect on one tile. It expires at the END of turn ExpiryTurn (like spells): an effect created in

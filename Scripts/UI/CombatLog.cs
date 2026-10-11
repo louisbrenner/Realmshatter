@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Collapsible combat log (root of the HUD's LogPanel): a header button toggles the body, lines are

@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Shape of an area spell around its anchor tile (clipped to the board).</summary>
 public enum AreaShape

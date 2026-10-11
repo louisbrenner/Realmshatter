@@ -1,6 +1,6 @@
-﻿Microsoft Visual Studio Solution File, Format Version 12.00
+Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjectClaude", "ProjectClaude.csproj", "{11D8A068-FDFC-4544-8B98-15B61F1B1D53}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Realmshatter", "Realmshatter.csproj", "{11D8A068-FDFC-4544-8B98-15B61F1B1D53}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

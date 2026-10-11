@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>In-code sanity checks of the core rules. Call Run() from the game and print the report.</summary>
 public static class RulesSelfTest

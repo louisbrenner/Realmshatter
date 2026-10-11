@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Modal "choose 1 of N" popup. While visible, the full-rect dim background blocks all board input.

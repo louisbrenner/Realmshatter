@@ -1,7 +1,7 @@
 using System;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Procedural sound synthesis: builds every SfxId as a 16-bit mono AudioStreamWav at startup, no audio files needed.

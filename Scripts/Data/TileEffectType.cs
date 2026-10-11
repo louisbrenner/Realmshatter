@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Map-altering effect on a board tile (one effect per tile, a newer one replaces the older).</summary>
 public enum TileEffectType

@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Plain stat block of a piece (base or effective values).</summary>
 public struct PieceStats

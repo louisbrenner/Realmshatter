@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Display names and short rule texts of keywords (for card texts and tooltips).</summary>
 public static class KeywordInfo

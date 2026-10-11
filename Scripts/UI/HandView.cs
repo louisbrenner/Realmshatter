@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Hearthstone-style fanned hand at the bottom of the screen. Cards overlap on an arc; the hovered

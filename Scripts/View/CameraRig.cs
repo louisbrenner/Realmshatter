@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Camera rig for the three view modes. The rig sits at the board center; its child Camera3D

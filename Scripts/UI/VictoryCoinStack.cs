@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Victory points as stacking gold coins: the target is split into columns (e.g. 20 = 4 stacks of 5),

@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Heuristic AI opponent. Uses only the public TurnController command API.

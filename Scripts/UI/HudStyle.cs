@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Shared palette, style boxes, theme and procedural drawing helpers for the Hearthstone-styled HUD

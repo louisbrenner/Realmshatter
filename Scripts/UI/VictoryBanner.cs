@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// End-of-game crest: rotating light rays, a shield crest and a big ribbon with "VICTORY" (gold/blue)

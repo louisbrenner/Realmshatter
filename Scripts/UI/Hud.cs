@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Screen-space HUD (root of Scenes/UI/Hud.tscn), Hearthstone styled: victory points as coin stacks,

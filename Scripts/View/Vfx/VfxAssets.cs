@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Lazily loaded, shared shaders, meshes and fonts for the procedural visuals and VFX.

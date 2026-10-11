@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Per-player resources and cards.</summary>
 public sealed class PlayerState

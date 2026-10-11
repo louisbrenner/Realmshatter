@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Kind of a resolution event emitted by OrderResolver / TurnController (EndTurn, turn-start ticks, tile spells).

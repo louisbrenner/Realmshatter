@@ -2,9 +2,9 @@
 
 - Engine: Godot 4.5 stable (.NET/Mono), language: C# (.NET 8)
 - IDE: Visual Studio 2022 (17.14); the solution (`.sln`) is in the project root
-- Project name: ProjectClaude
+- Project name: Realmshatter
 - Genre / goal: Card game, collector, Hearthstone-like
-- Root namespace: `ProjectClaude`
+- Root namespace: `Realmshatter`
 
 # Workflow
 
@@ -28,7 +28,7 @@ godot --path . res://Szenen/Main.tscn                   # Run a scene
 # C# Conventions (Godot 4)
 
 - Every node class is `partial` and inherits from a Godot type. **Class name = file name** (`Player.cs` → `class Player`); otherwise the script cannot be attached to a node.
-- Namespace `ProjectClaude`, one type per file.
+- Namespace `Realmshatter`, one type per file.
 - Godot lifecycle: `public override void _Ready()`, `_Process(double delta)`, `_PhysicsProcess(double delta)`.
 - Expose editor values with `[Export]`. Define custom resources as `[GlobalClass] public partial class X : Resource`.
 - Declare signals as delegates with `[Signal]` and the suffix `EventHandler`:

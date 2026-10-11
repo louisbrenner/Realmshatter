@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>What a spell card is cast on.</summary>
 public enum SpellTargetType

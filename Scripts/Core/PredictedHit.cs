@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>One shot inside a ChainPreview (direct attack, chain shot or pierce hit).</summary>
 public sealed class PredictedHit

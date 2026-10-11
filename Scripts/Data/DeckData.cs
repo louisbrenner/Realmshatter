@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>A deck list resource (e.g. Resources/Decks/StarterDeck.tres). Duplicates are listed multiple times.</summary>
 [GlobalClass]

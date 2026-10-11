@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Builds flat ribbon arrow meshes (for order_arrow.gdshader) from polylines, plus helpers to

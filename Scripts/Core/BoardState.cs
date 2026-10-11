@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Grid and occupancy. Coordinate convention: X = column (0 = left), Y = row (0 = top).

@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Camera presentation mode of the board.</summary>
 public enum ViewMode

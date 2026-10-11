@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Phase of the current turn.</summary>
 public enum GamePhase

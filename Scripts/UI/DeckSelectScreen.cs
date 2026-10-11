@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Full-screen deck selection shown before a game: one wooden plaque per themed deck with its name, signature
@@ -286,6 +286,21 @@ public partial class DeckSelectScreen : Control
 		_content.AddThemeConstantOverride("separation", 10);
 		center.AddChild(_content);
 
+		var gameTitle = new Label
+		{
+			Text = "REALMSHATTER",
+			HorizontalAlignment = HorizontalAlignment.Center,
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		gameTitle.AddThemeFontOverride("font", new FontVariation { BaseFont = VfxAssets.CardTextBoldFont, SpacingGlyph = 6 });
+		gameTitle.AddThemeFontSizeOverride("font_size", 58);
+		gameTitle.AddThemeColorOverride("font_color", HudStyle.Gold);
+		gameTitle.AddThemeColorOverride("font_shadow_color", new Color(1f, 0.45f, 0.1f, 0.55f));
+		gameTitle.AddThemeConstantOverride("shadow_outline_size", 8);
+		gameTitle.AddThemeColorOverride("font_outline_color", new Color(0.12f, 0.06f, 0.02f));
+		gameTitle.AddThemeConstantOverride("outline_size", 8);
+		_content.AddChild(gameTitle);
+
 		_title = new Label
 		{
 			Text = "Choose your deck",
@@ -293,7 +308,7 @@ public partial class DeckSelectScreen : Control
 			MouseFilter = MouseFilterEnum.Ignore,
 		};
 		_title.AddThemeFontOverride("font", VfxAssets.CardTextBoldFont);
-		_title.AddThemeFontSizeOverride("font_size", 38);
+		_title.AddThemeFontSizeOverride("font_size", 28);
 		_title.AddThemeColorOverride("font_color", new Color(1f, 0.86f, 0.5f));
 		_title.AddThemeColorOverride("font_outline_color", new Color(0.12f, 0.06f, 0.02f));
 		_title.AddThemeConstantOverride("outline_size", 8);

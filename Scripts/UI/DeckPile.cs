@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Draw button drawn as a deck pile: a stack of card backs (height grows with the deck count),

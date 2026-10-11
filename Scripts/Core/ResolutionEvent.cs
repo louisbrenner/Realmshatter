@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>One step of turn resolution, in chronological order, for views to animate.</summary>
 public sealed class ResolutionEvent

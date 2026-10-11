@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Stat modifiers applied by a spell. Values may be negative (debuffs).</summary>
 public struct SpellEffect

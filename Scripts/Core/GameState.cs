@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Complete game state for two players. Pure C#, no scene tree access.</summary>
 public sealed class GameState

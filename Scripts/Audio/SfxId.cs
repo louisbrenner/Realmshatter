@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>All procedurally synthesized sound effects (see SfxSynth / Sfx).</summary>
 public enum SfxId

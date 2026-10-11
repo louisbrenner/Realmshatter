@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Straight, camera-facing glowing beam between two world points (e.g. a Pierce lance) that shoots out

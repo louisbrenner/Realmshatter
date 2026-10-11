@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Global rule configuration. Coordinates: X = column (0..BoardWidth-1, left to right),

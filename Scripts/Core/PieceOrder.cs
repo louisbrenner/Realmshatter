@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Planned action of a piece for this turn. MoveTarget is a destination tile (null = stay).

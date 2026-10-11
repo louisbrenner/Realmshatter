@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>A unit on the board. Pure data; mutated only by core classes.</summary>
 public sealed class Piece

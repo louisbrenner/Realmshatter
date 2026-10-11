@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Builds the BBCode texts of the hover info panels (InfoPanel): full card rules, pieces on the board (stats,

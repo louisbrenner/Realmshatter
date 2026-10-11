@@ -1,6 +1,6 @@
 using System;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Side effects of a single predicted hit (see PredictedHit).</summary>
 [Flags]

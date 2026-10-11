@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Temporary status on a piece (see Piece.StatusEffects).</summary>
 public enum StatusEffectType

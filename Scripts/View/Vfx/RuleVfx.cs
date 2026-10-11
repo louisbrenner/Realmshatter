@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// One-shot effects for the v3 rules (keywords, tile effects, statuses, card returns). Like Vfx, every

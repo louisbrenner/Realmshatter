@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Resolves the queued orders of one player, plus the shared damage / heal / tile / status helpers.

@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Top-bar turn plaque: "TURN n" with a phase line, flanked by the two players' shields (YOU / AI).

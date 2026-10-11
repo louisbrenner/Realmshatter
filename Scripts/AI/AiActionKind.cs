@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>Kind of step the AI executed during its turn.</summary>
 public enum AiActionKind

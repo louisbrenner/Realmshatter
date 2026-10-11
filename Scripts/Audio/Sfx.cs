@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Sound effect player. Synthesizes all SfxId sounds once (SfxSynth) and plays them through a small voice pool on

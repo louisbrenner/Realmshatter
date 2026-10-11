@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>A temporary status on a piece. Expires at the END of turn ExpiryTurn (or earlier when consumed).</summary>
 public sealed class StatusEffect

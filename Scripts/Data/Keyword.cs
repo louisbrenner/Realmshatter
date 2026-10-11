@@ -1,6 +1,6 @@
 using System;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Keywords of a unit card (combinable flags). They modify how the piece's attacks resolve.

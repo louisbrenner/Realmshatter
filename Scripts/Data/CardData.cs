@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Definition of a card. Unit cards use the stat block (Movement..Shield, ApBonus);

@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Big oval stone End Turn button (Hearthstone style). Yellow glowing "END TURN" while it is your

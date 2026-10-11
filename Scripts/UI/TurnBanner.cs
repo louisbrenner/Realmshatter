@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Full-width sweeping banner for turn changes ("YOUR TURN" / "ENEMY TURN" + turn number).

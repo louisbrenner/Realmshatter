@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Result of TurnController.PredictAttack: what ONE attack would cause on the CURRENT board (other queued

@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Coin-to-crystal conversion slots next to the mana bar: one slot per allowed conversion this turn.

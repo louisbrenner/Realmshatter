@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>State of the human player's input state machine in GameManager.</summary>
 public enum InputMode

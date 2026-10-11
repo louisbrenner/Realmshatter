@@ -1,6 +1,6 @@
 using Godot;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// Parchment hover panel with rich text (built in code, never blocks the mouse). It either follows the mouse

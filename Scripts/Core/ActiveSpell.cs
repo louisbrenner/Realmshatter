@@ -1,4 +1,4 @@
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// A spell currently affecting a piece. It expires at the END of turn ExpiryTurn

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace ProjectClaude;
+namespace Realmshatter;
 
 /// <summary>
 /// AI vs. AI smoke test: builds games from in-memory cards, lets SimpleAi play both sides via
