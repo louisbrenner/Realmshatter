@@ -79,7 +79,7 @@ static func _fire(p: CPUParticles3D) -> void:
 static func fire_burst(parent: Node3D, pos: Vector3, power: float = 1.0) -> void:
 	if parent == null:
 		return
-	var p: CPUParticles3D = _burst(parent, pos, VfxAssets.glow_quad, int(34 * power), 0.55)
+	var p: CPUParticles3D = _burst(parent, pos, VfxAssets.get_glow_quad(), int(34 * power), 0.55)
 	p.explosiveness = 0.8
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	p.emission_sphere_radius = 0.25
@@ -93,7 +93,7 @@ static func fire_burst(parent: Node3D, pos: Vector3, power: float = 1.0) -> void
 	p.scale_amount_min = 0.25
 	p.scale_amount_max = 0.5
 	p.scale_amount_curve = Vfx.linear_curve(0.6, 0.0, 1.0)
-	p.color_ramp = Vfx.ramp([Color(1.0, 0.95, 0.6, 1.0), FIRE_COLOR, Color(0.7, 0.08, 0.02, 0.6), Color(0.2, 0.02, 0.0, 0.0)])
+	p.color_ramp = Vfx.ramp(Color(1.0, 0.95, 0.6, 1.0), FIRE_COLOR, Color(0.7, 0.08, 0.02, 0.6), Color(0.2, 0.02, 0.0, 0.0))
 	_fire(p)
 	Vfx.glow_flash(parent, pos + Vector3(0, 0.2, 0), FIRE_COLOR, 1.6 * power, 0.3)
 	Vfx.smoke_puff(parent, pos + Vector3(0, 0.4, 0), Color(0.2, 0.15, 0.12), 6, 0.6)
@@ -105,7 +105,7 @@ static func lava_eruption(parent: Node3D, pos: Vector3) -> void:
 	if parent == null:
 		return
 	fire_burst(parent, pos, 1.2)
-	var blobs: CPUParticles3D = _burst(parent, pos + Vector3(0, 0.05, 0), VfxAssets.glow_quad, 16, 0.75)
+	var blobs: CPUParticles3D = _burst(parent, pos + Vector3(0, 0.05, 0), VfxAssets.get_glow_quad(), 16, 0.75)
 	blobs.direction = Vector3.UP
 	blobs.spread = 35.0
 	blobs.initial_velocity_min = 2.2
@@ -114,7 +114,7 @@ static func lava_eruption(parent: Node3D, pos: Vector3) -> void:
 	blobs.scale_amount_min = 0.12
 	blobs.scale_amount_max = 0.24
 	blobs.scale_amount_curve = Vfx.linear_curve(1.0, 0.3)
-	blobs.color_ramp = Vfx.ramp([Color(1.0, 0.85, 0.4), Color(1.0, 0.35, 0.05), Color(0.5, 0.05, 0.0, 0.0)])
+	blobs.color_ramp = Vfx.ramp(Color(1.0, 0.85, 0.4), Color(1.0, 0.35, 0.05), Color(0.5, 0.05, 0.0, 0.0))
 	_fire(blobs)
 	Vfx.shockwave(parent, pos + Vector3(0, 0.04, 0), FIRE_COLOR, 1.1, 0.35, 0.14)
 
@@ -134,7 +134,7 @@ static func ice_burst(parent: Node3D, pos: Vector3) -> void:
 	p.initial_velocity_min = 1.5
 	p.initial_velocity_max = 3.2
 	p.gravity = Vector3(0, -9.0, 0)
-	p.set_particle_flag(CPUParticles3D.PARTICLE_FLAG_ROTATE_Y, true)
+	p.particle_flag_rotate_y = true
 	p.angular_velocity_min = -600.0
 	p.angular_velocity_max = 600.0
 	p.scale_amount_curve = Vfx.linear_curve(1.0, 0.0, 1.0)
@@ -225,10 +225,10 @@ static func heal_burst(parent: Node3D, pos: Vector3) -> void:
 static func beam(parent: Node3D, from: Vector3, to: Vector3, color: Color, duration: float = 0.4, width: float = 0.24) -> void:
 	if parent == null:
 		return
-	var b := BeamEffect.new()
-	b.name = "Beam"
-	b.setup(from, to, color, duration, width)
-	parent.add_child(b)
+	var main_beam := BeamEffect.new()
+	main_beam.name = "Beam"
+	main_beam.setup(from, to, color, duration, width)
+	parent.add_child(main_beam)
 	var core := BeamEffect.new()
 	core.name = "BeamCore"
 	core.setup(from, to, Color(1.0, 1.0, 0.95), duration * 0.8, width * 0.35)
@@ -243,14 +243,14 @@ static func echo_ring(parent: Node3D, pos: Vector3, color: Color) -> void:
 		return
 	Vfx.shockwave(parent, pos + Vector3(0, 0.05, 0), color, 1.6, 0.45, 0.08)
 	Vfx.shockwave(parent, pos + Vector3(0, 0.07, 0), color.lightened(0.3), 2.4, 0.65, 0.06)
-	var p: CPUParticles3D = _burst(parent, pos + Vector3(0, 0.35, 0), VfxAssets.ring_quad, 3, 0.55)
+	var p: CPUParticles3D = _burst(parent, pos + Vector3(0, 0.35, 0), VfxAssets.get_ring_quad(), 3, 0.55)
 	p.explosiveness = 0.6
 	p.gravity = Vector3.ZERO
 	p.initial_velocity_max = 0.0
 	p.scale_amount_min = 0.8
 	p.scale_amount_max = 0.8
 	p.scale_amount_curve = Vfx.linear_curve(0.3, 2.2)
-	p.color_ramp = Vfx.ramp([Color(color.r, color.g, color.b, 0.9), Color(color.r, color.g, color.b, 0.0)])
+	p.color_ramp = Vfx.ramp(Color(color.r, color.g, color.b, 0.9), Color(color.r, color.g, color.b, 0.0))
 	_fire(p)
 	Vfx.sparkle(parent, pos + Vector3(0, 0.4, 0), color, 10, 0.6, 0.4)
 
@@ -270,13 +270,13 @@ static func rubble_burst(parent: Node3D, pos: Vector3, power: float = 1.0) -> vo
 	p.initial_velocity_min = 1.2 * power
 	p.initial_velocity_max = 2.6 * power
 	p.gravity = Vector3(0, -12.0, 0)
-	p.set_particle_flag(CPUParticles3D.PARTICLE_FLAG_ROTATE_Y, true)
+	p.particle_flag_rotate_y = true
 	p.angular_velocity_min = -500.0
 	p.angular_velocity_max = 500.0
 	p.scale_amount_min = 0.6
 	p.scale_amount_max = 1.4
 	p.scale_amount_curve = Vfx.linear_curve(1.0, 0.2, 1.0)
-	p.color_ramp = Vfx.ramp([STONE_COLOR.lightened(0.15), STONE_COLOR.darkened(0.35)])
+	p.color_ramp = Vfx.ramp(STONE_COLOR.lightened(0.15), STONE_COLOR.darkened(0.35))
 	_fire(p)
 	Vfx.dust_ring(parent, pos, Color(0.62, 0.55, 0.46), 0.5, int(18 * power))
 	Vfx.smoke_puff(parent, pos + Vector3(0, 0.2, 0), Color(0.55, 0.5, 0.43), int(8 * power), 0.8)
@@ -310,7 +310,7 @@ static func meteor(parent: Node3D, from: Vector3, to: Vector3, duration: float) 
 	rock.material_override = _get_rock_material()
 	root.add_child(rock)
 	var glow := MeshInstance3D.new()
-	glow.mesh = VfxAssets.glow_quad
+	glow.mesh = VfxAssets.get_glow_quad()
 	glow.scale = Vector3.ONE * 1.2
 	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	glow.set_instance_shader_parameter("tint", FIRE_COLOR)
@@ -321,7 +321,7 @@ static func meteor(parent: Node3D, from: Vector3, to: Vector3, duration: float) 
 	light.omni_range = 4.0
 	root.add_child(light)
 	var trail := CPUParticles3D.new()
-	trail.mesh = VfxAssets.glow_quad
+	trail.mesh = VfxAssets.get_glow_quad()
 	trail.amount = 70
 	trail.lifetime = 0.4
 	trail.local_coords = false
@@ -332,7 +332,7 @@ static func meteor(parent: Node3D, from: Vector3, to: Vector3, duration: float) 
 	trail.scale_amount_min = 0.35
 	trail.scale_amount_max = 0.7
 	trail.scale_amount_curve = Vfx.linear_curve(1.0, 0.0)
-	trail.color_ramp = Vfx.ramp([Color(1.0, 0.9, 0.5), FIRE_COLOR, Color(0.3, 0.05, 0.02, 0.0)])
+	trail.color_ramp = Vfx.ramp(Color(1.0, 0.9, 0.5), FIRE_COLOR, Color(0.3, 0.05, 0.02, 0.0))
 	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(trail)
 	trail.emitting = true
@@ -358,7 +358,7 @@ static func soul_wisp(parent: Node3D, from: Vector3, to: Vector3, duration: floa
 	parent.add_child(root)
 	root.global_position = from
 	var glow := MeshInstance3D.new()
-	glow.mesh = VfxAssets.glow_quad
+	glow.mesh = VfxAssets.get_glow_quad()
 	glow.scale = Vector3.ONE * 0.9
 	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	glow.set_instance_shader_parameter("tint", SOUL_COLOR)
@@ -371,7 +371,7 @@ static func soul_wisp(parent: Node3D, from: Vector3, to: Vector3, duration: floa
 	light.omni_range = 2.5
 	root.add_child(light)
 	var trail := CPUParticles3D.new()
-	trail.mesh = VfxAssets.glow_quad
+	trail.mesh = VfxAssets.get_glow_quad()
 	trail.amount = 50
 	trail.lifetime = 0.5
 	trail.local_coords = false
@@ -382,7 +382,7 @@ static func soul_wisp(parent: Node3D, from: Vector3, to: Vector3, duration: floa
 	trail.scale_amount_min = 0.2
 	trail.scale_amount_max = 0.45
 	trail.scale_amount_curve = Vfx.linear_curve(1.0, 0.0)
-	trail.color_ramp = Vfx.ramp([Color(1.0, 1.0, 1.0, 0.9), SOUL_COLOR, Color(0.2, 0.6, 0.7, 0.0)])
+	trail.color_ramp = Vfx.ramp(Color(1.0, 1.0, 1.0, 0.9), SOUL_COLOR, Color(0.2, 0.6, 0.7, 0.0))
 	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(trail)
 	trail.emitting = true
@@ -409,7 +409,7 @@ static func soul_wisp(parent: Node3D, from: Vector3, to: Vector3, duration: floa
 	Vfx.auto_free(root, 0.6)
 
 
-## A small card back flips out of 'from' and flies in an arc to 'to' (card returns to the deck). Coroutine.
+## A small card back flips out of 'from' and flies in an arc to 'to' (card returns to the deck; coroutine).
 static func card_to_deck(parent: Node3D, from: Vector3, to: Vector3, owner_color: Color, duration: float) -> void:
 	if parent == null:
 		return
@@ -425,18 +425,18 @@ static func card_to_deck(parent: Node3D, from: Vector3, to: Vector3, owner_color
 	back.emission_energy_multiplier = 0.35
 	var rim_box := BoxMesh.new()
 	rim_box.size = Vector3(0.42, 0.012, 0.58)
-	var rim_mi := MeshInstance3D.new()
-	rim_mi.mesh = rim_box
-	rim_mi.material_override = VfxAssets.create_gold_material(0.5)
-	root.add_child(rim_mi)
+	var rim := MeshInstance3D.new()
+	rim.mesh = rim_box
+	rim.material_override = VfxAssets.create_gold_material(0.5)
+	root.add_child(rim)
 	var back_box := BoxMesh.new()
 	back_box.size = Vector3(0.36, 0.02, 0.52)
-	var back_mi := MeshInstance3D.new()
-	back_mi.mesh = back_box
-	back_mi.material_override = back
-	root.add_child(back_mi)
+	var back_mesh := MeshInstance3D.new()
+	back_mesh.mesh = back_box
+	back_mesh.material_override = back
+	root.add_child(back_mesh)
 	var trail := CPUParticles3D.new()
-	trail.mesh = VfxAssets.sparkle_quad
+	trail.mesh = VfxAssets.get_sparkle_quad()
 	trail.amount = 20
 	trail.lifetime = 0.4
 	trail.local_coords = false
@@ -447,7 +447,7 @@ static func card_to_deck(parent: Node3D, from: Vector3, to: Vector3, owner_color
 	trail.scale_amount_min = 0.1
 	trail.scale_amount_max = 0.2
 	trail.scale_amount_curve = Vfx.linear_curve(1.0, 0.0)
-	trail.color_ramp = Vfx.ramp([Color(1.0, 0.9, 0.6), Color(owner_color.r, owner_color.g, owner_color.b, 0.0)])
+	trail.color_ramp = Vfx.ramp(Color(1.0, 0.9, 0.6), Color(owner_color.r, owner_color.g, owner_color.b, 0.0))
 	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(trail)
 	trail.emitting = true

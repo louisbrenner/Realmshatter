@@ -5,15 +5,20 @@
 [resource]
 script = ExtResource("1")
 name = "Storm Caller"
-description = "Conduit. Echo. When chained, it fires all around - harder."
+description = "Lightning gathers around it."
 card_type = 0
+rarity = 1
 role = 1
-ap_cost = 2
-movement = 1
+class_ = 6
+ap_cost = 4
+movement = 3
 attack = 1
 hp = 3
 range = 2
 shield = 0
 ap_bonus = 0
-keywords = 96
+keywords = 544
+clan = 4
+deathrattle = 1
+deathrattle_amount = 1
 tint = Color(0.55, 0.6, 1, 1)

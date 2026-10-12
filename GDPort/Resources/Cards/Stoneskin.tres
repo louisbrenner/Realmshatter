@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Stoneskin"
+description = "+3 Shield until the end of your next turn."
+card_type = 1
+role = 0
+ap_cost = 1
+shield_delta = 3
+clan = 5
+rarity = 0
+tint = Color(0.68, 0.64, 0.56, 1)

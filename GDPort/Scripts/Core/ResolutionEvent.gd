@@ -1,6 +1,6 @@
 class_name ResolutionEvent
 extends RefCounted
-## One step of turn resolution, in chronological order, for views to animate.
+## One step of an action / spell / turn change, in chronological order, for views to animate.
 ## C# object initializers map to: var e := ResolutionEvent.new(); e.type = ...; e.piece_id = ...
 
 ## ResolutionEventType value.
@@ -11,7 +11,8 @@ var piece_id: int = -1
 var other_piece_id: int = -1
 var from: Vector2i = Vector2i.ZERO
 var to: Vector2i = Vector2i.ZERO
-var is_chain: bool = false
+## Attacked: a secondary hit (Arc zap / Echo strike). StatusExpired: the status was consumed (Overcharged).
+var is_secondary: bool = false
 ## Attacked: this shot is the extra hit of a Pierce attack.
 var is_pierce: bool = false
 var amount: int = 0
@@ -30,7 +31,7 @@ var tile_effect: int = TileEffectType.NONE
 var status: int = StatusEffectType.NONE
 ## TileEffectApplied / StatusApplied: last turn (inclusive) in which the effect is active.
 var expiry_turn: int = 0
-## Moved: walked tiles excluding from (ends with to), an Array of Vector2i. null for other events.
+## Moved: walked tiles excluding from (ends with to), an Array[Vector2i]. null for other events.
 var path: Variant = null
 
 
@@ -42,7 +43,7 @@ func _to_string() -> String:
 			return "MoveBlocked #%d %s->%s" % [piece_id, str(from), str(to)]
 		ResolutionEventType.ATTACKED:
 			return "Attacked #%d %s->%s target #%d%s%s" % [piece_id, str(from), str(to), other_piece_id,
-				" (chain)" if is_chain else "", " (pierce)" if is_pierce else ""]
+				" (secondary)" if is_secondary else "", " (pierce)" if is_pierce else ""]
 		ResolutionEventType.ATTACK_CANCELLED:
 			return "AttackCancelled #%d ->%s" % [piece_id, str(to)]
 		ResolutionEventType.DAMAGED:
@@ -50,8 +51,6 @@ func _to_string() -> String:
 				shield_absorbed, hp_lost, remaining_hp, remaining_shield]
 		ResolutionEventType.DIED:
 			return "Died #%d at %s" % [piece_id, str(from)]
-		ResolutionEventType.CHAIN_TRIGGERED:
-			return "ChainTriggered #%d -> #%d" % [other_piece_id, piece_id]
 		ResolutionEventType.SPELL_EXPIRED:
 			return "SpellExpired '%s' on #%d" % [spell_name, piece_id]
 		ResolutionEventType.PUSHED:
@@ -73,7 +72,8 @@ func _to_string() -> String:
 		ResolutionEventType.STATUS_APPLIED:
 			return "StatusApplied %s on #%d" % [StatusEffectType.name_of(status), piece_id]
 		ResolutionEventType.STATUS_EXPIRED:
-			return "StatusExpired %s on #%d%s" % [StatusEffectType.name_of(status), piece_id, " (consumed)" if is_chain else ""]
+			return "StatusExpired %s on #%d%s" % [StatusEffectType.name_of(status), piece_id,
+				" (consumed)" if is_secondary else ""]
 		ResolutionEventType.SPELL_CAST:
 			return "SpellCast '%s' by P%d at %s" % [card_name, player_index, str(to)]
 	return ResolutionEventType.name_of(type)

@@ -4,7 +4,7 @@ extends Node3D
 ## as its child "TileEffects". sync diffs the shown visuals against a board and animates appear/expire;
 ## play_applied / play_expired animate single tiles while resolution events are played.
 
-## Vector2i -> TileEffectVisual (untyped so freed instances can be read and checked safely).
+## Vector2i -> TileEffectVisual
 var _visuals: Dictionary = {}
 ## Vector2i -> int
 var _totals: Dictionary = {}
@@ -26,28 +26,27 @@ func setup(board: BoardView) -> void:
 
 ## The effect type currently shown on a tile (NONE if nothing).
 func get_shown_type(pos: Vector2i) -> int:
-	var v = _visuals.get(pos)
-	if v != null and is_instance_valid(v):
-		return v.type
+	if _visuals.has(pos) and is_instance_valid(_visuals[pos]):
+		return (_visuals[pos] as TileEffectVisual).type
 	return TileEffectType.NONE
 
 
 ## Makes the shown effects match the board: new effects appear (animated if requested), effects that
-## are gone vanish, replaced types swap, and duration badges are refreshed. p_current_turn < 0 keeps current_turn.
-func sync(board: BoardState, p_current_turn: int = -1, animate: bool = true) -> void:
+## are gone vanish, replaced types swap, and duration badges are refreshed. current_turn_value < 0 keeps current_turn.
+func sync(board: BoardState, current_turn_value: int = -1, animate: bool = true) -> void:
 	if board == null:
 		return
-	if p_current_turn >= 0:
-		current_turn = p_current_turn
+	if current_turn_value >= 0:
+		current_turn = current_turn_value
 	var seen: Dictionary = {}
 	var effects: Dictionary = board.tile_effects
-	for key in effects:
+	for key: Vector2i in effects.keys():
 		var effect: TileEffect = effects[key]
 		if effect == null or effect.type == TileEffectType.NONE:
 			continue
 		seen[key] = true
-		var existing = _visuals.get(key)
-		if existing != null and is_instance_valid(existing) and existing.type == effect.type:
+		if _visuals.has(key) and is_instance_valid(_visuals[key]) and (_visuals[key] as TileEffectVisual).type == effect.type:
+			var existing: TileEffectVisual = _visuals[key]
 			if existing.expiry_turn != effect.expiry_turn:
 				_totals[key] = effect.remaining_turns(current_turn)
 				existing.pulse()
@@ -56,7 +55,7 @@ func sync(board: BoardState, p_current_turn: int = -1, animate: bool = true) -> 
 			continue
 		_show_effect(key, effect.type, effect.expiry_turn, animate)
 	var stale: Array[Vector2i] = []
-	for pos in _visuals.keys():
+	for pos: Vector2i in _visuals.keys():
 		if not seen.has(pos):
 			stale.append(pos)
 	for pos in stale:
@@ -87,10 +86,11 @@ func prepare_for_events(events: Array) -> void:
 			continue
 		handled[e.to] = true
 		if e.type == ResolutionEventType.TILE_EFFECT_APPLIED:
-			var v = _visuals.get(e.to)
-			if v != null and is_instance_valid(v) and v.type == e.tile_effect and v.expiry_turn == e.expiry_turn:
-				_visuals.erase(e.to)
-				v.queue_free()
+			if _visuals.has(e.to) and is_instance_valid(_visuals[e.to]):
+				var v: TileEffectVisual = _visuals[e.to]
+				if v.type == e.tile_effect and v.expiry_turn == e.expiry_turn:
+					_visuals.erase(e.to)
+					v.queue_free()
 		elif get_shown_type(e.to) == TileEffectType.NONE and e.tile_effect != TileEffectType.NONE:
 			_show_effect(e.to, e.tile_effect, -1, false)
 
@@ -99,7 +99,7 @@ func prepare_for_events(events: Array) -> void:
 func clear_all() -> void:
 	for v in _visuals.values():
 		if is_instance_valid(v):
-			v.queue_free()
+			(v as TileEffectVisual).queue_free()
 	_visuals.clear()
 	_totals.clear()
 
@@ -108,8 +108,8 @@ func _show_effect(pos: Vector2i, type: int, expiry_turn: int, animate: bool) -> 
 	if type == TileEffectType.NONE:
 		await _hide_effect(pos, animate)
 		return
-	var old = _visuals.get(pos)
-	if old != null and is_instance_valid(old):
+	if _visuals.has(pos) and is_instance_valid(_visuals[pos]):
+		var old: TileEffectVisual = _visuals[pos]
 		if old.type == type:
 			old.expiry_turn = expiry_turn
 			_totals[pos] = _remaining(expiry_turn)
@@ -119,7 +119,7 @@ func _show_effect(pos: Vector2i, type: int, expiry_turn: int, animate: bool) -> 
 		_visuals.erase(pos)
 		old.play_vanish()
 	var visual := TileEffectVisual.new()
-	visual.setup(type, _board.tile_size if _board != null else 1.0, false, float(pos.x) * 1.37 + float(pos.y) * 2.11)
+	visual.setup(type, _board.tile_size if _board != null else 1.0, false, pos.x * 1.37 + pos.y * 2.11)
 	visual.expiry_turn = expiry_turn
 	add_child(visual)
 	visual.global_position = _board.grid_to_world(pos) if _board != null else Vector3(pos.x, 0.0, pos.y)
@@ -135,19 +135,21 @@ func _show_effect(pos: Vector2i, type: int, expiry_turn: int, animate: bool) -> 
 func _hide_effect(pos: Vector2i, animate: bool) -> void:
 	if not _visuals.has(pos):
 		return
-	var v = _visuals[pos]
+	var v: Variant = _visuals[pos]
 	_visuals.erase(pos)
 	_totals.erase(pos)
 	if not is_instance_valid(v):
 		return
 	if animate:
-		await v.play_vanish()
+		await (v as TileEffectVisual).play_vanish()
 	else:
-		v.queue_free()
+		(v as TileEffectVisual).queue_free()
 
 
 func _remaining(expiry_turn: int) -> int:
-	return 0 if expiry_turn < 0 else maxi(0, expiry_turn - current_turn + 1)
+	if expiry_turn < 0 or expiry_turn >= TileEffect.PERMANENT:
+		return 0
+	return maxi(0, expiry_turn - current_turn + 1)
 
 
 func _update_badge(pos: Vector2i, v: TileEffectVisual) -> void:

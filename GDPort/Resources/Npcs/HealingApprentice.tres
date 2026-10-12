@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcHealingApprentice.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/Cleric.tres" id="r_Cleric"]
+
+[resource]
+script = ExtResource("1_npc")
+id = "healing_apprentice"
+name = "Lumen"
+title = "Dawn Novice"
+clan = 2
+deck = ExtResource("3_deck")
+position = Vector2(1550, 430)
+greeting = "Blessings to you, traveller! Sister Seraphine says a friendly duel heals the soul. Shall we?"
+rematch_line = "Another friendly duel? My prayers are ready!"
+defeat_line = "You fought with heart. Please, take this Cleric - may it guard you."
+victory_line = "Do not be sad - every loss is a lesson. Come back anytime!"
+reward_gold = 60
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Cleric")])

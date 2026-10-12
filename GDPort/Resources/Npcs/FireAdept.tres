@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcFireAdept.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="r_FlameArcher"]
+
+[resource]
+script = ExtResource("1_npc")
+id = "fire_adept"
+name = "Sorcha"
+title = "Ember Legion · Flame Adept"
+clan = 1
+house = 1
+deck = ExtResource("3_deck")
+position = Vector2(720, 470)
+greeting = "The hall is warm, but my arrows are warmer. Ready to burn?"
+rematch_line = "Back for more heat?"
+defeat_line = "Hmph. The fire in you is real."
+victory_line = "Too slow. The flames take the hesitant."
+reward_gold = 75
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_FlameArcher")])

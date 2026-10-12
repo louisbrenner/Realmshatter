@@ -5,15 +5,20 @@
 [resource]
 script = ExtResource("1")
 name = "Cleric"
-description = "Mending. Heals friendlies it hits - and still triggers their chain."
+description = "Heals the friendlies it hits instead of hurting them."
 card_type = 0
+rarity = 1
 role = 1
-ap_cost = 1
-movement = 2
+class_ = 7
+ap_cost = 3
+movement = 5
 attack = 1
 hp = 3
 range = 2
 shield = 0
 ap_bonus = 0
 keywords = 16
+clan = 2
+deathrattle = 4
+deathrattle_amount = 2
 tint = Color(1, 0.95, 0.8, 1)

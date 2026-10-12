@@ -25,7 +25,7 @@ func setup(primary: Color, secondary: Color, duration: float, radius: float = 0.
 func _ready() -> void:
 	for i in range(_count):
 		var mote := MeshInstance3D.new()
-		mote.mesh = VfxAssets.sparkle_quad if i % 3 == 0 else VfxAssets.glow_quad
+		mote.mesh = VfxAssets.get_sparkle_quad() if i % 3 == 0 else VfxAssets.get_glow_quad()
 		mote.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mote.scale = Vector3.ONE * 0.2
 		mote.set_instance_shader_parameter("tint", _primary if i % 2 == 0 else _secondary)
@@ -33,7 +33,7 @@ func _ready() -> void:
 		_motes.append(mote)
 
 	var dust := CPUParticles3D.new()
-	dust.mesh = VfxAssets.glow_quad
+	dust.mesh = VfxAssets.get_glow_quad()
 	dust.amount = 30
 	dust.lifetime = 0.4
 	dust.local_coords = false
@@ -45,7 +45,7 @@ func _ready() -> void:
 	dust.scale_amount_min = 0.1
 	dust.scale_amount_max = 0.22
 	dust.scale_amount_curve = Vfx.linear_curve(1.0, 0.0)
-	dust.color_ramp = Vfx.ramp([_secondary, Color(_primary.r, _primary.g, _primary.b, 0.0)])
+	dust.color_ramp = Vfx.ramp(_secondary, Color(_primary.r, _primary.g, _primary.b, 0.0))
 	dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	dust.position = Vector3(0, 0.5, 0)
 	add_child(dust)
@@ -76,7 +76,7 @@ func _update_motes(t: float) -> void:
 
 func _finish() -> void:
 	_finished = true
-	var parent: Node3D = get_parent() as Node3D
+	var parent := get_parent() as Node3D
 	var center: Vector3 = global_position + Vector3(0, 0.35, 0)
 	if parent != null:
 		Vfx.sparkle(parent, center, _primary, 20, 0.7, 0.35)

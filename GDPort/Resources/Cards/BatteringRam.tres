@@ -5,15 +5,22 @@
 [resource]
 script = ExtResource("1")
 name = "Battering Ram"
-description = "Push. Knocks enemies back - out of the zone or onto lava."
+description = "Knocks enemies back - out of the zone or onto lava."
 card_type = 0
+rarity = 1
 role = 0
-ap_cost = 2
-movement = 1
+class_ = 8
+ap_cost = 3
+movement = 3
 attack = 2
 hp = 4
 range = 1
 shield = 0
 ap_bonus = 0
 keywords = 4
+clan = 5
+deathrattle = 2
+deathrattle_amount = 1
+on_first_hit = 5
+on_first_hit_amount = 1
 tint = Color(0.55, 0.4, 0.3, 1)

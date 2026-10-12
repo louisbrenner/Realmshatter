@@ -11,4 +11,6 @@ role = 0
 ap_cost = 1
 hp_delta = 2
 shield_delta = 1
+clan = 2
+rarity = 0
 tint = Color(1, 0.9, 0.5, 1)

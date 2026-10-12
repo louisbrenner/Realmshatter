@@ -1,7 +1,8 @@
 class_name TileEffectVisual
 extends Node3D
 ## Visual of one tile effect: molten lava (embers, bubbles, heat shimmer, glow), a raised stone wall
-## with rubble, or a glowing healing rune circle with rising sparkles; plus a small duration badge.
+## with rubble, a heap of broken stones and charred beams (Rubble of a destroyed building), a glowing healing
+## rune circle with rising sparkles or a ground sheet (ice, storm, mud); plus a small duration badge.
 ## Ghost mode is a translucent preview without particles/lights/badge (spell and attack previews).
 ## Created by TileEffectLayer and OrderOverlay; the node origin is the tile's top center.
 
@@ -33,7 +34,7 @@ var remaining: int:
 	get:
 		return _remaining
 
-## The kind of effect shown.
+## The kind of effect shown (TileEffectType).
 var type: int = TileEffectType.NONE
 
 ## True for translucent previews.
@@ -47,19 +48,27 @@ var is_vanishing: bool = false
 
 
 ## Builds the visual. Call once, before or right after adding it to the tree.
-func setup(p_type: int, tile_size: float, ghost: bool, p_seed: float) -> void:
-	type = p_type
+func setup(effect_type: int, tile_size: float, ghost: bool, seed_value: float) -> void:
+	type = effect_type
 	is_ghost = ghost
 	_tile_size = maxf(0.1, tile_size)
-	_seed = p_seed
-	name = "%s%s" % [TileEffectType.name_of(p_type), "Ghost" if ghost else ""]
-	match p_type:
+	_seed = seed_value
+	name = "%s%s" % [TileEffectType.name_of(effect_type), "Ghost" if ghost else ""]
+	match effect_type:
 		TileEffectType.LAVA:
 			_build_lava()
 		TileEffectType.WALL:
 			_build_wall()
 		TileEffectType.HEALING:
 			_build_healing()
+		TileEffectType.ICE:
+			_build_ground(0)
+		TileEffectType.STORM:
+			_build_ground(1)
+		TileEffectType.MUD:
+			_build_ground(2)
+		TileEffectType.RUBBLE:
+			_build_rubble()
 		_:
 			_build_generic()
 	if not ghost:
@@ -92,21 +101,22 @@ func play_appear() -> void:
 	_set_appear(0.0)
 	var parent := get_parent() as Node3D
 	var pos: Vector3 = global_position
-	var duration: float = 0.32 if type == TileEffectType.WALL else 0.38
+	var stone: bool = type == TileEffectType.WALL or type == TileEffectType.RUBBLE
+	var duration: float = 0.32 if stone else 0.38
 	if not is_ghost and parent != null:
 		match type:
 			TileEffectType.LAVA:
 				RuleVfx.fire_burst(parent, pos, 0.8)
 				Vfx.shockwave(parent, pos + Vector3(0, 0.04, 0), RuleVfx.FIRE_COLOR, 1.1, 0.35, 0.14)
-			TileEffectType.WALL:
+			TileEffectType.WALL, TileEffectType.RUBBLE:
 				Vfx.dust_ring(parent, pos, Color(0.62, 0.55, 0.46), 0.5, 16)
 			TileEffectType.HEALING:
 				Vfx.sparkle(parent, pos + Vector3(0, 0.2, 0), RuleVfx.HEAL_GOLD, 14, 0.8, 0.4)
 				Vfx.glow_flash(parent, pos + Vector3(0, 0.15, 0), RuleVfx.HEAL_COLOR, 1.4, 0.35)
 	_tween = create_tween()
-	var trans: Tween.TransitionType = Tween.TRANS_BACK if type == TileEffectType.WALL else Tween.TRANS_CUBIC
+	var trans: Tween.TransitionType = Tween.TRANS_BACK if stone else Tween.TRANS_CUBIC
 	_tween.tween_method(_set_appear, 0.0, 1.0, duration).set_trans(trans).set_ease(Tween.EASE_OUT)
-	if type == TileEffectType.WALL and not is_ghost:
+	if stone and not is_ghost:
 		_tween.tween_callback(func() -> void:
 			var p := get_parent() as Node3D
 			if p != null:
@@ -132,8 +142,8 @@ func play_vanish() -> void:
 		match type:
 			TileEffectType.LAVA:
 				Vfx.smoke_puff(parent, pos + Vector3(0, 0.1, 0), Color(0.3, 0.27, 0.25), 10, 0.7)
-			TileEffectType.WALL:
-				RuleVfx.rubble_burst(parent, pos, 1.1)
+			TileEffectType.WALL, TileEffectType.RUBBLE:
+				RuleVfx.rubble_burst(parent, pos, 1.1 if type == TileEffectType.WALL else 0.8)
 			TileEffectType.HEALING:
 				Vfx.sparkle(parent, pos + Vector3(0, 0.2, 0), RuleVfx.HEAL_COLOR, 10, 0.7, 0.4)
 	_tween = create_tween()
@@ -175,9 +185,9 @@ func _set_appear(t: float) -> void:
 		TileEffectType.HEALING:
 			if _surface_mat != null:
 				_surface_mat.set_shader_parameter("appear", t)
-		TileEffectType.WALL:
+		TileEffectType.WALL, TileEffectType.RUBBLE:
 			if _wall_root != null:
-				var h: float = 0.62
+				var h: float = 0.62 if type == TileEffectType.WALL else 0.35
 				_wall_root.position = Vector3(0.0, -h * (1.0 - t), 0.0)
 				_wall_root.scale = Vector3(1.0, maxf(0.05, t), 1.0)
 		_:
@@ -196,17 +206,16 @@ func _set_vanish(t: float) -> void:
 			if is_ghost:
 				if _surface_mat != null:
 					_surface_mat.set_shader_parameter("opacity", 1.0 - t)
-			else:
-				if _surface_mat != null:
-					_surface_mat.set_shader_parameter("cool", clampf(t * 1.6, 0.0, 1.0))
-					_surface_mat.set_shader_parameter("appear", 1.0 - clampf((t - 0.45) / 0.55, 0.0, 1.0))
+			elif _surface_mat != null:
+				_surface_mat.set_shader_parameter("cool", clampf(t * 1.6, 0.0, 1.0))
+				_surface_mat.set_shader_parameter("appear", 1.0 - clampf((t - 0.45) / 0.55, 0.0, 1.0))
 			if _haze_mat != null:
 				_haze_mat.set_shader_parameter("strength", 1.0 - t)
 		TileEffectType.HEALING:
 			if _surface_mat != null:
 				_surface_mat.set_shader_parameter("opacity", 1.0 - t)
 				_surface_mat.set_shader_parameter("appear", 1.0 + t * 0.3)
-		TileEffectType.WALL:
+		TileEffectType.WALL, TileEffectType.RUBBLE:
 			for m in _wall_mats:
 				m.set_shader_parameter("crumble", t)
 			if _ghost_mat != null:
@@ -220,37 +229,47 @@ func _set_vanish(t: float) -> void:
 
 # ------------------------------------------------------------------ builders
 
+static func _plane_instance(node_name: String, size: Vector2, mat: Material, pos: Vector3) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	if not node_name.is_empty():
+		mi.name = node_name
+	var plane := PlaneMesh.new()
+	plane.size = size
+	mi.mesh = plane
+	mi.material_override = mat
+	mi.position = pos
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+
+static func _box_instance(node_name: String, size: Vector3, mat: Material, pos: Vector3, rot: Vector3 = Vector3.ZERO) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	if not node_name.is_empty():
+		mi.name = node_name
+	var box := BoxMesh.new()
+	box.size = size
+	mi.mesh = box
+	mi.material_override = mat
+	mi.position = pos
+	mi.rotation = rot
+	return mi
+
+
 func _build_lava() -> void:
 	var s: float = _tile_size * 0.97
 	_surface_mat = VfxAssets.create_material("tile_lava_ghost" if is_ghost else "tile_lava", 6 if is_ghost else 0)
 	if not is_ghost:
 		_surface_mat.set_shader_parameter("seed", _seed)
-	var surface := MeshInstance3D.new()
-	surface.name = "LavaSurface"
-	var surface_mesh := PlaneMesh.new()
-	surface_mesh.size = Vector2(s, s)
-	surface.mesh = surface_mesh
-	surface.material_override = _surface_mat
-	surface.position = Vector3(0, 0.03 if is_ghost else 0.006, 0)
-	surface.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(surface)
+	add_child(_plane_instance("LavaSurface", Vector2(s, s), _surface_mat, Vector3(0, 0.03 if is_ghost else 0.006, 0)))
 	if is_ghost:
 		return
 
 	_haze_mat = VfxAssets.create_material("heat_haze", 1)
-	var haze := MeshInstance3D.new()
-	haze.name = "HeatHaze"
-	var haze_mesh := PlaneMesh.new()
-	haze_mesh.size = Vector2(s * 0.95, s * 0.95)
-	haze.mesh = haze_mesh
-	haze.material_override = _haze_mat
-	haze.position = Vector3(0, 0.32, 0)
-	haze.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(haze)
+	add_child(_plane_instance("HeatHaze", Vector2(s * 0.95, s * 0.95), _haze_mat, Vector3(0, 0.32, 0)))
 
 	var embers := CPUParticles3D.new()
 	embers.name = "Embers"
-	embers.mesh = VfxAssets.glow_quad
+	embers.mesh = VfxAssets.get_glow_quad()
 	embers.amount = 9
 	embers.lifetime = 1.5
 	embers.local_coords = false
@@ -267,14 +286,14 @@ func _build_lava() -> void:
 	embers.scale_amount_min = 0.05
 	embers.scale_amount_max = 0.12
 	embers.scale_amount_curve = Vfx.linear_curve(1.0, 0.0, 1.0)
-	embers.color_ramp = Vfx.ramp([Color(1.0, 0.9, 0.5, 1.0), Color(1.0, 0.45, 0.08, 0.9), Color(0.6, 0.08, 0.02, 0.0)])
+	embers.color_ramp = Vfx.ramp(Color(1.0, 0.9, 0.5, 1.0), Color(1.0, 0.45, 0.08, 0.9), Color(0.6, 0.08, 0.02, 0.0))
 	embers.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	embers.position = Vector3(0, 0.05, 0)
 	_add_emitter(embers)
 
 	var bubbles := CPUParticles3D.new()
 	bubbles.name = "Bubbles"
-	bubbles.mesh = VfxAssets.ring_quad
+	bubbles.mesh = VfxAssets.get_ring_quad()
 	bubbles.amount = 3
 	bubbles.lifetime = 0.8
 	bubbles.local_coords = false
@@ -289,7 +308,7 @@ func _build_lava() -> void:
 	bubbles.scale_amount_min = 0.12
 	bubbles.scale_amount_max = 0.22
 	bubbles.scale_amount_curve = Vfx.linear_curve(0.2, 1.2)
-	bubbles.color_ramp = Vfx.ramp([Color(1.0, 0.75, 0.3, 0.9), Color(1.0, 0.4, 0.05, 0.0)])
+	bubbles.color_ramp = Vfx.ramp(Color(1.0, 0.75, 0.3, 0.9), Color(1.0, 0.4, 0.05, 0.0))
 	bubbles.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	bubbles.position = Vector3(0, 0.04, 0)
 	_add_emitter(bubbles)
@@ -313,67 +332,92 @@ func _build_wall() -> void:
 	if is_ghost:
 		_ghost_mat = VfxAssets.create_material("ghost_preview", 6)
 		_ghost_mat.set_shader_parameter("half_size", Vector3(0.43 * ts, 0.31, 0.43 * ts))
-		var ghost := MeshInstance3D.new()
-		var ghost_mesh := BoxMesh.new()
-		ghost_mesh.size = Vector3(0.86 * ts, 0.62, 0.86 * ts)
-		ghost.mesh = ghost_mesh
-		ghost.material_override = _ghost_mat
-		ghost.position = Vector3(0, 0.31, 0)
-		ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_wall_root.add_child(ghost)
+		var g: MeshInstance3D = _box_instance("", Vector3(0.86 * ts, 0.62, 0.86 * ts), _ghost_mat, Vector3(0, 0.31, 0))
+		g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_wall_root.add_child(g)
 		return
 
 	var main: ShaderMaterial = _create_wall_material(0.0)
 	var cap: ShaderMaterial = _create_wall_material(1.7)
 	var rubble: ShaderMaterial = _create_wall_material(3.1)
-	var body := MeshInstance3D.new()
-	body.name = "Body"
-	var body_mesh := BoxMesh.new()
-	body_mesh.size = Vector3(0.84 * ts, 0.5, 0.84 * ts)
-	body.mesh = body_mesh
-	body.material_override = main
-	body.position = Vector3(0, 0.25, 0)
-	_wall_root.add_child(body)
-	var cap_node := MeshInstance3D.new()
-	cap_node.name = "Cap"
-	var cap_mesh := BoxMesh.new()
-	cap_mesh.size = Vector3(0.9 * ts, 0.12, 0.9 * ts)
-	cap_node.mesh = cap_mesh
-	cap_node.material_override = cap
-	cap_node.position = Vector3(0, 0.55, 0)
-	cap_node.rotation = Vector3(0, 0.05 + 0.04 * sin(_seed), 0)
-	_wall_root.add_child(cap_node)
+	_wall_root.add_child(_box_instance("Body", Vector3(0.84 * ts, 0.5, 0.84 * ts), main, Vector3(0, 0.25, 0)))
+	_wall_root.add_child(_box_instance("Cap", Vector3(0.9 * ts, 0.12, 0.9 * ts), cap, Vector3(0, 0.55, 0),
+		Vector3(0, 0.05 + 0.04 * sin(_seed), 0)))
 	# Crenellations on top.
 	var merlon := BoxMesh.new()
 	merlon.size = Vector3(0.22 * ts, 0.12, 0.22 * ts)
 	for i in range(4):
-		var sx: float = -1.0 if (i % 2 == 0) else 1.0
-		var sz: float = -1.0 if (i < 2) else 1.0
-		var m := MeshInstance3D.new()
-		m.mesh = merlon
-		m.material_override = cap
-		m.position = Vector3(sx * 0.3 * ts, 0.67, sz * 0.3 * ts)
-		_wall_root.add_child(m)
+		var sx: float = -1.0 if i % 2 == 0 else 1.0
+		var sz: float = -1.0 if i < 2 else 1.0
+		var mi := MeshInstance3D.new()
+		mi.mesh = merlon
+		mi.material_override = cap
+		mi.position = Vector3(sx * 0.3 * ts, 0.67, sz * 0.3 * ts)
+		_wall_root.add_child(mi)
 	# Rubble at the foot.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(absf(_seed) * 1000.0) + 7
 	for i in range(5):
 		var ang: float = TAU * i / 5.0 + rng.randf_range(-0.4, 0.4)
 		var size: float = rng.randf_range(0.08, 0.15)
-		var rock := MeshInstance3D.new()
-		var rock_mesh := BoxMesh.new()
-		rock_mesh.size = Vector3(size * 1.3, size * 0.8, size)
-		rock.mesh = rock_mesh
-		rock.material_override = rubble
-		rock.position = Vector3(cos(ang) * 0.44 * ts, size * 0.35, sin(ang) * 0.44 * ts)
-		rock.rotation = Vector3(rng.randf_range(-0.4, 0.4), rng.randf_range(0.0, TAU), rng.randf_range(-0.4, 0.4))
-		_wall_root.add_child(rock)
+		var pos := Vector3(cos(ang) * 0.44 * ts, size * 0.35, sin(ang) * 0.44 * ts)
+		var rot := Vector3(rng.randf_range(-0.4, 0.4), rng.randf_range(0.0, TAU), rng.randf_range(-0.4, 0.4))
+		_wall_root.add_child(_box_instance("", Vector3(size * 1.3, size * 0.8, size), rubble, pos, rot))
 	for child in _wall_root.get_children():
-		if child is MeshInstance3D:
+		if child is MeshInstance3D and (child as MeshInstance3D).mesh is BoxMesh:
 			var mi := child as MeshInstance3D
-			if mi.mesh is BoxMesh:
-				var box := mi.mesh as BoxMesh
-				mi.set_instance_shader_parameter("top_size", Vector2(box.size.x, box.size.z))
+			var box := mi.mesh as BoxMesh
+			mi.set_instance_shader_parameter("top_size", Vector2(box.size.x, box.size.z))
+
+
+## Rubble of a destroyed building: a low heap of broken stone blocks (bigger ones in the middle), a couple of
+## charred beams sticking out and a dusty footprint. Impassable, so it reads as an obstacle like a Wall.
+func _build_rubble() -> void:
+	_wall_root = Node3D.new()
+	_wall_root.name = "Heap"
+	add_child(_wall_root)
+	var ts: float = _tile_size
+	if is_ghost:
+		_ghost_mat = VfxAssets.create_material("ghost_preview", 6)
+		_ghost_mat.set_shader_parameter("half_size", Vector3(0.4 * ts, 0.15, 0.4 * ts))
+		var g: MeshInstance3D = _box_instance("", Vector3(0.8 * ts, 0.3, 0.8 * ts), _ghost_mat, Vector3(0, 0.15, 0))
+		g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_wall_root.add_child(g)
+		return
+
+	var dust_mat := StandardMaterial3D.new()
+	dust_mat.albedo_color = Color(0.28, 0.25, 0.22, 0.6)
+	dust_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dust_mat.roughness = 1.0
+	_wall_root.add_child(_plane_instance("Dust", Vector2(0.92 * ts, 0.92 * ts), dust_mat, Vector3(0, 0.008, 0)))
+
+	var stones: Array[ShaderMaterial] = [_create_wall_material(0.9), _create_wall_material(2.3), _create_wall_material(4.1)]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(absf(_seed) * 1000.0) + 31
+	# Inner ring of large slabs piled on each other, outer ring of smaller chunks.
+	for i in range(12):
+		var inner: bool = i < 4
+		var ang: float = TAU * i / (4.0 if inner else 8.0) + rng.randf_range(-0.35, 0.35)
+		var dist: float = (rng.randf_range(0.04, 0.14) if inner else rng.randf_range(0.24, 0.36)) * ts
+		var size: float = rng.randf_range(0.2, 0.28) if inner else rng.randf_range(0.09, 0.16)
+		var lift: float = 0.06 + (i % 2) * 0.1 if inner else 0.0
+		var pos := Vector3(cos(ang) * dist, size * 0.3 * ts + lift, sin(ang) * dist)
+		var rot := Vector3(rng.randf_range(-0.5, 0.5), rng.randf_range(0.0, TAU), rng.randf_range(-0.5, 0.5))
+		_wall_root.add_child(_box_instance("", Vector3(size * 1.25, size * 0.6, size) * ts, stones[i % stones.size()], pos, rot))
+	# Charred beams of the collapsed building.
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color(0.2, 0.13, 0.08)
+	wood.roughness = 0.95
+	for i in range(2):
+		var yaw: float = rng.randf_range(0.0, TAU)
+		var pos := Vector3(rng.randf_range(-0.08, 0.08) * ts, 0.2 + i * 0.06, rng.randf_range(-0.08, 0.08) * ts)
+		var rot := Vector3(0.0, yaw, rng.randf_range(0.25, 0.45) * (1.0 if i == 0 else -1.0))
+		_wall_root.add_child(_box_instance("", Vector3(0.62 * ts, 0.055, 0.06), wood, pos, rot))
+	for child in _wall_root.get_children():
+		if child is MeshInstance3D and (child as MeshInstance3D).mesh is BoxMesh and (child as MeshInstance3D).material_override is ShaderMaterial:
+			var mi := child as MeshInstance3D
+			var box := mi.mesh as BoxMesh
+			mi.set_instance_shader_parameter("top_size", Vector2(box.size.x, box.size.z))
 
 
 func _create_wall_material(seed_offset: float) -> ShaderMaterial:
@@ -390,20 +434,12 @@ func _build_healing() -> void:
 	if is_ghost:
 		_surface_mat.set_shader_parameter("opacity", 0.75)
 		_surface_mat.set_shader_parameter("hatch", 1.0)
-	var runes := MeshInstance3D.new()
-	runes.name = "Runes"
-	var runes_mesh := PlaneMesh.new()
-	runes_mesh.size = Vector2(s, s)
-	runes.mesh = runes_mesh
-	runes.material_override = _surface_mat
-	runes.position = Vector3(0, 0.03 if is_ghost else 0.012, 0)
-	runes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(runes)
+	add_child(_plane_instance("Runes", Vector2(s, s), _surface_mat, Vector3(0, 0.03 if is_ghost else 0.012, 0)))
 	if is_ghost:
 		return
 	var sparkles := CPUParticles3D.new()
 	sparkles.name = "Sparkles"
-	sparkles.mesh = VfxAssets.sparkle_quad
+	sparkles.mesh = VfxAssets.get_sparkle_quad()
 	sparkles.amount = 6
 	sparkles.lifetime = 1.6
 	sparkles.local_coords = false
@@ -418,7 +454,8 @@ func _build_healing() -> void:
 	sparkles.scale_amount_min = 0.07
 	sparkles.scale_amount_max = 0.15
 	sparkles.scale_amount_curve = Vfx.linear_curve(0.0, 0.0, 1.0)
-	sparkles.color_ramp = Vfx.ramp([Color(1.0, 1.0, 1.0, 1.0), RuleVfx.HEAL_COLOR, Color(RuleVfx.HEAL_GOLD.r, RuleVfx.HEAL_GOLD.g, RuleVfx.HEAL_GOLD.b, 0.0)])
+	var gold: Color = RuleVfx.HEAL_GOLD
+	sparkles.color_ramp = Vfx.ramp(Color(1.0, 1.0, 1.0, 1.0), RuleVfx.HEAL_COLOR, Color(gold.r, gold.g, gold.b, 0.0))
 	sparkles.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	sparkles.position = Vector3(0, 0.05, 0)
 	_add_emitter(sparkles)
@@ -433,37 +470,64 @@ func _build_healing() -> void:
 	add_child(_light)
 
 
+## Ice (0), Storm cell (1) or Mud (2): one flat sheet (tile_ground.gdshader); storm cells add sparks.
+func _build_ground(kind: int) -> void:
+	var s: float = _tile_size * 0.97
+	_surface_mat = VfxAssets.create_material("tile_ground", 6 if is_ghost else 1)
+	_surface_mat.set_shader_parameter("kind", kind)
+	_surface_mat.set_shader_parameter("seed", _seed)
+	if is_ghost:
+		_surface_mat.set_shader_parameter("opacity", 0.75)
+		_surface_mat.set_shader_parameter("hatch", 1.0)
+	add_child(_plane_instance("Ground", Vector2(s, s), _surface_mat, Vector3(0, 0.03 if is_ghost else 0.011, 0)))
+	if is_ghost or kind != 1:
+		return
+	var sparks := CPUParticles3D.new()
+	sparks.name = "Sparks"
+	sparks.mesh = VfxAssets.get_sparkle_quad()
+	sparks.amount = 5
+	sparks.lifetime = 0.5
+	sparks.local_coords = false
+	sparks.randomness = 0.8
+	sparks.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	sparks.emission_box_extents = Vector3(s * 0.4, 0.02, s * 0.4)
+	sparks.direction = Vector3.UP
+	sparks.spread = 40.0
+	sparks.initial_velocity_min = 0.3
+	sparks.initial_velocity_max = 0.8
+	sparks.scale_amount_min = 0.05
+	sparks.scale_amount_max = 0.11
+	sparks.scale_amount_curve = Vfx.linear_curve(1.0, 0.0, 1.0)
+	sparks.color_ramp = Vfx.ramp(Color(1.0, 1.0, 1.0, 1.0), Color(0.8, 0.65, 1.0), Color(0.5, 0.3, 1.0, 0.0))
+	sparks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sparks.position = Vector3(0, 0.04, 0)
+	_add_emitter(sparks)
+
+
 func _build_generic() -> void:
 	var s: float = _tile_size * 0.97
 	_surface_mat = VfxAssets.create_material("highlight", 6)
 	_surface_mat.set_shader_parameter("color", Color(0.75, 0.35, 1.0, 0.7))
 	_surface_mat.set_shader_parameter("pattern", 3)
-	var mi := MeshInstance3D.new()
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(s, s)
-	mi.mesh = plane
-	mi.material_override = _surface_mat
-	mi.position = Vector3(0, 0.03, 0)
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mi)
+	add_child(_plane_instance("", Vector2(s, s), _surface_mat, Vector3(0, 0.03, 0)))
 
 
 func _build_timer() -> void:
 	var color: Color
 	match type:
-		TileEffectType.LAVA:
-			color = LAVA_TIMER_COLOR
-		TileEffectType.WALL:
-			color = WALL_TIMER_COLOR
-		TileEffectType.HEALING:
-			color = HEAL_TIMER_COLOR
-		_:
-			color = Color.WHITE
+		TileEffectType.LAVA: color = LAVA_TIMER_COLOR
+		TileEffectType.WALL: color = WALL_TIMER_COLOR
+		TileEffectType.HEALING: color = HEAL_TIMER_COLOR
+		TileEffectType.ICE: color = Color(0.7, 0.9, 1.0)
+		TileEffectType.STORM: color = Color(0.8, 0.65, 1.0)
+		TileEffectType.MUD: color = Color(0.75, 0.58, 0.38)
+		TileEffectType.RUBBLE: color = WALL_TIMER_COLOR
+		_: color = Color.WHITE
 	var pos: Vector3
-	if type == TileEffectType.WALL:
-		pos = Vector3(0.28 * _tile_size, 0.8, 0.28 * _tile_size)
-	else:
-		pos = Vector3(0.37 * _tile_size, 0.1, -0.37 * _tile_size)
+	match type:
+		TileEffectType.WALL: pos = Vector3(0.28 * _tile_size, 0.8, 0.28 * _tile_size)
+		TileEffectType.RUBBLE: pos = Vector3(0.32 * _tile_size, 0.5, 0.32 * _tile_size)
+		_: pos = Vector3(0.37 * _tile_size, 0.1, -0.37 * _tile_size)
 	_timer = Node3D.new()
 	_timer.name = "Timer"
 	_timer.position = pos

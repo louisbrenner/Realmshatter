@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcStoneLeader.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/MountainColossus.tres" id="r_MountainColossus"]
+
+[resource]
+script = ExtResource("1_npc")
+id = "stone_leader"
+name = "King Dur"
+title = "Stone Bastion · Clan Leader"
+clan = 5
+deck = ExtResource("3_deck")
+house = 5
+position = Vector2(480, 215)
+greeting = "I am Dur, Mountain King of the Stone Bastion. Nothing moves my line. Show me otherwise."
+rematch_line = "The mountain stands. Try again if you like."
+defeat_line = "You moved the mountain. The Colossus is yours - keep it standing."
+victory_line = "The line holds. It always holds."
+reward_gold = 150
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_MountainColossus")])
+bonus_ap_per_turn = 1
+requires_defeated = Array[String](["stone_initiate", "stone_adept", "stone_champion"])
+locked_line = "Prove yourself against the three duelists of this hall first - then I will face you."

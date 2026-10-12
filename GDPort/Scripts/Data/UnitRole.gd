@@ -2,7 +2,11 @@ class_name UnitRole
 extends RefCounted
 ## Role of a unit card. Resource units typically grant bonus AP.
 
-enum { ATTACK = 0, UTILITY = 1, RESOURCE = 2 }
+enum {
+	ATTACK = 0,
+	UTILITY = 1,
+	RESOURCE = 2,
+}
 
 const NAMES := { ATTACK: "Attack", UTILITY: "Utility", RESOURCE: "Resource" }
 

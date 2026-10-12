@@ -46,7 +46,7 @@ func _update_tooltip() -> void:
 func _process(delta: float) -> void:
 	var dt: float = delta
 	_time += dt
-	_hover = move_toward(_hover, 1.0 if is_hovered() and not disabled else 0.0, dt * 8.0)
+	_hover = move_toward(_hover, 1.0 if (is_hovered() and not disabled) else 0.0, dt * 8.0)
 	_draw_anim = maxf(0.0, _draw_anim - dt * 2.0)
 	queue_redraw()
 
@@ -90,8 +90,8 @@ func _draw() -> void:
 	draw_polyline(HudStyle.close(HudStyle.round_rect(badge_rect, 10.0)), HudStyle.GOLD_DARK, 1.5, true)
 	HudStyle.draw_text_centered(self, str(_count), badge, 15, HudStyle.TEXT_LIGHT, 3)
 
-	# Cost gem (top-right).
-	var gem: Vector2 = origin + Vector2(card_size.x - 2.0, -layers * 2.5 + 4.0)
+	# Cost gem (top-left, like on the cards).
+	var gem: Vector2 = origin + Vector2(2.0, -layers * 2.5 + 4.0)
 	HudStyle.draw_crystal(self, gem, 26.0, 1.0, 0.25 * _hover if live else 0.0, 0.7 if disabled else 1.0)
 	HudStyle.draw_text_centered(self, str(_cost), gem + Vector2(0, 1.0), 16, Color.WHITE, 4, Color(0.02, 0.05, 0.16))
 
@@ -103,7 +103,7 @@ func _draw() -> void:
 func _draw_card_back(rect: Rect2, top: bool, brightness: float) -> void:
 	var back: Color = BACK_COLOR * brightness
 	back.a = 1.0
-	var outer: PackedVector2Array = HudStyle.round_rect(rect, 8.0)
+	var outer = HudStyle.round_rect(rect, 8.0)
 	draw_colored_polygon(outer, back)
 	if top:
 		var inner: Rect2 = rect.grow(-5.0)

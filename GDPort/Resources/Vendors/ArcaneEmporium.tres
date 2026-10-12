@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="VendorData" load_steps=22 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/VendorData.gd" id="1_vendor"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/Fireball.tres" id="s_Fireball"]
+[ext_resource type="Resource" path="res://Resources/Cards/Meteor.tres" id="s_Meteor"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameWall.tres" id="s_FlameWall"]
+[ext_resource type="Resource" path="res://Resources/Cards/Sanctuary.tres" id="s_Sanctuary"]
+[ext_resource type="Resource" path="res://Resources/Cards/MendingRain.tres" id="s_MendingRain"]
+[ext_resource type="Resource" path="res://Resources/Cards/Hailstorm.tres" id="s_Hailstorm"]
+[ext_resource type="Resource" path="res://Resources/Cards/Rockslide.tres" id="s_Rockslide"]
+[ext_resource type="Resource" path="res://Resources/Cards/StaticCharge.tres" id="s_StaticCharge"]
+[ext_resource type="Resource" path="res://Resources/Cards/Cleric.tres" id="s_Cleric"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostMage.tres" id="s_FrostMage"]
+[ext_resource type="Resource" path="res://Resources/Cards/Pyromancer.tres" id="s_Pyromancer"]
+[ext_resource type="Resource" path="res://Resources/Cards/SparkTotem.tres" id="s_SparkTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaTotem.tres" id="s_ManaTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaSurge.tres" id="s_ManaSurge"]
+[ext_resource type="Resource" path="res://Resources/Cards/Ignis.tres" id="s_Ignis"]
+[ext_resource type="Resource" path="res://Resources/Cards/Solenne.tres" id="s_Solenne"]
+[ext_resource type="Resource" path="res://Resources/Cards/Hrimgar.tres" id="s_Hrimgar"]
+[ext_resource type="Resource" path="res://Resources/Cards/Voltaris.tres" id="s_Voltaris"]
+[ext_resource type="Resource" path="res://Resources/Cards/Gorran.tres" id="s_Gorran"]
+
+[resource]
+script = ExtResource("1_vendor")
+id = "arcane"
+name = "Magister Oren"
+title = "Arcane Emporium"
+greeting = "Spells, scrolls and the odd apprentice mage. Mind the sparks."
+position = Vector2(1220, 820)
+color = Color(0.4, 0.3, 0.75, 1)
+stock = Array[ExtResource("2_card")]([ExtResource("s_Fireball"), ExtResource("s_Meteor"), ExtResource("s_FlameWall"), ExtResource("s_Sanctuary"), ExtResource("s_MendingRain"), ExtResource("s_Hailstorm"), ExtResource("s_Rockslide"), ExtResource("s_StaticCharge"), ExtResource("s_Cleric"), ExtResource("s_FrostMage"), ExtResource("s_Pyromancer"), ExtResource("s_SparkTotem"), ExtResource("s_ManaTotem"), ExtResource("s_ManaSurge"), ExtResource("s_Ignis"), ExtResource("s_Solenne"), ExtResource("s_Hrimgar"), ExtResource("s_Voltaris"), ExtResource("s_Gorran")])

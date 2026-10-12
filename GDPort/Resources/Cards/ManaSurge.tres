@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Mana Surge"
+description = "Draw raw power through one of the pieces on the field."
+card_type = 1
+role = 1
+ap_cost = 1
+ap_gain = 2
+clan = 0
+rarity = 0
+tint = Color(0.3, 0.6, 1, 1)

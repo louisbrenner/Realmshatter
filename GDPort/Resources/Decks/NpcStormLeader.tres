@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="DeckData" load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/DeckData.gd" id="1_deck"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/Voltaris.tres" id="c_Voltaris"]
+[ext_resource type="Resource" path="res://Resources/Cards/ThunderTitan.tres" id="c_ThunderTitan"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormCaller.tres" id="c_StormCaller"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormHerald.tres" id="c_StormHerald"]
+[ext_resource type="Resource" path="res://Resources/Cards/SparkTotem.tres" id="c_SparkTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/Bellringer.tres" id="c_Bellringer"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaTotem.tres" id="c_ManaTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/Raider.tres" id="c_Raider"]
+[ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="c_Lancer"]
+[ext_resource type="Resource" path="res://Resources/Cards/StaticCharge.tres" id="c_StaticCharge"]
+[ext_resource type="Resource" path="res://Resources/Cards/LightningBolt.tres" id="c_LightningBolt"]
+[ext_resource type="Resource" path="res://Resources/Cards/Overcharge.tres" id="c_Overcharge"]
+
+[resource]
+script = ExtResource("1_deck")
+name = "Raijin's Tempest"
+cards = Array[ExtResource("2_card")]([ExtResource("c_Voltaris"), ExtResource("c_ThunderTitan"), ExtResource("c_ThunderTitan"), ExtResource("c_ThunderTitan"), ExtResource("c_StormCaller"), ExtResource("c_StormCaller"), ExtResource("c_StormCaller"), ExtResource("c_StormHerald"), ExtResource("c_StormHerald"), ExtResource("c_StormHerald"), ExtResource("c_SparkTotem"), ExtResource("c_SparkTotem"), ExtResource("c_SparkTotem"), ExtResource("c_Bellringer"), ExtResource("c_Bellringer"), ExtResource("c_ManaTotem"), ExtResource("c_ManaTotem"), ExtResource("c_Raider"), ExtResource("c_Raider"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_StaticCharge"), ExtResource("c_StaticCharge"), ExtResource("c_StaticCharge"), ExtResource("c_LightningBolt"), ExtResource("c_LightningBolt"), ExtResource("c_LightningBolt"), ExtResource("c_Overcharge"), ExtResource("c_Overcharge"), ExtResource("c_Overcharge")])
+description = "Lightning that never strikes only once."
+accent_color = Color(0.62, 0.52, 1, 1)
+showcase = ExtResource("c_ThunderTitan")

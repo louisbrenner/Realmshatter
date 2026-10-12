@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Hrimgar"
+description = "The Endless Winter. The ground freezes solid around his steps."
+card_type = 0
+role = 0
+class_ = 3
+ap_cost = 4
+movement = 3
+attack = 3
+hp = 8
+range = 1
+shield = 0
+ap_bonus = 0
+clan = 3
+rarity = 3
+keywords = 2
+legend = 3
+tint = Color(0.6, 0.86, 1, 1)

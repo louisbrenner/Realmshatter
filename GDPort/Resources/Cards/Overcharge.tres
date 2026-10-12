@@ -5,9 +5,11 @@
 [resource]
 script = ExtResource("1")
 name = "Overcharge"
-description = "Its next chain trigger deals double damage."
+description = "Its next attack deals double damage."
 card_type = 1
 role = 0
 ap_cost = 1
 grant_status = 2
+clan = 4
+rarity = 0
 tint = Color(0.6, 0.45, 1, 1)

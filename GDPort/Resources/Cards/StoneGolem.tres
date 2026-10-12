@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Stone Golem"
+description = "Living rock that shields its allies."
+card_type = 0
+rarity = 1
+role = 0
+class_ = 8
+ap_cost = 4
+movement = 3
+attack = 3
+hp = 5
+range = 1
+shield = 0
+ap_bonus = 0
+keywords = 516
+clan = 5
+on_first_hit = 3
+on_first_hit_amount = 1
+tint = Color(0.62, 0.58, 0.5, 1)

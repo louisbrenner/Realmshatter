@@ -5,12 +5,14 @@
 [resource]
 script = ExtResource("1")
 name = "Stone Wall"
-description = "Raise Walls on 3 tiles. They block moves, pushes and chains."
+description = "Raise Walls on 3 tiles for 4 turns. They block moves and pushes."
 card_type = 1
 role = 0
 ap_cost = 1
 spell_target = 2
 area_shape = 2
 tile_effect = 2
-tile_effect_duration = 2
+tile_effect_duration = 4
+clan = 5
+rarity = 0
 tint = Color(0.6, 0.6, 0.6, 1)

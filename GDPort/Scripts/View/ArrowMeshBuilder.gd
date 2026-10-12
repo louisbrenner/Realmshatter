@@ -8,7 +8,7 @@ extends RefCounted
 ## Replaces sharp polyline corners with quadratic Bezier fillets.
 static func round_corners(points: Array[Vector3], radius: float, segments: int = 6) -> Array[Vector3]:
 	var result: Array[Vector3] = []
-	if points == null or points.size() == 0:
+	if points == null or points.is_empty():
 		return result
 	result.append(points[0])
 	for i in range(1, points.size() - 1):
@@ -25,7 +25,7 @@ static func round_corners(points: Array[Vector3], radius: float, segments: int =
 		var r: float = minf(radius, minf(l0, l1) * 0.5)
 		var a: Vector3 = cur - d0.normalized() * r
 		var b: Vector3 = cur + d1.normalized() * r
-		for s in segments + 1:
+		for s in range(segments + 1):
 			var t: float = float(s) / segments
 			var u: float = 1.0 - t
 			result.append(a * (u * u) + cur * (2.0 * u * t) + b * (t * t))
@@ -41,7 +41,7 @@ static func arc(a: Vector3, b: Vector3, height: float, side_bulge: float, segmen
 	var side := Vector3(-dir.z, 0.0, dir.x)
 	side = side.normalized() if side.length_squared() > 0.0001 else Vector3.ZERO
 	var control: Vector3 = (a + b) * 0.5 + side * side_bulge * dir.length() + Vector3.UP * height * 2.0
-	for i in segments + 1:
+	for i in range(segments + 1):
 		var t: float = float(i) / segments
 		var u: float = 1.0 - t
 		result.append(a * (u * u) + control * (2.0 * u * t) + b * (t * t))
@@ -50,29 +50,29 @@ static func arc(a: Vector3, b: Vector3, height: float, side_bulge: float, segmen
 
 ## Jagged lightning-like polyline from a to b: interior points are offset sideways (horizontally) by
 ## alternating, slightly randomized amounts up to 'amplitude'. Deterministic for a given seed.
-static func zigzag(a: Vector3, b: Vector3, amplitude: float, segments: int, seed: float = 0.0) -> Array[Vector3]:
+static func zigzag(a: Vector3, b: Vector3, amplitude: float, segments: int, seed_value: float = 0.0) -> Array[Vector3]:
 	segments = maxi(2, segments)
 	var result: Array[Vector3] = []
 	var dir: Vector3 = b - a
 	var side := Vector3(-dir.z, 0.0, dir.x)
 	side = side.normalized() if side.length_squared() > 0.0001 else Vector3.RIGHT
-	for i in segments + 1:
+	for i in range(segments + 1):
 		var t: float = float(i) / segments
 		var p: Vector3 = a.lerp(b, t)
 		if i > 0 and i < segments:
-			var r: float = fmod(absf(sin(seed * 12.9898 + i * 78.233) * 43758.547), 1.0)
-			var sign_value: float = 1.0 if i % 2 == 0 else -1.0
-			p += side * sign_value * amplitude * (0.55 + 0.45 * r)
+			var r: float = fmod(absf(sin(seed_value * 12.9898 + i * 78.233) * 43758.547), 1.0)
+			var sign_: float = 1.0 if i % 2 == 0 else -1.0
+			p += side * sign_ * amplitude * (0.55 + 0.45 * r)
 		result.append(p)
 	return result
 
 
 ## Total length of a polyline.
 static func length(points: Array[Vector3]) -> float:
-	var len_sum: float = 0.0
+	var total_len: float = 0.0
 	for i in range(1, points.size()):
-		len_sum += points[i].distance_to(points[i - 1])
-	return len_sum
+		total_len += points[i].distance_to(points[i - 1])
+	return total_len
 
 
 ## Cuts the given distances off the start and the end of a polyline.
@@ -83,23 +83,23 @@ static func trim(points: Array[Vector3], start_trim: float, end_trim: float) -> 
 			result.append_array(points)
 		return result
 	var total: float = length(points)
-	var from_dist: float = maxf(0.0, start_trim)
-	var to_dist: float = maxf(from_dist + 0.01, total - maxf(0.0, end_trim))
-	if to_dist > total:
-		to_dist = total
+	var from: float = maxf(0.0, start_trim)
+	var to: float = maxf(from + 0.01, total - maxf(0.0, end_trim))
+	if to > total:
+		to = total
 	var acc: float = 0.0
-	result.append(point_at(points, from_dist))
+	result.append(point_at(points, from))
 	for i in range(1, points.size()):
 		acc += points[i].distance_to(points[i - 1])
-		if acc > from_dist and acc < to_dist:
+		if acc > from and acc < to:
 			result.append(points[i])
-	result.append(point_at(points, to_dist))
+	result.append(point_at(points, to))
 	return result
 
 
 ## Point at a distance along a polyline (clamped).
 static func point_at(points: Array[Vector3], distance: float) -> Vector3:
-	if points.size() == 0:
+	if points.is_empty():
 		return Vector3.ZERO
 	var acc: float = 0.0
 	for i in range(1, points.size()):
@@ -129,7 +129,7 @@ static func build_arrow(points: Array[Vector3], width: float, head_length: float
 
 	var dist: float = 0.0
 	var last_side: Vector3 = Vector3.RIGHT
-	for i in body.size():
+	for i in range(body.size()):
 		if i > 0:
 			dist += body[i].distance_to(body[i - 1])
 		var tangent: Vector3
@@ -177,9 +177,10 @@ static func build_arrow(points: Array[Vector3], width: float, head_length: float
 
 	var normals := PackedVector3Array()
 	normals.resize(verts.size())
-	normals.fill(Vector3.UP)
+	for i in range(normals.size()):
+		normals[i] = Vector3.UP
 
-	var arrays: Array = []
+	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_NORMAL] = normals

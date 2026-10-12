@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Ignis"
+description = "The Ashen Crown, first flame of the Ember Legion. Where it walks, the world burns."
+card_type = 0
+role = 0
+class_ = 6
+ap_cost = 4
+movement = 3
+attack = 3
+hp = 6
+range = 2
+shield = 0
+ap_bonus = 0
+clan = 1
+rarity = 3
+keywords = 1
+legend = 1
+tint = Color(1, 0.42, 0.1, 1)

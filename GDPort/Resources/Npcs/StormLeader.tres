@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcStormLeader.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/ThunderTitan.tres" id="r_ThunderTitan"]
+
+[resource]
+script = ExtResource("1_npc")
+id = "storm_leader"
+name = "Raijin"
+title = "Storm Circuit · Clan Leader"
+clan = 4
+deck = ExtResource("3_deck")
+house = 4
+position = Vector2(480, 215)
+greeting = "I am Raijin, Storm Lord of the Circuit. My lightning never strikes the same place once. Ready?"
+rematch_line = "The storm is restless. Again?"
+defeat_line = "You rode the storm. The Thunder Titan is yours to command."
+victory_line = "Thunder answers only to me. Come back when you hear it."
+reward_gold = 150
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_ThunderTitan")])
+bonus_ap_per_turn = 1
+requires_defeated = Array[String](["storm_initiate", "storm_adept", "storm_champion"])
+locked_line = "Prove yourself against the three duelists of this hall first - then I will face you."

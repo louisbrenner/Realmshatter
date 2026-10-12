@@ -1,6 +1,6 @@
 class_name PieceView
 extends Node3D
-## Minion-like token for one piece (root of Piece.tscn): oval portrait (card tint + role emblem)
+## Minion-like token for one piece (root of Piece.tscn): oval portrait (card tint + class symbol, see ClassVisuals)
 ## in a gold rim, owner-colored ring, attack (yellow, bottom-left) and health (red drop, bottom-right)
 ## badges, a shield badge + golden bubble, a name below the token, a green "can act" glow and a
 ## "Zzz" exhausted state. Everything fits inside one tile; the badge plates sit at fixed token-local
@@ -30,6 +30,9 @@ extends Node3D
 @export var buffed_color: Color = Color(0.45, 1.0, 0.4)
 @export var damaged_color: Color = Color(1.0, 0.3, 0.26)
 
+const ZZZ_CYCLE: float = 2.4
+const ZZZ_RISE: float = 0.32
+
 var _visual: Node3D
 var _badges: Node3D
 var _can_act_glow: MeshInstance3D
@@ -48,14 +51,20 @@ var _shield_label: Label3D
 var _name_label: Label3D
 var _zzz_label: Label3D
 var _zzz_base: Vector3
+## The three drifting "z" letters of the sleep indicator (the first is the scene's ZzzLabel).
+var _zzz: Array[Label3D] = []
 var _attack_plate: Node3D
 var _health_plate: Node3D
 var _shield_plate: Node3D
 var _order_plate: Node3D
 var _name_plate: Node3D
 var _plates: Array[Node3D] = []
-var _plates_ready: bool = false
 var _keyword_plates: Array[Node3D] = []
+var _shown_source: CardData
+var _shown_first_hit_used: bool = false
+var _building_model: Node3D
+var _scaffold: Node3D
+var _under_construction: bool = false
 var _shown_keywords: int = Keyword.NONE
 var _shown_level: int = -1
 var _name_pixel_size: float = 0.0
@@ -128,43 +137,39 @@ func _process(delta: float) -> void:
 		return
 	var dt: float = delta
 	_time += dt
-	var target: float = (0.09 + 0.025 * sin(_time * 3.0)) if _selected else (0.05 if _hovered else 0.0)
+	var target: float = 0.09 + 0.025 * sin(_time * 3.0) if _selected else (0.05 if _hovered else 0.0)
 	_lift = lerpf(_lift, target, 1.0 - exp(-dt * 12.0))
 	_visual.position = Vector3(_shake.x, _lift + _shake.y, _shake.z)
 	_badges.position = Vector3(_shake.x, _lift, _shake.z)
 	_orient_plates()
-	if _zzz_label.visible:
-		var bob: float = sin(_time * 2.2)
-		_zzz_label.position = _zzz_base + Vector3(0.03 * sin(_time * 1.3), 0.07 * bob, 0.0)
-		_zzz_label.modulate = Color(0.75, 0.85, 1.0, 0.65 + 0.35 * (0.5 + 0.5 * bob))
+	if _exhausted and _zzz.size() > 0:
+		_animate_zzz()
 
 
 ## Initializes portrait, colors, name and badges from a core piece.
-func setup(piece: Piece, p_owner_color: Color) -> void:
+func setup(piece: Piece, owner_color_value: Color) -> void:
 	_ensure_nodes()
 	piece_id = piece.id
 	owner_index = piece.owner_index
 	name = "Piece_%d" % piece.id
-	_owner_color = p_owner_color
+	_owner_color = owner_color_value
 	_tint = piece.source.tint if piece.source != null else Color.WHITE
 	_tint = Color(_tint.r, _tint.g, _tint.b)
-	_body_color = p_owner_color.lerp(_tint, tint_blend)
+	_body_color = owner_color_value.lerp(_tint, tint_blend)
 
-	var role: int = 2
+	var role: int
 	match piece.role:
-		UnitRole.ATTACK:
-			role = 0
-		UnitRole.UTILITY:
-			role = 1
-		_:
-			role = 2
+		UnitRole.ATTACK: role = 0
+		UnitRole.UTILITY: role = 1
+		_: role = 2
 	_portrait_mat.set_shader_parameter("tint", _tint)
 	_portrait_mat.set_shader_parameter("role", role)
+	_portrait_mat.set_shader_parameter("glyph", ClassVisuals.art_glyph(piece.source))
 	_portrait_mat.set_shader_parameter("seed", piece.id * 0.37)
-	_ring_mat.albedo_color = p_owner_color
-	_ring_mat.emission = p_owner_color
+	_ring_mat.albedo_color = owner_color_value
+	_ring_mat.emission = owner_color_value
 	_name_label.text = piece.source.name if piece.source != null else "#%d" % piece.id
-	_name_label.modulate = p_owner_color.lerp(Color.WHITE, 0.55)
+	_name_label.modulate = owner_color_value.lerp(Color.WHITE, 0.55)
 	_fit_name()
 
 	_max_hp = 0
@@ -181,17 +186,50 @@ func refresh(piece: Piece) -> void:
 	_max_hp = piece.max_hp
 	set_attack(piece.effective_attack)
 	set_stats(piece.current_hp, piece.total_shield)
-	set_has_order(piece.order != null)
-	set_keywords(piece.keywords, piece.source.level if piece.source != null else 0)
+	set_keywords(piece.keywords, piece.source.level if piece.source != null else 0, piece.source, piece.was_hit)
+	if piece.is_building:
+		_ensure_building_model(piece)
+		set_under_construction(piece.under_construction)
+
+
+## Grows the building out of its scaffold when finished (or shrinks it back while under construction).
+func set_under_construction(under_construction: bool) -> void:
+	if _building_model == null or _under_construction == under_construction:
+		return
+	_under_construction = under_construction
+	_scaffold.visible = true
+	var tween: Tween = create_tween()
+	tween.tween_property(_building_model, "scale", Vector3(1.0, 0.35 if under_construction else 1.0, 1.0), 0.45) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(func() -> void: _scaffold.visible = _under_construction)
+
+
+func _ensure_building_model(piece: Piece) -> void:
+	if _building_model != null:
+		return
+	for z in _zzz:
+		z.visible = false
+	_portrait.visible = false
+	_building_model = BuildingModels.create(piece.building, piece.source.tint if piece.source != null else Color.GRAY, _owner_color)
+	_building_model.position = Vector3(0, 0.1, 0)
+	_building_model.scale = Vector3(1.0, 0.35, 1.0)
+	_visual.add_child(_building_model)
+	_scaffold = BuildingModels.create_scaffold()
+	_scaffold.position = Vector3(0, 0.1, 0)
+	_visual.add_child(_scaffold)
+	_under_construction = true
 
 
 ## Shows one small emblem plate per keyword along the left edge of the token (flame = Burning,
-## snowflake = Frost, fist = Push, spear = Pierce, cross = Mending, bolt = Conduit, bell = Echo,
-## skull = Undying; an Undying level is shown as "+N" beside the skull).
-func set_keywords(keywords: int, level: int = 0) -> void:
+## snowflake = Frost, fist = Push, spear = Pierce, cross = Mending, bolt = Arc, bell = Echo,
+## skull = Undying; an Undying level is shown as "+N" beside the skull). The first-hit burst disappears once
+## it has fired (first_hit_used).
+func set_keywords(keywords: int, level: int = 0, source: CardData = null, first_hit_used: bool = false) -> void:
 	_ensure_nodes()
-	if keywords == _shown_keywords and level == _shown_level:
+	if keywords == _shown_keywords and level == _shown_level and source == _shown_source and first_hit_used == _shown_first_hit_used:
 		return
+	_shown_source = source
+	_shown_first_hit_used = first_hit_used
 	_shown_keywords = keywords
 	_shown_level = level
 	for plate in _keyword_plates:
@@ -200,15 +238,20 @@ func set_keywords(keywords: int, level: int = 0) -> void:
 	_keyword_plates.clear()
 
 	var list: Array = KeywordInfo.split(keywords)
+	var icons: Array[Dictionary] = []
+	if source != null:
+		icons = KeywordVisuals.icons_for(source, first_hit_used)
+	else:
+		for k: int in list:
+			icons.append({"shape": KeywordVisuals.get_shape(k), "fg": KeywordVisuals.get_foreground(k), "bg": KeywordVisuals.get_background(k)})
 	var step: float = keyword_icon_size * 0.92
-	for i in range(list.size()):
-		var k: int = list[i]
+	for i in range(icons.size()):
+		var k: int = list[i] if i < list.size() else Keyword.NONE
 		var plate := Node3D.new()
-		plate.name = "Keyword_%s" % Keyword.name_of(k)
+		plate.name = "Icon_%d" % i
 		plate.position = Vector3(-0.36, 0.21, -0.2 - i * step)
 		_badges.add_child(plate)
-		var icon: MeshInstance3D = VfxAssets.create_icon(KeywordVisuals.get_shape(k), keyword_icon_size,
-			KeywordVisuals.get_foreground(k), KeywordVisuals.get_background(k), true, 31)
+		var icon: MeshInstance3D = VfxAssets.create_icon(icons[i].shape, keyword_icon_size, icons[i].fg, icons[i].bg, true, 31)
 		var mat := icon.material_override as ShaderMaterial
 		mat.set_shader_parameter("billboard", false)
 		mat.set_shader_parameter("rim_color", Color(0.86, 0.66, 0.3))
@@ -266,19 +309,35 @@ func set_has_order(has_order: bool) -> void:
 
 
 ## Green pulsing outline like a playable Hearthstone minion.
-func set_can_act(p_can_act: bool) -> void:
+func set_can_act(can_act_value: bool) -> void:
 	_ensure_nodes()
-	_can_act = p_can_act
-	_can_act_glow.visible = p_can_act
+	_can_act = can_act_value
+	_can_act_glow.visible = can_act_value
 
 
-## Exhausted look (desaturated portrait + floating "Zzz"), e.g. for summoning sickness.
+## Sleep indicator: three small z's rise one after another from the top of the token, growing, drifting
+## sideways and fading out, then start again.
+func _animate_zzz() -> void:
+	for i in range(_zzz.size()):
+		var phase: float = fposmod(_time / ZZZ_CYCLE + i / float(_zzz.size()), 1.0)
+		var sway: float = 0.035 * sin(phase * TAU + i)
+		_zzz[i].position = _zzz_base + Vector3(phase * 0.1 + sway, phase * ZZZ_RISE, 0.0)
+		_zzz[i].scale = Vector3.ONE * (0.55 + 0.6 * phase)
+		var alpha: float = sin(phase * PI)
+		_zzz[i].modulate = Color(0.78, 0.88, 1.0, alpha)
+
+
+## Exhausted look (desaturated portrait + drifting z's): summoning sick, busy building, or already acted this
+## turn.
 func set_exhausted(exhausted: bool) -> void:
 	_ensure_nodes()
+	if _building_model != null:
+		exhausted = false
 	if _exhausted == exhausted:
 		return
 	_exhausted = exhausted
-	_zzz_label.visible = exhausted
+	for z in _zzz:
+		z.visible = exhausted
 	if _exhaust_tween != null:
 		_exhaust_tween.kill()
 	_exhaust_tween = create_tween()
@@ -300,9 +359,9 @@ func move_to(target: Vector3) -> void:
 	var start: Vector3 = global_position
 	var hop: float = hop_height * minf(1.0, start.distance_to(target))
 	_move_tween = create_tween()
-	var step_fn := func(t: float) -> void:
+	_move_tween.tween_method(func(t: float) -> void:
 		global_position = start.lerp(target, t) + Vector3.UP * hop * 4.0 * t * (1.0 - t)
-	_move_tween.tween_method(step_fn, 0.0, 1.0, move_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	, 0.0, 1.0, move_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await _move_tween.finished
 	play_squash(0.6)
 
@@ -354,9 +413,9 @@ func play_hit() -> void:
 	var flash: Tween = create_tween()
 	flash.tween_method(_set_flash, 1.0, 0.0, 0.3)
 	var shake: Tween = create_tween()
-	var shake_fn := func(t: float) -> void:
+	shake.tween_method(func(t: float) -> void:
 		_shake = Vector3(sin(t * 42.0), 0.0, cos(t * 33.0) * 0.6) * 0.09 * (1.0 - t)
-	shake.tween_method(shake_fn, 0.0, 1.0, 0.26)
+	, 0.0, 1.0, 0.26)
 	shake.tween_callback(func() -> void: _shake = Vector3.ZERO)
 	var punch: Tween = create_tween()
 	punch.tween_property(_visual, "scale", Vector3(1.14, 0.82, 1.14), 0.05)
@@ -445,7 +504,6 @@ func _ensure_nodes() -> void:
 	_order_plate = get_node("Badges/OrderPlate") as Node3D
 	_name_plate = get_node("Badges/NamePlate") as Node3D
 	_plates = [_attack_plate, _health_plate, _shield_plate, _order_plate, _name_plate]
-	_plates_ready = true
 	_attack_badge = get_node("Badges/AttackPlate/Badge") as MeshInstance3D
 	_health_badge = get_node("Badges/HealthPlate/Badge") as MeshInstance3D
 	_shield_badge = get_node("Badges/ShieldPlate/Badge") as MeshInstance3D
@@ -455,8 +513,24 @@ func _ensure_nodes() -> void:
 	_shield_label = get_node("Badges/ShieldPlate/Label") as Label3D
 	_name_label = get_node("Badges/NamePlate/Label") as Label3D
 	_zzz_label = get_node("Badges/ZzzLabel") as Label3D
+	# Badge numbers: lining figures, centred on their badge.
+	for number: Label3D in [_attack_label, _health_label, _shield_label]:
+		number.font = VfxAssets.get_number_font()
+		number.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		# Label3D offsets point up: lift the digits by how far their ink sits below the line centre.
+		number.offset = Vector2(0.0, VfxAssets.digit_drop(number.font_size))
 	_name_pixel_size = _name_label.pixel_size
-	_zzz_base = _zzz_label.position
+	# Sleep indicator: start just above the token's top edge and build three single "z" letters.
+	_zzz_base = Vector3(0.08, 0.42, -0.12)
+	_zzz_label.text = "z"
+	_zzz_label.visible = false
+	var letters: Array[Label3D] = [_zzz_label]
+	for i in range(1, 3):
+		var copy := _zzz_label.duplicate() as Label3D
+		copy.name = "ZzzLabel%d" % (i + 1)
+		_zzz_label.get_parent().add_child(copy)
+		letters.append(copy)
+	_zzz = letters
 
 	_base.material_override = VfxAssets.create_gold_material(0.06)
 	_ring_mat = StandardMaterial3D.new()
@@ -507,7 +581,7 @@ static func _create_badge_material(shape: int, fill: Color) -> ShaderMaterial:
 func _orient_plates() -> void:
 	var viewport: Viewport = get_viewport()
 	var camera: Camera3D = viewport.get_camera_3d() if viewport != null else null
-	if camera == null or not _plates_ready:
+	if camera == null or _plates.is_empty():
 		return
 	var cam_basis: Basis = camera.global_basis.orthonormalized()
 	var right := Vector3(cam_basis.x.x, 0.0, cam_basis.x.z)
@@ -525,7 +599,7 @@ func _orient_plates() -> void:
 
 ## Shrinks the name label so it fits inside the tile.
 func _fit_name() -> void:
-	var font: Font = _name_label.font if _name_label.font != null else VfxAssets.card_font
+	var font: Font = _name_label.font if _name_label.font != null else VfxAssets.get_card_font()
 	_name_label.pixel_size = _name_pixel_size
 	if font == null:
 		return

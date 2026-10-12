@@ -45,11 +45,13 @@ func _process(delta: float) -> void:
 func _rebuild(t: float) -> void:
 	var extend: float = clampf(t / 0.25, 0.0, 1.0)
 	var fade: float = 1.0 if t < 0.25 else 1.0 - (t - 0.25) / 0.75
-	var width: float = _width * ((0.6 + 0.6 * extend) if t < 0.25 else (1.2 * fade + 0.05))
+	var width: float = _width * (0.6 + 0.6 * extend if t < 0.25 else 1.2 * fade + 0.05)
 	_material.set_shader_parameter("opacity", clampf(fade * 1.3, 0.0, 1.0))
 
-	var vp: Viewport = get_viewport()
-	var camera: Camera3D = vp.get_camera_3d() if vp != null else null
+	var camera: Camera3D = null
+	var viewport: Viewport = get_viewport()
+	if viewport != null:
+		camera = viewport.get_camera_3d()
 	var view_dir_world: Vector3 = camera.global_transform.basis.z.normalized() if camera != null else Vector3.UP
 	var view_dir: Vector3 = (global_transform.basis.inverse() * view_dir_world).normalized()
 	var a: Vector3 = to_local(_from)

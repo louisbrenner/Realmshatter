@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcStoneInitiate.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/StonePathfinder.tres" id="r_StonePathfinder"]
+
+[resource]
+script = ExtResource("1_npc")
+id = "stone_initiate"
+name = "Pebble"
+title = "Stone Bastion · Quarry Initiate"
+clan = 5
+house = 5
+deck = ExtResource("3_deck")
+position = Vector2(240, 470)
+greeting = "They call me Pebble. I am small, but I do not roll over!"
+rematch_line = "Rolling back for more?"
+defeat_line = "Oof. Flattened. Good duel!"
+victory_line = "Small stones start landslides!"
+reward_gold = 50
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_StonePathfinder")])

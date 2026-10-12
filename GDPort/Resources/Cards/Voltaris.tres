@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Voltaris"
+description = "The Eye of the Storm. Lightning answers before you call it."
+card_type = 0
+role = 0
+class_ = 6
+ap_cost = 4
+movement = 3
+attack = 2
+hp = 6
+range = 3
+shield = 0
+ap_bonus = 0
+clan = 4
+rarity = 3
+keywords = 32
+legend = 4
+tint = Color(0.72, 0.58, 1, 1)

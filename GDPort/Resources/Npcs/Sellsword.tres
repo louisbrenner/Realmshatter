@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcSellsword.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/Raider.tres" id="r_Raider"]
+
+[resource]
+script = ExtResource("1_npc")
+id = "sellsword"
+name = "Brann"
+title = "Wandering Sellsword"
+clan = 0
+house = 0
+deck = ExtResource("3_deck")
+position = Vector2(1350, 540)
+greeting = "Coin or glory, I fight for both. Fancy a duel, stranger?"
+rematch_line = "Another round? My blade is still sharp."
+defeat_line = "Hah! You fight like a clan champion. Here, you earned it."
+victory_line = "Steel beats talk. Every time."
+reward_gold = 80
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Raider")])

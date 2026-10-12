@@ -5,12 +5,14 @@
 [resource]
 script = ExtResource("1")
 name = "Wall of Flames"
-description = "Turns a row of 3 tiles into Lava for 2 turns."
+description = "Turns a row of 3 tiles into Lava for 4 turns."
 card_type = 1
+rarity = 1
 role = 0
-ap_cost = 1
+ap_cost = 2
 spell_target = 2
 area_shape = 2
 tile_effect = 1
-tile_effect_duration = 2
+tile_effect_duration = 4
+clan = 1
 tint = Color(1, 0.3, 0.05, 1)

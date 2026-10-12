@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Solenne"
+description = "The Dawn Seraph. Her light mends every wound within reach."
+card_type = 0
+role = 1
+class_ = 7
+ap_cost = 4
+movement = 5
+attack = 2
+hp = 7
+range = 2
+shield = 0
+ap_bonus = 0
+clan = 2
+rarity = 3
+keywords = 16
+legend = 2
+tint = Color(1, 0.9, 0.55, 1)

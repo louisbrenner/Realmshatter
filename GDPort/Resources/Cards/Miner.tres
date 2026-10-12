@@ -5,14 +5,18 @@
 [resource]
 script = ExtResource("1")
 name = "Miner"
-description = "Doesn't fight, but gives +1 AP every turn while alive."
+description = "Does not fight, but digs Mana Wells and brings AP."
 card_type = 0
 role = 2
-ap_cost = 0
-movement = 1
+class_ = 10
+ap_cost = 1
+movement = 3
 attack = 0
 hp = 3
 range = 1
 shield = 0
 ap_bonus = 1
+clan = 0
+rarity = 0
+keywords = 256
 tint = Color(0.7, 0.5, 0.3, 1)

@@ -6,7 +6,7 @@ extends RefCounted
 ## PlayUnit: card, piece_id = new piece, target = deploy tile.
 ## PlaySpell: card, piece_id = target piece (-1 for tile/area spells), target = target piece position / anchor tile.
 ## ConvertVp: no extra fields (1 VP became 1 AP).
-## SetOrder: piece_id = ordered piece, move_target / attack_target as queued, target = attack_target ?? move_target.
+## Command: piece_id = commanded piece, move_target / attack_target as executed, target = attack_target ?? move_target.
 
 var kind: int = AiActionKind.DRAFT
 var player_index: int = 0

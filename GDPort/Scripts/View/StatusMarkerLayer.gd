@@ -5,25 +5,26 @@ extends Node3D
 ## returned by view_resolver every frame (so they ride along with move animations) and fall back to the
 ## piece's tile. BoardAnimator creates one automatically (BoardAnimator.status_markers) and syncs it in sync_all.
 
+
 class Marker:
 	var root: Node3D
 	var icon_row: Node3D
 	var frost_ring: MeshInstance3D
-	## StatusEffectType (int) -> Node3D (untyped values so freed icons can be checked safely).
+	## StatusEffectType (int) -> Node3D
 	var icons: Dictionary = {}
-	var fallback: Vector3 = Vector3.ZERO
-	var phase: float = 0.0
+	var fallback: Vector3
+	var phase: float
+
 
 const FROZEN_FG := Color(0.9, 0.97, 1.0)
 const FROZEN_BG := Color(0.2, 0.5, 0.85, 0.95)
 const CHARGE_FG := Color(1.0, 0.95, 0.55)
 const CHARGE_BG := Color(0.42, 0.22, 0.75, 0.95)
 
-## piece id (int) -> Marker
 var _markers: Dictionary = {}
 var _time: float = 0.0
 
-## Returns the node (usually the PieceView) a piece's marker follows, or null. Signature: func(piece_id: int) -> Node3D.
+## Returns the node (usually the PieceView) a piece's marker follows, or null. Callable(piece_id: int) -> Node3D.
 var view_resolver: Callable = Callable()
 
 ## Height of the icon row above the piece origin.
@@ -46,8 +47,7 @@ func sync(state: GameState, board: BoardView) -> void:
 		for type: int in [StatusEffectType.FROZEN, StatusEffectType.OVERCHARGED]:
 			set_status(piece.id, type, piece.has_status(type), fallback, true)
 		if _markers.has(piece.id):
-			var m: Marker = _markers[piece.id]
-			m.fallback = fallback
+			(_markers[piece.id] as Marker).fallback = fallback
 	var stale: Array[int] = []
 	for id: int in _markers.keys():
 		if not alive.has(id):
@@ -56,12 +56,11 @@ func sync(state: GameState, board: BoardView) -> void:
 		remove_piece(id)
 
 
-## Adds or removes one status icon for a piece (used while events are played).
-## fallback_world: Vector3 or null.
+## Adds or removes one status icon for a piece (used while events are played). fallback_world: Vector3 or null.
 func set_status(piece_id: int, type: int, active: bool, fallback_world: Variant = null, animate: bool = true) -> void:
 	if type == StatusEffectType.NONE:
 		return
-	var marker: Marker = _markers.get(piece_id) as Marker
+	var marker: Marker = _markers.get(piece_id, null)
 	if active:
 		if marker == null:
 			marker = _create_marker(piece_id, fallback_world if fallback_world != null else Vector3.ZERO)
@@ -85,7 +84,7 @@ func set_status(piece_id: int, type: int, active: bool, fallback_world: Variant 
 			t.tween_property(icon, "scale", Vector3.ONE, 0.12)
 		_layout(marker)
 	elif marker != null and marker.icons.has(type):
-		var icon = marker.icons[type]
+		var icon: Node3D = marker.icons[type]
 		marker.icons.erase(type)
 		if type == StatusEffectType.FROZEN:
 			marker.frost_ring.visible = false
@@ -101,10 +100,7 @@ func set_status(piece_id: int, type: int, active: bool, fallback_world: Variant 
 
 ## True if the piece currently shows the status icon.
 func has_status(piece_id: int, type: int) -> bool:
-	if not _markers.has(piece_id):
-		return false
-	var m: Marker = _markers[piece_id]
-	return m.icons.has(type)
+	return _markers.has(piece_id) and (_markers[piece_id] as Marker).icons.has(type)
 
 
 ## "Rewinds" icons to the state before a list of events: pieces whose first event for a status is
@@ -142,14 +138,14 @@ func clear_all() -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
-	for id: int in _markers:
-		var m: Marker = _markers[id]
+	for key: int in _markers.keys():
+		var m: Marker = _markers[key]
 		if not is_instance_valid(m.root):
 			continue
-		var view = null
+		var view: Node3D = null
 		if view_resolver.is_valid():
-			view = view_resolver.call(id)
-		var base_pos: Vector3 = view.global_position if (view != null and is_instance_valid(view)) else m.fallback
+			view = view_resolver.call(key)
+		var base_pos: Vector3 = view.global_position if view != null and is_instance_valid(view) else m.fallback
 		m.root.global_position = base_pos
 		var any: bool = m.icons.size() > 0
 		m.root.visible = any
@@ -172,9 +168,9 @@ func _create_marker(piece_id: int, fallback: Vector3) -> Marker:
 	var ring_mat := ring.material_override as ShaderMaterial
 	ring_mat.set_shader_parameter("billboard", false)
 	ring_mat.set_shader_parameter("energy", 1.1)
-	var ring_mesh := PlaneMesh.new()
-	ring_mesh.size = Vector2(1.18, 1.18)
-	ring.mesh = ring_mesh
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(1.18, 1.18)
+	ring.mesh = plane
 	ring.position = Vector3(0.0, 0.025, -0.03)
 	ring.visible = false
 	root.add_child(ring)
@@ -200,7 +196,7 @@ func _create_icon(type: int) -> Node3D:
 		mat.set_shader_parameter("spin", 0.4)
 	holder.add_child(icon)
 	var glow := MeshInstance3D.new()
-	glow.mesh = VfxAssets.glow_quad
+	glow.mesh = VfxAssets.get_glow_quad()
 	glow.scale = Vector3.ONE * icon_size * 1.7
 	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	glow.set_instance_shader_parameter("tint", Color(0.4, 0.75, 1.0, 0.55) if frozen else Color(0.75, 0.55, 1.0, 0.6))
@@ -214,7 +210,7 @@ func _layout(m: Marker) -> void:
 	for type: int in [StatusEffectType.FROZEN, StatusEffectType.OVERCHARGED]:
 		if not m.icons.has(type):
 			continue
-		var icon = m.icons[type]
+		var icon: Node3D = m.icons[type]
 		var x: float = (i - (n - 1) * 0.5) * icon_size * 1.05
 		icon.position = Vector3(x, 0.0, 0.0)
 		i += 1

@@ -13,6 +13,24 @@ enum {
 	FIST = 7,
 	SPEAR = 8,
 	BELL = 9,
+	TOMB = 10,
+	BURST = 11,
+	HAMMER = 12,
+	SUN = 13,
+	## Stake driven into the ground (Planted).
+	STAKE = 14,
+	## Two upward chevrons (movement).
+	CHEVRONS = 15,
+	## Ring with ticks (range).
+	CROSSHAIR = 16,
+	## Brick wall.
+	BRICKS = 17,
+	## Faceted mana gem (AP).
+	GEM = 18,
+	## Toothed trap jaws (Trapper, traps).
+	TRAP = 19,
+	## Bow and arrow (archers).
+	BOW = 20,
 }
 
 const NAMES := {
@@ -26,6 +44,17 @@ const NAMES := {
 	FIST: "Fist",
 	SPEAR: "Spear",
 	BELL: "Bell",
+	TOMB: "Tomb",
+	BURST: "Burst",
+	HAMMER: "Hammer",
+	SUN: "Sun",
+	STAKE: "Stake",
+	CHEVRONS: "Chevrons",
+	CROSSHAIR: "Crosshair",
+	BRICKS: "Bricks",
+	GEM: "Gem",
+	TRAP: "Trap",
+	BOW: "Bow",
 }
 
 

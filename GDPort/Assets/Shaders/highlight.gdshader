@@ -7,7 +7,8 @@ render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabl
 uniform vec4 color : source_color = vec4(0.3, 0.75, 1.0, 0.6);
 uniform float energy = 2.0;
 uniform float pulse_speed = 3.0;
-// 0 = fill + rim, 1 = attack (inward rings), 2 = hover (rim only), 3 = selected (strong rim)
+// 0 = fill + rim, 1 = attack (inward rings), 2 = hover (rim only), 3 = selected (strong rim),
+// 4 = range (diagonal hatching + thin rim, slowly drifting; reads as "area of reach", not as a filled zone)
 uniform int pattern = 0;
 
 varying vec3 v_world;
@@ -33,6 +34,11 @@ void fragment() {
 		a = rim * 0.75 + inside * 0.07;
 	} else if (pattern == 3) {
 		a = rim * (0.9 + 0.3 * pulse) + fill * 1.3;
+	} else if (pattern == 4) {
+		// World-space stripes so neighbouring tiles form one continuous hatched area.
+		float stripes = fract((v_world.x + v_world.z) * 3.2 - TIME * 0.25);
+		float hatch = smoothstep(0.0, 0.08, stripes) * (1.0 - smoothstep(0.38, 0.46, stripes));
+		a = inside * (0.06 + hatch * 0.42) + rim * 0.35;
 	} else {
 		a = fill + rim * (0.6 + 0.4 * pulse);
 	}

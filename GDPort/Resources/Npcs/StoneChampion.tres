@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcStoneChampion.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/Thornback.tres" id="r_Thornback"]
+
+[resource]
+script = ExtResource("1_npc")
+id = "stone_champion"
+name = "Holt"
+title = "Stone Bastion · Mountain Champion"
+clan = 5
+house = 5
+deck = ExtResource("3_deck")
+position = Vector2(760, 250)
+greeting = "Dur waits behind the mountain. You will have to move it."
+rematch_line = "The mountain stands. Try again."
+defeat_line = "The mountain moved. Go see Dur."
+victory_line = "Mountains do not fall to pebbles."
+reward_gold = 100
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Thornback")])

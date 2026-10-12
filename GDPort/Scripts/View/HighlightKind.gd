@@ -1,8 +1,9 @@
 class_name HighlightKind
 extends RefCounted
 ## Kind of a tile highlight drawn by BoardView. Later values are drawn on top.
+## RANGE = reach of a building or the spell cast range (drawn faintly beneath the other kinds).
 
-enum { MOVE = 0, ATTACK = 1, DEPLOY = 2, SPELL = 3, SELECTED = 4, HOVER = 5 }
+enum { MOVE = 0, ATTACK = 1, DEPLOY = 2, SPELL = 3, SELECTED = 4, HOVER = 5, RANGE = 6 }
 
 const NAMES := {
 	MOVE: "Move",
@@ -11,6 +12,7 @@ const NAMES := {
 	SPELL: "Spell",
 	SELECTED: "Selected",
 	HOVER: "Hover",
+	RANGE: "Range",
 }
 
 

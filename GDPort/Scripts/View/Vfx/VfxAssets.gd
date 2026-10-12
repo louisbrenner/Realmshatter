@@ -1,6 +1,8 @@
 class_name VfxAssets
 extends RefCounted
 ## Lazily loaded, shared shaders, meshes and fonts for the procedural visuals and VFX.
+## C# static properties with getters are exposed as static funcs (get_card_font(), get_glow_quad(), ...);
+## the same values are also reachable via property syntax (VfxAssets.card_font, VfxAssets.glow_quad, ...).
 
 const SHADER_DIR := "res://Assets/Shaders/"
 const CARD_FONT_PATH := "res://Resources/UI/CardFont.tres"
@@ -36,28 +38,82 @@ static func create_material(shader_name: String, render_priority: int = 0) -> Sh
 
 
 ## The bold serif font used for cards, badges and popups.
-static var card_font: Font:
-	get:
-		if _font == null:
-			_font = load(CARD_FONT_PATH) as Font
-		return _font
+static func get_card_font() -> Font:
+	if _font == null:
+		_font = load(CARD_FONT_PATH) as Font
+	return _font
+
 
 ## Regular serif for card body text and info panels (MSDF: stays sharp when cards are scaled).
-static var card_text_font: Font:
-	get:
-		if _text_font == null:
-			_text_font = _create_sharp_font(400)
-		return _text_font
+static func get_card_text_font() -> Font:
+	if _text_font == null:
+		_text_font = _create_sharp_font(400)
+	return _text_font
+
 
 ## Bold serif for card titles, badges and keyword names (MSDF).
-static var card_text_bold_font: Font:
-	get:
-		if _text_bold_font == null:
-			_text_bold_font = _create_sharp_font(700)
-		return _text_bold_font
+static func get_card_text_bold_font() -> Font:
+	if _text_bold_font == null:
+		_text_bold_font = _create_sharp_font(700)
+	return _text_bold_font
+
 
 static var _text_font: Font
 static var _text_bold_font: Font
+static var _number_font: Font
+
+
+## Bold serif for the numbers on badges (MSDF, lining figures): every digit has the same height and sits on
+## the baseline, so numbers stay centred in their badge (Georgia's old-style 3, 4, 5, 7, 9 hang below it).
+static func get_number_font() -> Font:
+	if _number_font == null:
+		var base := SystemFont.new()
+		base.font_names = PackedStringArray(["Palatino Linotype", "Book Antiqua", "Times New Roman", "Serif"])
+		base.font_weight = 700
+		base.multichannel_signed_distance_field = true
+		base.msdf_pixel_range = 16
+		base.msdf_size = 48
+		base.generate_mipmaps = true
+		var variation := FontVariation.new()
+		variation.base_font = base
+		var features := {}
+		features[TextServerManager.get_primary_interface().name_to_tag("lnum")] = 1
+		variation.opentype_features = features
+		_number_font = variation
+	return _number_font
+
+
+static var _digit_drops: Dictionary = {}
+
+
+## How far (font pixels, positive = lower) the visual centre of NumberFont's digits sits below the centre of
+## a vertically centred text line. Shift the text up by this value to centre the ink inside a badge.
+## Measured from the real glyph boxes, so it also holds for whatever fallback font the platform picks.
+static func digit_drop(font_size: int) -> float:
+	if _digit_drops.has(font_size):
+		return _digit_drops[font_size]
+	var font: Font = get_number_font()
+	var ts: TextServer = TextServerManager.get_primary_interface()
+	var shaped: RID = ts.create_shaped_text()
+	var sum := 0.0
+	var count := 0
+	ts.shaped_text_add_string(shaped, "0123456789", font.get_rids(), font_size, font.get_opentype_features())
+	for glyph: Dictionary in ts.shaped_text_get_glyphs(shaped):
+		var rid: RID = glyph["font_rid"]
+		var index: int = int(glyph["index"])
+		var size := Vector2i(font_size, 0)
+		var box: Vector2 = ts.font_get_glyph_size(rid, size, index)
+		if not rid.is_valid() or box.y <= 0.0:
+			continue
+		# Glyph boxes are padded evenly on both sides, so their middle is the ink middle (relative to the baseline).
+		sum += ts.font_get_glyph_offset(rid, size, index).y + box.y * 0.5
+		count += 1
+	ts.free_rid(shaped)
+	var ascent: float = font.get_ascent(font_size)
+	var descent: float = font.get_descent(font_size)
+	var drop: float = (ascent - descent) * 0.5 + sum / count if count > 0 else 0.0
+	_digit_drops[font_size] = drop
+	return drop
 
 
 static func _create_sharp_font(weight: int) -> SystemFont:
@@ -72,48 +128,74 @@ static func _create_sharp_font(weight: int) -> SystemFont:
 
 
 ## Billboard quad with an additive soft glow dot (shared material, tint via instance uniform).
-static var glow_quad: QuadMesh:
-	get:
-		if _glow_quad == null:
-			_glow_material = create_material("vfx_particle", 4)
-			_glow_material.set_shader_parameter("shape", 0)
-			_glow_quad = QuadMesh.new()
-			_glow_quad.size = Vector2(1.0, 1.0)
-			_glow_quad.material = _glow_material
-		return _glow_quad
+static func get_glow_quad() -> QuadMesh:
+	if _glow_quad == null:
+		_glow_material = create_material("vfx_particle", 4)
+		_glow_material.set_shader_parameter("shape", 0)
+		_glow_quad = QuadMesh.new()
+		_glow_quad.size = Vector2(1.0, 1.0)
+		_glow_quad.material = _glow_material
+	return _glow_quad
+
 
 ## Billboard quad with an additive four-point star sparkle.
-static var sparkle_quad: QuadMesh:
-	get:
-		if _sparkle_quad == null:
-			_sparkle_material = create_material("vfx_particle", 4)
-			_sparkle_material.set_shader_parameter("shape", 1)
-			_sparkle_material.set_shader_parameter("energy", 4.0)
-			_sparkle_quad = QuadMesh.new()
-			_sparkle_quad.size = Vector2(1.0, 1.0)
-			_sparkle_quad.material = _sparkle_material
-		return _sparkle_quad
+static func get_sparkle_quad() -> QuadMesh:
+	if _sparkle_quad == null:
+		_sparkle_material = create_material("vfx_particle", 4)
+		_sparkle_material.set_shader_parameter("shape", 1)
+		_sparkle_material.set_shader_parameter("energy", 4.0)
+		_sparkle_quad = QuadMesh.new()
+		_sparkle_quad.size = Vector2(1.0, 1.0)
+		_sparkle_quad.material = _sparkle_material
+	return _sparkle_quad
+
 
 ## Billboard quad with an alpha-blended smoke puff.
-static var smoke_quad: QuadMesh:
-	get:
-		if _smoke_quad == null:
-			_smoke_material = create_material("vfx_smoke", 2)
-			_smoke_quad = QuadMesh.new()
-			_smoke_quad.size = Vector2(1.0, 1.0)
-			_smoke_quad.material = _smoke_material
-		return _smoke_quad
+static func get_smoke_quad() -> QuadMesh:
+	if _smoke_quad == null:
+		_smoke_material = create_material("vfx_smoke", 2)
+		_smoke_quad = QuadMesh.new()
+		_smoke_quad.size = Vector2(1.0, 1.0)
+		_smoke_quad.material = _smoke_material
+	return _smoke_quad
+
 
 ## Billboard quad with an additive thin ring (bubbles, ripples).
+static func get_ring_quad() -> QuadMesh:
+	if _ring_quad == null:
+		_ring_material = create_material("vfx_particle", 4)
+		_ring_material.set_shader_parameter("shape", 2)
+		_ring_quad = QuadMesh.new()
+		_ring_quad.size = Vector2(1.0, 1.0)
+		_ring_quad.material = _ring_material
+	return _ring_quad
+
+
+# Property-syntax aliases of the getters above (compatibility for callers using VfxAssets.card_font etc.).
+static var card_font: Font:
+	get:
+		return get_card_font()
+static var card_text_font: Font:
+	get:
+		return get_card_text_font()
+static var card_text_bold_font: Font:
+	get:
+		return get_card_text_bold_font()
+static var number_font: Font:
+	get:
+		return get_number_font()
+static var glow_quad: QuadMesh:
+	get:
+		return get_glow_quad()
+static var sparkle_quad: QuadMesh:
+	get:
+		return get_sparkle_quad()
+static var smoke_quad: QuadMesh:
+	get:
+		return get_smoke_quad()
 static var ring_quad: QuadMesh:
 	get:
-		if _ring_quad == null:
-			_ring_material = create_material("vfx_particle", 4)
-			_ring_material.set_shader_parameter("shape", 2)
-			_ring_quad = QuadMesh.new()
-			_ring_quad.size = Vector2(1.0, 1.0)
-			_ring_quad.material = _ring_material
-		return _ring_quad
+		return get_ring_quad()
 
 
 ## Creates an SDF icon sprite (see fx_icon.gdshader for shapes), camera facing and always on top.
@@ -149,7 +231,7 @@ static func create_gold_material(emission: float = 0.08) -> StandardMaterial3D:
 static func create_label(text: String, font_size: int, pixel_size: float, color: Color, outline: int = 14, priority: int = 30) -> Label3D:
 	var label := Label3D.new()
 	label.text = text
-	label.font = card_font
+	label.font = get_card_font()
 	label.font_size = font_size
 	label.outline_size = outline
 	label.pixel_size = pixel_size

@@ -36,9 +36,9 @@ func _ready() -> void:
 
 
 ## Updates the slots. can_convert enables the button.
-func set_state(p_used: int, max_per_turn_value: int, can_convert: bool) -> void:
+func set_state(p_used: int, p_max_per_turn: int, can_convert: bool) -> void:
 	var old: int = _used
-	_max = maxi(0, max_per_turn_value)
+	_max = maxi(0, p_max_per_turn)
 	_used = clampi(p_used, 0, _max)
 	_can_convert = can_convert and _used < _max
 	disabled = not _can_convert

@@ -92,15 +92,15 @@ static func _format(line: String) -> String:
 	if line.begins_with("---"):
 		return "[center][color=#f5c860]~ %s ~[/color][/center]" % _trim_dashes(text)
 	var lower: String = line.to_lower()
-	if lower.contains("wins"):
+	if "wins" in lower:
 		return "[color=#ffd76a]%s[/color]" % text
-	if lower.contains("scored"):
+	if "scored" in lower:
 		return "[color=#f0d080]%s[/color]" % text
 	if line.begins_with("You") or lower.begins_with("your "):
 		return "[color=#8cc4ff]%s[/color]" % text
 	if line.begins_with("AI"):
 		return "[color=#ff9a8c]%s[/color]" % text
-	if lower.contains("dies"):
+	if "dies" in lower:
 		return "[color=#e0a0a0]%s[/color]" % text
 	return "[color=#eadcc0]%s[/color]" % text
 

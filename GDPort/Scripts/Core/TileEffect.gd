@@ -3,6 +3,15 @@ extends RefCounted
 ## A map effect on one tile. It expires at the END of turn expiry_turn (like spells): an effect created in
 ## turn T with duration D has expiry_turn = T + D (D = 2 lasts until the end of the creator's next turn).
 
+## expiry_turn of map effects that never expire (lava fields and springs of the map generator).
+## C# int.MaxValue / 4.
+const PERMANENT: int = 2147483647 / 4
+
+## True for map effects that never expire.
+var is_permanent: bool:
+	get:
+		return expiry_turn >= PERMANENT
+
 ## TileEffectType value.
 var type: int = TileEffectType.NONE
 var position: Vector2i = Vector2i.ZERO
@@ -15,13 +24,13 @@ var source_name: String = ""
 
 
 func _init(p_type: int = TileEffectType.NONE, p_position: Vector2i = Vector2i.ZERO, p_creator_index: int = -1,
-		p_created_turn: int = 0, p_expiry_turn: int = 0, p_source_name: Variant = "") -> void:
+		p_created_turn: int = 0, p_expiry_turn: int = 0, p_source_name: String = "") -> void:
 	type = p_type
 	position = p_position
 	creator_index = p_creator_index
 	created_turn = p_created_turn
 	expiry_turn = p_expiry_turn
-	source_name = str(p_source_name) if p_source_name != null else ""
+	source_name = p_source_name
 
 
 ## Number of turn ends (including the current turn's end) until the effect is gone.

@@ -1,12 +1,11 @@
 class_name GameState
 extends RefCounted
-## Complete game state for two players. Pure logic, no scene tree access.
+## Complete game state for two players. Pure data, no scene tree access.
 
-const PLAYER_COUNT := 2
+const PLAYER_COUNT: int = 2
 
 var _pieces: Array[Piece] = []
 var _next_piece_id: int = 1
-var _next_order_index: int = 0
 
 var config: GameConfig
 var board: BoardState
@@ -14,14 +13,14 @@ var players: Array[PlayerState] = []
 var random: RandomNumberGenerator
 
 var current_player_index: int = 0
-## Global turn counter starting at 1; increments on every end_turn (each player's turn counts).
+## Global turn counter starting at 1; increments on every EndTurn (each player's turn counts).
 var turn_number: int = 1
 ## GamePhase value.
 var phase: int = GamePhase.NOT_STARTED
 ## Index of the winning player, or -1 while the game is running.
 var winner: int = -1
 
-## All living pieces of both players (do not mutate; use spawn_piece / remove_piece).
+## All living pieces of both players (read-only).
 var pieces: Array[Piece]:
 	get:
 		return _pieces
@@ -29,14 +28,17 @@ var pieces: Array[Piece]:
 var current_player: PlayerState:
 	get:
 		return players[current_player_index]
-
 var opponent: PlayerState:
 	get:
 		return players[1 - current_player_index]
 
 
 ## Creates a new game. 'p_random' is used for all draws (inject a seeded instance for determinism).
-func _init(p_config: GameConfig = null, deck_player0: Variant = null, deck_player1: Variant = null, p_random: RandomNumberGenerator = null) -> void:
+## Decks are Arrays of CardData.
+func _init(p_config: GameConfig = null, deck_player0: Array = [], deck_player1: Array = [],
+		p_random: RandomNumberGenerator = null, p_is_copy: bool = false) -> void:
+	if p_is_copy:
+		return
 	config = p_config if p_config != null else GameConfig.new()
 	if p_random != null:
 		random = p_random
@@ -47,35 +49,38 @@ func _init(p_config: GameConfig = null, deck_player0: Variant = null, deck_playe
 	players = [PlayerState.new(0, deck_player0), PlayerState.new(1, deck_player1)]
 
 
-## Deep copy for simulations/previews (pieces, spells, statuses, orders, tile effects, card lists).
+## C# private copy constructor.
+static func _copy_of(other: GameState) -> GameState:
+	var s := GameState.new(null, [], [], null, true)
+	s.config = other.config
+	s.random = RandomNumberGenerator.new()
+	s.random.seed = 0
+	s.board = BoardState.copy_of(other.board)
+	s.players = []
+	for i: int in other.players.size():
+		s.players.append(PlayerState.copy_of(other.players[i]))
+	s.current_player_index = other.current_player_index
+	s.turn_number = other.turn_number
+	s.phase = other.phase
+	s.winner = other.winner
+	s._next_piece_id = other._next_piece_id
+	for p: Piece in other._pieces:
+		var copy := Piece.copy_of(p)
+		s._pieces.append(copy)
+		s.board.place(copy, copy.position)
+	return s
+
+
+## Deep copy for simulations/previews (pieces, spells, statuses, tile effects, card lists).
 ## Cards and the config are shared; the clone gets its own (fixed-seed) RandomNumberGenerator.
 func clone() -> GameState:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 0
-	var c := GameState.new(config, null, null, rng)
-	# C# BoardState copy constructor: same dimensions (from the shared config) + tile effects.
-	for e: TileEffect in board.tile_effects.values():
-		c.board.set_tile_effect(e)
-	c.players.clear()
-	for p: PlayerState in players:
-		c.players.append(p.copy())
-	c.current_player_index = current_player_index
-	c.turn_number = turn_number
-	c.phase = phase
-	c.winner = winner
-	c._next_piece_id = _next_piece_id
-	c._next_order_index = _next_order_index
-	for p: Piece in _pieces:
-		var piece_copy: Piece = p.copy()
-		c._pieces.append(piece_copy)
-		c.board.place(piece_copy, piece_copy.position)
-	return c
+	return GameState._copy_of(self)
 
 
 ## Returns the piece with the given id, or null.
-func get_piece(p_id: int) -> Piece:
+func get_piece(id: int) -> Piece:
 	for p: Piece in _pieces:
-		if p.id == p_id:
+		if p.id == id:
 			return p
 	return null
 
@@ -102,17 +107,17 @@ func spawn_piece(card: CardData, owner_index: int, pos: Vector2i) -> Piece:
 	return piece
 
 
+## Places an unfinished building (finished at the start of turn complete_turn) for its builder.
+func spawn_building(type: int, owner_index: int, pos: Vector2i, complete_turn: int, builder_id: int) -> Piece:
+	var b: Piece = spawn_piece(BuildingInfo.get_card(type), owner_index, pos)
+	if b != null:
+		b.under_construction = complete_turn > turn_number
+		b.complete_turn = complete_turn
+		b.builder_id = builder_id
+	return b
+
+
 ## Removes a piece from the board and the piece list.
 func remove_piece(piece: Piece) -> void:
 	board.remove(piece)
 	_pieces.erase(piece)
-
-
-func take_order_index() -> int:
-	var i: int = _next_order_index
-	_next_order_index += 1
-	return i
-
-
-func reset_order_index() -> void:
-	_next_order_index = 0

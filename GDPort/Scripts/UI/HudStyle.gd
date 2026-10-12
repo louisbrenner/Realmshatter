@@ -2,6 +2,7 @@ class_name HudStyle
 extends RefCounted
 ## Shared palette, style boxes, theme and procedural drawing helpers for the Hearthstone-styled HUD
 ## (dark wood plaques with gold trim, parchment ribbons, gold coins, blue mana crystals).
+## C# Vector2[] results are returned as PackedVector2Array (directly usable with draw_* calls).
 
 const WOOD_DARK := Color(0.13, 0.075, 0.04)
 const WOOD_MID := Color(0.27, 0.16, 0.08)
@@ -24,12 +25,18 @@ const STONE_GREY := Color(0.42, 0.4, 0.38)
 static var _font: Font
 static var _theme: Theme
 
-## The serif HUD font (Resources/UI/CardFont.tres).
+
+## The serif HUD font (MSDF, so it stays sharp when the HUD / overworld UI is scaled up).
+static func get_font() -> Font:
+	if _font == null:
+		_font = VfxAssets.get_card_text_bold_font()
+	return _font
+
+
+## Property-syntax alias of get_font() (HudStyle.font).
 static var font: Font:
 	get:
-		if _font == null:
-			_font = VfxAssets.card_font
-		return _font
+		return get_font()
 
 
 ## Player accent color (0 = you / blue, 1 = AI / red).
@@ -56,8 +63,8 @@ static func box(bg: Color, border: Color, radius: int = 10, border_width: int = 
 static func wood_panel(p_accent: Variant = null, padding: int = 10) -> StyleBoxFlat:
 	var b: StyleBoxFlat = box(Color(WOOD_DARK, 0.93), GOLD_DARK, 12, 2, 10, 0.5)
 	if p_accent != null:
-		var a: Color = p_accent
-		b.border_color = a.lerp(GOLD_DARK, 0.35)
+		var c: Color = p_accent
+		b.border_color = c.lerp(GOLD_DARK, 0.35)
 		b.border_width_top = 4
 	b.set_content_margin_all(padding)
 	return b
@@ -78,7 +85,7 @@ static func create_theme() -> Theme:
 	if _theme != null:
 		return _theme
 	var theme := Theme.new()
-	theme.default_font = font
+	theme.default_font = get_font()
 	theme.default_font_size = 16
 
 	theme.set_color("font_color", "Label", TEXT_LIGHT)
@@ -111,8 +118,8 @@ static func create_theme() -> Theme:
 	theme.set_color("font_color", "TooltipLabel", INK)
 	theme.set_font_size("font_size", "TooltipLabel", 15)
 
-	theme.set_font("normal_font", "RichTextLabel", font)
-	theme.set_font("bold_font", "RichTextLabel", font)
+	theme.set_font("normal_font", "RichTextLabel", get_font())
+	theme.set_font("bold_font", "RichTextLabel", get_font())
 	theme.set_font_size("normal_font_size", "RichTextLabel", 13)
 	theme.set_font_size("bold_font_size", "RichTextLabel", 13)
 	theme.set_color("default_color", "RichTextLabel", TEXT_LIGHT)
@@ -148,7 +155,7 @@ static func stroke_ellipse(ci: CanvasItem, center: Vector2, radius: Vector2, col
 
 
 ## Appends the first point to close a polyline (accepts PackedVector2Array or Array of Vector2).
-static func close(pts) -> PackedVector2Array:
+static func close(pts: Variant) -> PackedVector2Array:
 	var closed := PackedVector2Array(pts)
 	closed.append(closed[0])
 	return closed
@@ -218,7 +225,7 @@ static func draw_crystal(ci: CanvasItem, center: Vector2, size: float, fill: flo
 
 ## Draws text centered on a point with an outline (outline_color: Color or null = OUTLINE).
 static func draw_text_centered(ci: CanvasItem, text: String, center: Vector2, font_size: int, color: Color, outline: int = 4, outline_color: Variant = null) -> void:
-	var f: Font = font
+	var f: Font = get_font()
 	if f == null or text.is_empty():
 		return
 	var size: Vector2 = f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
@@ -233,7 +240,7 @@ static func draw_text_centered(ci: CanvasItem, text: String, center: Vector2, fo
 
 ## Width of a text in the HUD font.
 static func text_width(text: String, font_size: int) -> float:
-	var f: Font = font
+	var f: Font = get_font()
 	if f == null:
 		return 0.0
 	return f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x

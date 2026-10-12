@@ -8,8 +8,8 @@ signal deck_chosen(deck_index: int)
 
 ## Card scene used for the signature cards (Scenes/UI/Card.tscn).
 @export var card_scene: PackedScene
-@export var plaque_width: float = 214.0
-@export var card_scale: float = 0.86
+@export var plaque_width: float = 198.0
+@export var card_scale: float = 0.78
 
 var _dim: ColorRect
 var _content: VBoxContainer
@@ -29,16 +29,17 @@ func _ready() -> void:
 	_ensure_built()
 
 
-## Shows the screen with one plaque per deck (Array of DeckData).
+## Shows the screen with one plaque per deck.
 func present(decks: Array) -> void:
 	_ensure_built()
 	_clear_plaques()
-	_decks = decks if decks != null else []
+	_decks = decks
 	_choosing = false
 	_hovered = -1
 	for i in range(_decks.size()):
-		_build_plaque(i, _decks[i])
+		_build_plaque(i, _decks[i] as DeckData)
 
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visible = true
 	modulate = Color(1.0, 1.0, 1.0, 0.0)
 	var fade: Tween = create_tween()
@@ -95,7 +96,7 @@ func _build_plaque(index: int, deck: DeckData) -> void:
 	name_label.text = deck.name if deck != null else "Deck"
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_label.add_theme_font_override("font", VfxAssets.card_text_bold_font)
+	name_label.add_theme_font_override("font", VfxAssets.get_card_text_bold_font())
 	name_label.add_theme_font_size_override("font_size", 21)
 	name_label.add_theme_color_override("font_color", accent.lerp(Color.WHITE, 0.35))
 	name_label.add_theme_color_override("font_outline_color", HudStyle.OUTLINE)
@@ -112,7 +113,10 @@ func _build_plaque(index: int, deck: DeckData) -> void:
 		box.add_child(holder)
 		var card := card_scene.instantiate() as CardView
 		holder.add_child(card)
-		card.setup(showcase, showcase.ap_cost if showcase.ap_cost > 0 else (1 if showcase.card_type == CardType.UNIT else 2))
+		var cost: int = showcase.ap_cost
+		if cost <= 0:
+			cost = 1 if showcase.card_type == CardType.UNIT else 2
+		card.setup(showcase, cost)
 		card.set_playable(false)
 		card.modulate = Color.WHITE
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -126,8 +130,8 @@ func _build_plaque(index: int, deck: DeckData) -> void:
 	description.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	description.custom_minimum_size = Vector2(plaque_width - 24.0, 0.0)
 	description.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	description.add_theme_font_override("font", VfxAssets.card_text_font)
-	description.add_theme_font_size_override("font_size", 14)
+	description.add_theme_font_override("font", VfxAssets.get_card_text_font())
+	description.add_theme_font_size_override("font_size", 13)
 	description.add_theme_color_override("font_color", HudStyle.TEXT_LIGHT)
 	description.add_theme_constant_override("outline_size", 0)
 	box.add_child(description)
@@ -135,7 +139,7 @@ func _build_plaque(index: int, deck: DeckData) -> void:
 	var units: int = 0
 	var spells: int = 0
 	if deck != null:
-		for c: CardData in deck.cards:
+		for c in deck.cards:
 			if c == null:
 				continue
 			if c.card_type == CardType.UNIT:
@@ -146,7 +150,7 @@ func _build_plaque(index: int, deck: DeckData) -> void:
 	composition.text = "%d units  ·  %d spells" % [units, spells]
 	composition.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	composition.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	composition.add_theme_font_override("font", VfxAssets.card_text_bold_font)
+	composition.add_theme_font_override("font", VfxAssets.get_card_text_bold_font())
 	composition.add_theme_font_size_override("font_size", 13)
 	composition.add_theme_color_override("font_color", HudStyle.GOLD)
 	composition.add_theme_constant_override("outline_size", 0)
@@ -197,14 +201,14 @@ func _on_plaque_input(index: int, e: InputEvent) -> void:
 	var tween: Tween = create_tween()
 	tween.tween_property(plaque, "scale", Vector2(1.1, 1.1), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(self, "modulate:a", 0.0, 0.3)
-	tween.tween_callback(func() -> void:
+	var finish := func() -> void:
 		visible = false
 		deck_chosen.emit(index)
-	)
+	tween.tween_callback(finish)
 
 
 func _clear_plaques() -> void:
-	for plaque: PanelContainer in _plaques:
+	for plaque in _plaques:
 		_row.remove_child(plaque)
 		plaque.queue_free()
 	_plaques.clear()
@@ -215,7 +219,7 @@ func _clear_plaques() -> void:
 func _ensure_built() -> void:
 	if _dim != null:
 		return
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
 
@@ -223,18 +227,18 @@ func _ensure_built() -> void:
 	_dim.name = "Dim"
 	_dim.color = Color(0.03, 0.02, 0.01, 0.84)
 	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_dim)
 
 	var center := CenterContainer.new()
 	center.name = "Center"
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 
 	_content = VBoxContainer.new()
 	_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_content.add_theme_constant_override("separation", 10)
+	_content.add_theme_constant_override("separation", 6)
 	center.add_child(_content)
 
 	var game_title := Label.new()
@@ -242,10 +246,10 @@ func _ensure_built() -> void:
 	game_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	game_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var title_font := FontVariation.new()
-	title_font.base_font = VfxAssets.card_text_bold_font
+	title_font.base_font = VfxAssets.get_card_text_bold_font()
 	title_font.spacing_glyph = 6
 	game_title.add_theme_font_override("font", title_font)
-	game_title.add_theme_font_size_override("font_size", 58)
+	game_title.add_theme_font_size_override("font_size", 46)
 	game_title.add_theme_color_override("font_color", HudStyle.GOLD)
 	game_title.add_theme_color_override("font_shadow_color", Color(1.0, 0.45, 0.1, 0.55))
 	game_title.add_theme_constant_override("shadow_outline_size", 8)
@@ -257,8 +261,8 @@ func _ensure_built() -> void:
 	_title.text = "Choose your deck"
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_title.add_theme_font_override("font", VfxAssets.card_text_bold_font)
-	_title.add_theme_font_size_override("font_size", 28)
+	_title.add_theme_font_override("font", VfxAssets.get_card_text_bold_font())
+	_title.add_theme_font_size_override("font_size", 24)
 	_title.add_theme_color_override("font_color", Color(1.0, 0.86, 0.5))
 	_title.add_theme_color_override("font_outline_color", Color(0.12, 0.06, 0.02))
 	_title.add_theme_constant_override("outline_size", 8)
@@ -268,8 +272,8 @@ func _ensure_built() -> void:
 	_subtitle.text = "Every deck has a theme - and a few cards borrowed from the others. Hover a deck to see its list."
 	_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_subtitle.add_theme_font_override("font", VfxAssets.card_text_font)
-	_subtitle.add_theme_font_size_override("font_size", 15)
+	_subtitle.add_theme_font_override("font", VfxAssets.get_card_text_font())
+	_subtitle.add_theme_font_size_override("font_size", 14)
 	_subtitle.add_theme_color_override("font_color", HudStyle.TEXT_LIGHT)
 	_subtitle.add_theme_constant_override("outline_size", 0)
 	_content.add_child(_subtitle)
@@ -282,7 +286,7 @@ func _ensure_built() -> void:
 	_row = HBoxContainer.new()
 	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_row.add_theme_constant_override("separation", 18)
+	_row.add_theme_constant_override("separation", 14)
 	_content.add_child(_row)
 
 	_info = InfoPanel.new()

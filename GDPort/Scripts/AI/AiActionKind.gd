@@ -6,16 +6,23 @@ enum {
 	DRAFT = 0,
 	PLAY_UNIT = 1,
 	PLAY_SPELL = 2,
-	SET_ORDER = 3,
+	## Commanded a piece (move + attack resolved immediately).
+	COMMAND = 3,
+	## A Builder started a building (TurnController.build).
+	BUILD = 4,
+	## A Trapper hid a trap (TurnController.set_trap); the target tile stays secret in the description.
+	TRAP = 5,
 	## Converted 1 VP into 1 AP (TurnController.convert_vp_to_ap).
-	CONVERT_VP = 4,
+	CONVERT_VP = 6,
 }
 
 const NAMES := {
 	DRAFT: "Draft",
 	PLAY_UNIT: "PlayUnit",
 	PLAY_SPELL: "PlaySpell",
-	SET_ORDER: "SetOrder",
+	COMMAND: "Command",
+	BUILD: "Build",
+	TRAP: "Trap",
 	CONVERT_VP: "ConvertVp",
 }
 

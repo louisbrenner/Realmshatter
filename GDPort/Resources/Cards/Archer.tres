@@ -5,14 +5,18 @@
 [resource]
 script = ExtResource("1")
 name = "Archer"
-description = "Fragile sniper that shoots up to 3 tiles away."
+description = "Fragile sniper. Can raise a Turret."
 card_type = 0
 role = 0
-ap_cost = 0
-movement = 1
+class_ = 2
+ap_cost = 1
+movement = 3
 attack = 1
 hp = 2
 range = 3
 shield = 0
 ap_bonus = 0
+clan = 0
+rarity = 0
+keywords = 256
 tint = Color(0.4, 0.8, 0.3, 1)

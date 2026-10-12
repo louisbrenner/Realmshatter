@@ -1,8 +1,14 @@
 class_name StatusEffectType
 extends RefCounted
-## Temporary status on a piece (see Piece.status_effects).
+## Temporary status on a piece (see Piece.StatusEffects).
 
-enum { NONE = 0, FROZEN = 1, OVERCHARGED = 2 }
+enum {
+	NONE = 0,
+	## Effective movement is 0 (applied by Frost, lasts through the owner's next turn).
+	FROZEN = 1,
+	## The next time the piece is chain-triggered, its chain shots deal double damage (consumed).
+	OVERCHARGED = 2,
+}
 
 const NAMES := { NONE: "None", FROZEN: "Frozen", OVERCHARGED: "Overcharged" }
 

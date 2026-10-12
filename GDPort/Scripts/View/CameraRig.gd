@@ -8,7 +8,7 @@ extends Node3D
 ## Emitted when the view mode changes (value = ViewMode int).
 signal view_mode_changed(mode: int)
 
-@export_enum("TwoD", "TwoPointFiveD", "ThreeD") var initial_mode: int = ViewMode.TWO_D
+@export_enum("TwoD", "TwoPointFiveD", "ThreeD") var initial_mode: int = ViewMode.THREE_D
 ## Board extent to fit in world units (X = width, Y = depth along Z).
 @export var board_fit_size: Vector2 = Vector2(10, 8)
 ## Extra space around the board in world units.
@@ -27,8 +27,8 @@ signal view_mode_changed(mode: int)
 ## Right column (deck, End Turn).
 @export var inset_right: float = 176.0
 ## Resting hand cards.
-@export var inset_bottom: float = 88.0
-## Lower bound of the HUD scale (must match Hud.MIN_SCALE).
+@export var inset_bottom: float = 104.0
+## Lower bound of the HUD scale (must match Hud.min_scale).
 @export var inset_min_scale: float = 0.7
 
 @export_group("2D")
@@ -39,7 +39,7 @@ signal view_mode_changed(mode: int)
 @export var iso_yaw_degrees: float = 20.0
 
 @export_group("3D")
-@export var perspective_pitch_degrees: float = -55.0
+@export var perspective_pitch_degrees: float = -66.0
 @export var perspective_yaw_degrees: float = 0.0
 @export var perspective_fov: float = 50.0
 

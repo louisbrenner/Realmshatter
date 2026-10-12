@@ -28,6 +28,10 @@ class _Job extends RefCounted:
 @export var info_text_color: Color = Color(0.8, 0.8, 1.0)
 ## Pause between consecutive events, in seconds.
 @export var event_pause: float = 0.08
+## Global slow-down of the board animations: multiplies pauses, step/push tweens and piece move/attack times.
+@export var animation_pace: float = 1.3
+## Player whose hidden traps are shown on the board (the human).
+@export var trap_viewer: int = 0
 
 @export_group("VFX")
 @export var impact_color: Color = Color(1.0, 0.62, 0.25)
@@ -69,6 +73,8 @@ var _motion_tweens: Dictionary[int, Tween] = {}
 var _rig: CameraRig
 var _status_markers: StatusMarkerLayer
 var _play_state: GameState
+## Vector2i or null
+var _last_primary_tile: Variant = null
 
 ## All current views by piece id.
 var views: Dictionary:
@@ -107,7 +113,7 @@ func spawn_view(piece: Piece) -> PieceView:
 		return null
 	_cache_piece(piece)
 	var existing: Variant = _views.get(piece.id)
-	if is_instance_valid(existing):
+	if existing != null and is_instance_valid(existing):
 		(existing as PieceView).refresh(piece)
 		return existing
 	if piece_scene == null or board == null:
@@ -115,6 +121,8 @@ func spawn_view(piece: Piece) -> PieceView:
 		return null
 
 	var view: PieceView = piece_scene.instantiate() as PieceView
+	view.move_duration *= animation_pace
+	view.attack_duration *= animation_pace
 	board.add_child(view)
 	view.setup(piece, get_owner_color(piece.owner_index))
 	view.global_position = board.grid_to_world(piece.position)
@@ -129,15 +137,15 @@ func remove_view(id: int) -> void:
 		_views.erase(id)
 		if is_instance_valid(view):
 			(view as Node).queue_free()
-	if is_instance_valid(_status_markers):
+	if _status_markers != null:
 		_status_markers.remove_piece(id)
 
 
 ## Returns the view of a piece, or null.
 func get_view(id: int) -> PieceView:
 	var view: Variant = _views.get(id)
-	if is_instance_valid(view):
-		return view
+	if view != null and is_instance_valid(view):
+		return view as PieceView
 	return null
 
 
@@ -149,7 +157,7 @@ func clear_all() -> void:
 	_views.clear()
 	_motion_tweens.clear()
 	_death_positions.clear()
-	if is_instance_valid(_status_markers):
+	if _status_markers != null:
 		_status_markers.clear_all()
 
 
@@ -185,7 +193,7 @@ func sync_all(state: GameState) -> void:
 			view.refresh(piece)
 			view.snap_to(board.grid_to_world(piece.position))
 		if view != null and auto_summoning_sickness:
-			view.set_exhausted(piece.is_summoning_sick(state.turn_number))
+			view.set_exhausted(is_resting(piece, state))
 
 	var stale: Array[int] = []
 	for id: int in _views.keys():
@@ -198,18 +206,36 @@ func sync_all(state: GameState) -> void:
 		sync_board_effects(state)
 
 
+## Sleeping z's on a piece: summoning sick, busy building, or already acted this turn.
+static func is_resting(piece: Piece, state: GameState) -> bool:
+	return not piece.is_building and (piece.is_summoning_sick(state.turn_number) or piece.constructing_id >= 0 \
+			or piece.has_acted(state.turn_number))
+
+
+## Updates only the sleeping z's of every piece (cheap; e.g. right after a deploy or an action).
+func sync_exhausted(state: GameState) -> void:
+	if state == null or not auto_summoning_sickness:
+		return
+	for piece: Piece in state.pieces:
+		var view: PieceView = get_view(piece.id)
+		if view != null:
+			view.set_exhausted(is_resting(piece, state))
+
+
 ## Syncs tile effects (with the state's turn number for the duration badges) and status markers.
 func sync_board_effects(state: GameState) -> void:
 	if state == null or board == null:
 		return
 	board.sync_tile_effects(state.board, state.turn_number, true)
+	board.sync_terrain(state.board, state.config.rock_hp)
+	board.sync_traps(state.board, trap_viewer)
 	status_markers.sync(state, board)
 
 
 ## Animates resolution events in chronological order, then calls sync_all(state) (which also syncs tile
-## effects and status markers). Events referring to pieces without a view are skipped; unknown types are ignored.
-## sync_after = false skips the final sync_all (views keep their animated positions), e.g. when several
-## event lists of one state change are played back to back.
+## effects and status markers) unless sync_after is false (views keep their animated positions, e.g. when
+## several event lists of one state change are played back to back). Events referring to pieces without a
+## view are skipped; unknown types are ignored. (Merges both C# PlayEvents overloads.)
 func play_events(events: Array, state: GameState, sync_after: bool = true) -> void:
 	var groups: Array = []
 	if events != null:
@@ -231,22 +257,21 @@ func play_event_groups(groups: Array, state: GameState, before_group: Callable =
 		var all: Array[ResolutionEvent] = []
 		for g: Variant in groups:
 			if g != null:
-				for ev: Variant in (g as Array):
+				for ev: ResolutionEvent in g:
 					all.append(ev)
 		board.tile_effects.prepare_for_events(all)
 		status_markers.prepare_for_events(all)
 		for gi in range(groups.size()):
-			var events: Variant = groups[gi]
-			if events == null or (events as Array).size() == 0:
+			var events: Array = groups[gi] if groups[gi] != null else []
+			if events.is_empty():
 				continue
-			# (C# wrapped this in try/catch; GDScript has no exceptions.)
+			# (C# wrapped the callback and each event in try/catch; GDScript has no exceptions.)
 			if before_group.is_valid():
 				before_group.call(gi)
-			var list: Array = events
-			for i in range(list.size()):
-				if list[i] == null:
+			for i in range(events.size()):
+				if events[i] == null:
 					continue
-				await _play_event(list, i)
+				await _play_event(events, i)
 				if event_pause > 0.0:
 					await _delay(event_pause)
 	is_playing = false
@@ -273,8 +298,8 @@ func play_summon(piece_id: int) -> void:
 	if view == null or board == null:
 		return
 	var rest: Vector3 = view.global_position
-	var owner_col: Color = view.owner_color
-	Vfx.glow_flash(board, rest + Vector3(0, 1.6, 0), owner_col.lightened(0.5), 1.4, 0.25)
+	var owner_c: Color = view.owner_color
+	Vfx.glow_flash(board, rest + Vector3(0, 1.6, 0), owner_c.lightened(0.5), 1.4, 0.25)
 	Sfx.play(SfxId.SWING, -6.0, 0.8)
 	await view.play_drop(2.4, 0.22)
 	if not is_instance_valid(view):
@@ -282,8 +307,8 @@ func play_summon(piece_id: int) -> void:
 	Sfx.play(SfxId.SUMMON)
 	Vfx.shockwave(board, rest + Vector3(0, 0.03, 0), Color(1.0, 0.88, 0.65), 1.5, 0.45, 0.1)
 	Vfx.dust_ring(board, rest, dust_color, 0.45, 18)
-	Vfx.sparkle(board, rest + Vector3(0, 0.25, 0), owner_col.lightened(0.4), 12, 0.6, 0.5)
-	Vfx.light_flash(board, rest + Vector3(0, 0.8, 0), owner_col.lightened(0.4), 4.0, 3.5, 0.35)
+	Vfx.sparkle(board, rest + Vector3(0, 0.25, 0), owner_c.lightened(0.4), 12, 0.6, 0.5)
+	Vfx.light_flash(board, rest + Vector3(0, 0.8, 0), owner_c.lightened(0.4), 4.0, 3.5, 0.35)
 	shake(shake_strength * 0.8, 0.16)
 	await view.play_squash(1.0)
 
@@ -303,8 +328,9 @@ func play_spell_cast(target_piece_id: int, positive: bool) -> void:
 	await view.play_flash(primary, 0.3)
 
 
-## Scoring: coins and sparkles rise from the zone tiles (Array of Vector2i) with "+1" popups.
-func play_score(tiles: Array, player: int) -> void:
+## Scoring: coins and sparkles rise from the zone tiles with "+1" popups.
+## points_at: optional Callable(Vector2i) -> int.
+func play_score(tiles: Array, player: int, points_at: Callable = Callable()) -> void:
 	if board == null or tiles == null:
 		return
 	var text: Color = player0_color.lerp(score_color, 0.6) if player == 0 else player1_color.lerp(score_color, 0.6)
@@ -314,7 +340,10 @@ func play_score(tiles: Array, player: int) -> void:
 		Sfx.play(SfxId.COIN, 0.0, 1.0 + 0.04 * count)
 		Vfx.coin_fountain(board, pos)
 		Vfx.glow_flash(board, pos + Vector3(0, 0.3, 0), score_color, 1.4, 0.3)
-		Vfx.popup_text(board, pos, "+1", text, 72, 1.0)
+		var points: int = int(points_at.call(tile)) if points_at.is_valid() else 1
+		Vfx.popup_text(board, pos, "+%d" % points, text, 88 if points > 1 else 72, 1.0)
+		if points > 1:
+			Vfx.sparkle(board, pos + Vector3(0, 0.5, 0), score_color, 18, 0.9, 0.5)
 		count += 1
 		await _delay(0.06)
 	if count > 0:
@@ -363,7 +392,10 @@ func _play_event(events: Array, index: int) -> void:
 			if view != null:
 				if e.is_pierce:
 					await _play_pierce(e, view)
+				elif e.is_secondary:
+					await _play_secondary_hit(e)
 				else:
+					_last_primary_tile = e.to
 					await _play_attack(e, view)
 
 		ResolutionEventType.ATTACK_CANCELLED:
@@ -377,7 +409,7 @@ func _play_event(events: Array, index: int) -> void:
 				await _play_damage(e, view)
 
 		ResolutionEventType.DIED:
-			if is_instance_valid(_status_markers):
+			if _status_markers != null:
 				_status_markers.remove_piece(e.piece_id)
 			if view != null:
 				_kill_motion(e.piece_id)
@@ -391,10 +423,6 @@ func _play_event(events: Array, index: int) -> void:
 				await view.play_death()
 			else:
 				_death_positions[e.piece_id] = board.grid_to_world(e.from)
-
-		ResolutionEventType.CHAIN_TRIGGERED:
-			if view != null:
-				await _play_chain_triggered(e, view)
 
 		ResolutionEventType.SPELL_EXPIRED:
 			if view != null:
@@ -421,19 +449,22 @@ func _play_event(events: Array, index: int) -> void:
 			await _play_return_to_deck(e)
 
 		ResolutionEventType.TILE_EFFECT_APPLIED:
-			var sfx: int = SfxId.BUFF_CAST
-			if e.tile_effect == TileEffectType.LAVA:
-				sfx = SfxId.FIRE
-			elif e.tile_effect == TileEffectType.WALL:
-				sfx = SfxId.WALL_RISE
-			elif e.tile_effect == TileEffectType.HEALING:
-				sfx = SfxId.HEAL
+			var sfx: int
+			match e.tile_effect:
+				TileEffectType.LAVA:
+					sfx = SfxId.FIRE
+				TileEffectType.WALL:
+					sfx = SfxId.WALL_RISE
+				TileEffectType.HEALING:
+					sfx = SfxId.HEAL
+				_:
+					sfx = SfxId.BUFF_CAST
 			Sfx.play(sfx, -3.0)
+			var appear: _Job = _start_job(board.animate_tile_effect_applied.bind(e.to, e.tile_effect, e.expiry_turn))
 			if next == ResolutionEventType.TILE_EFFECT_APPLIED:
-				board.animate_tile_effect_applied(e.to, e.tile_effect, e.expiry_turn)
 				await _delay(0.06)
 			else:
-				await board.animate_tile_effect_applied(e.to, e.tile_effect, e.expiry_turn)
+				await _await_job(appear)
 
 		ResolutionEventType.TILE_EFFECT_EXPIRED:
 			Sfx.play(SfxId.TILE_FADE)
@@ -441,12 +472,22 @@ func _play_event(events: Array, index: int) -> void:
 			await _delay(0.04 if next == ResolutionEventType.TILE_EFFECT_EXPIRED else 0.25)
 
 		ResolutionEventType.TILE_DAMAGE:
-			var pos: Vector3 = board.grid_to_world(e.to)
-			Sfx.play(SfxId.LAVA_BURN)
-			RuleVfx.lava_eruption(board, pos)
-			Vfx.popup_text(board, pos, "Lava!", RuleVfx.FIRE_COLOR, 50, 1.25)
-			shake(shake_strength * 0.7, 0.15)
-			await _delay(0.2)
+			if e.tile_effect == TileEffectType.STORM:
+				var pos: Vector3 = board.grid_to_world(e.to)
+				var storm := Color(0.8, 0.65, 1.0)
+				Sfx.play(SfxId.ZAP)
+				Vfx.shockwave(board, pos + Vector3(0, 0.05, 0), storm, 1.6, 0.35)
+				Vfx.sparkle(board, pos + Vector3(0, 0.3, 0), storm, 14, 0.5, 0.5)
+				Vfx.popup_text(board, pos, "Storm!", storm, 50, 1.2)
+				shake(shake_strength * 0.6, 0.15)
+				await _delay(0.2)
+			else:
+				var pos: Vector3 = board.grid_to_world(e.to)
+				Sfx.play(SfxId.LAVA_BURN)
+				RuleVfx.lava_eruption(board, pos)
+				Vfx.popup_text(board, pos, "Lava!", RuleVfx.FIRE_COLOR, 50, 1.25)
+				shake(shake_strength * 0.7, 0.15)
+				await _delay(0.2)
 
 		ResolutionEventType.STATUS_APPLIED:
 			await _play_status_applied(e, view)
@@ -455,7 +496,84 @@ func _play_event(events: Array, index: int) -> void:
 			await _play_status_expired(e, view)
 
 		ResolutionEventType.SPELL_CAST:
+			if e.amount > 0:
+				var at: Vector3 = board.grid_to_world(e.to) + Vector3(0, 0.75, 0)
+				var arcane := Color(0.75, 0.55, 1.0)
+				Vfx.sparkle(board, at, arcane, 18, 0.8, 0.5)
+				Vfx.popup_text(board, at, "Empowered!", arcane, 50, 1.1)
 			await _play_spell_cast_event(events, index)
+
+		ResolutionEventType.DEATHRATTLE:
+			await _play_deathrattle(e)
+
+		ResolutionEventType.FIRST_HIT_TRIGGERED:
+			await _play_first_hit(e, view)
+
+		ResolutionEventType.BUILDING_STARTED:
+			await _play_building_started(e)
+
+		ResolutionEventType.BUILDING_COMPLETED:
+			if view != null:
+				Sfx.play(SfxId.WALL_RISE, -2.0, 1.2)
+				view.set_under_construction(false)
+				Vfx.sparkle(board, view.global_position + Vector3(0, 0.5, 0), score_color, 16, 0.8, 0.4)
+				Vfx.popup_text(board, view.global_position + Vector3(0, 0.4, 0), "%s ready!" % e.spell_name, score_color, 50, 1.3)
+				await _delay(0.4)
+
+		ResolutionEventType.TRAP_SET:
+			if e.player_index == trap_viewer:
+				# Only the owner sees where it went.
+				var at: Vector3 = board.grid_to_world(e.to)
+				Sfx.play(SfxId.LAND, -4.0, 1.3)
+				Vfx.dust_ring(board, at, dust_color, 0.3, 8)
+				Vfx.popup_text(board, at + Vector3(0, 0.35, 0), e.card_name, info_text_color, 40, 0.8)
+				await _delay(0.2)
+
+		ResolutionEventType.TRAP_TRIGGERED:
+			var at: Vector3 = board.grid_to_world(e.to)
+			var c: Color = TrapInfo.get_color(_parse_enum(TrapType.NAMES, e.spell_name, TrapType.SPIKE))
+			Sfx.play(SfxId.BLOCKED, 0.0, 0.8)
+			Sfx.play(SfxId.MELEE_HIT, -2.0, 0.7)
+			var jaws: MeshInstance3D = VfxAssets.create_icon(FxIconShape.TRAP, 0.7, c, Color(0.08, 0.06, 0.05, 0.9))
+			board.add_child(jaws)
+			jaws.global_position = at + Vector3(0, 0.55, 0)
+			var pop: Tween = jaws.create_tween()
+			pop.tween_property(jaws, "scale", Vector3.ONE * 1.3, 0.12).from(Vector3.ONE * 0.3)
+			pop.tween_interval(0.45)
+			pop.tween_property(jaws, "scale", Vector3.ONE * 0.01, 0.2)
+			pop.tween_callback(jaws.queue_free)
+			Vfx.shockwave(board, at + Vector3(0, 0.05, 0), c, 0.9, 0.4)
+			Vfx.popup_text(board, at + Vector3(0, 0.95, 0), "%s!" % e.card_name, c, 54, 1.1)
+			if camera_rig != null:
+				camera_rig.shake(shake_strength * 0.6, 0.25)
+			board.remove_trap_marker(e.to)
+			await _delay(0.45)
+
+		ResolutionEventType.TERRAIN_DAMAGED:
+			var at: Vector3 = board.grid_to_world(e.to)
+			var crumbled: bool = e.remaining_hp <= 0
+			Sfx.play(SfxId.WALL_RISE, 0.0 if crumbled else -5.0, 0.6 if crumbled else 0.9)
+			Vfx.dust_ring(board, at, dust_color, 0.55 if crumbled else 0.35, 26 if crumbled else 10)
+			Vfx.popup_text(board, at + Vector3(0, 0.55, 0), "Crumbles!" if crumbled else "-%d" % e.amount,
+				dust_color.lightened(0.35), 48, 1.0)
+			board.show_rock_hp(e.to, e.remaining_hp)
+			await _delay(0.3 if crumbled else 0.15)
+
+		ResolutionEventType.AP_GAINED:
+			var at: Vector3 = board.grid_to_world(e.from) + Vector3(0, 0.45, 0)
+			var mana := Color(0.45, 0.75, 1.0)
+			Sfx.play(SfxId.COIN)
+			Vfx.sparkle(board, at, mana, 12, 0.7, 0.35)
+			Vfx.popup_text(board, at, ("+%d AP next turn" % e.amount) if e.is_secondary else ("+%d AP" % e.amount), mana, 52, 1.2)
+			await _delay(0.3)
+
+		ResolutionEventType.AURA_PULSE:
+			if view != null:
+				var c: Color = ClanInfo.get_color(_parse_enum(Clan.NAMES, e.card_name, Clan.NONE))
+				Sfx.play(SfxId.BUFF_CAST, -6.0, 0.8)
+				Vfx.shockwave(board, view.global_position + Vector3(0, 0.05, 0), c, 2.6, 0.5, 0.1)
+				Vfx.popup_text(board, view.global_position + Vector3(0, 0.3, 0), e.spell_name, c.lightened(0.3), 44, 1.1)
+				await _delay(0.3)
 
 		_:
 			pass
@@ -478,7 +596,7 @@ func _play_move(e: ResolutionEvent, view: PieceView) -> void:
 	var last_step: Array[int] = [0]
 	var tween: Tween = view.create_tween()
 	_motion_tweens[e.piece_id] = tween
-	tween.tween_method(func(t: float) -> void:
+	var step_fn := func(t: float) -> void:
 		if not is_instance_valid(view):
 			return
 		var f: float = t * steps
@@ -490,7 +608,7 @@ func _play_move(e: ResolutionEvent, view: PieceView) -> void:
 			Vfx.dust_ring(board, points[seg], dust_color, 0.25, 6)
 			Sfx.play(SfxId.STEP)
 		view.global_position = points[seg].lerp(points[seg + 1], eased) + Vector3.UP * step_hop_height * 4.0 * u * (1.0 - u)
-	, 0.0, 1.0, step_duration * steps)
+	tween.tween_method(step_fn, 0.0, 1.0, step_duration * steps * animation_pace)
 	await tween.finished
 	_motion_tweens.erase(e.piece_id)
 	if not is_instance_valid(view):
@@ -518,10 +636,10 @@ func _play_push(e: ResolutionEvent, view: PieceView, quick: bool) -> void:
 	view.global_position = from_w
 	var tween: Tween = view.create_tween()
 	_motion_tweens[e.piece_id] = tween
-	tween.tween_method(func(t: float) -> void:
+	var push_fn := func(t: float) -> void:
 		if is_instance_valid(view):
 			view.global_position = from_w.lerp(to_w, t) + Vector3.UP * 0.08 * 4.0 * t * (1.0 - t)
-	, 0.0, 1.0, push_duration).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tween.tween_method(push_fn, 0.0, 1.0, push_duration * animation_pace).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	Vfx.dust_ring(board, from_w, dust_color, 0.3, 8)
 	if quick:
 		await _delay(0.05)
@@ -561,7 +679,7 @@ func _play_attack(e: ResolutionEvent, view: PieceView) -> void:
 	var burning: bool = _has_keyword(e.piece_id, Keyword.BURNING)
 	var frost: bool = _has_keyword(e.piece_id, Keyword.FROST)
 	var ranged: bool = GridPos.manhattan_distance(e.from, e.to) > 1
-	var color: Color = chain_flash_color if e.is_chain else impact_color
+	var color: Color = chain_flash_color if e.is_secondary else impact_color
 	if burning:
 		color = RuleVfx.FIRE_COLOR
 	elif frost:
@@ -573,12 +691,12 @@ func _play_attack(e: ResolutionEvent, view: PieceView) -> void:
 			bolt = RuleVfx.FIRE_COLOR
 		elif frost:
 			bolt = frost_color
-		elif e.is_chain:
+		elif e.is_secondary:
 			bolt = chain_flash_color
 		else:
 			bolt = view.owner_color.lerp(Color(1.0, 0.75, 0.35), 0.55)
 		var duration: float = 0.12 + 0.045 * GridPos.manhattan_distance(e.from, e.to)
-		Sfx.play(SfxId.ZAP if e.is_chain else SfxId.SHOOT, -4.0 if e.is_chain else 0.0)
+		Sfx.play(SfxId.ZAP if e.is_secondary else SfxId.SHOOT, -4.0 if e.is_secondary else 0.0)
 		if burning:
 			Sfx.play(SfxId.FIRE, -8.0, 1.3)
 		await Vfx.projectile(board, from_w + Vector3(0, 0.45, 0), target + Vector3(0, 0.35, 0), bolt, duration)
@@ -657,36 +775,25 @@ func _play_damage(e: ResolutionEvent, view: PieceView) -> void:
 		await view.play_flash(shield_color, 0.25)
 
 
-func _play_chain_triggered(e: ResolutionEvent, view: PieceView) -> void:
-	var hitter: PieceView = get_view(e.other_piece_id)
-	var pos: Vector3 = view.global_position
-	var to_w: Vector3 = pos + Vector3(0, 0.35, 0)
-	Sfx.play(SfxId.ZAP)
-	if _has_keyword(e.piece_id, Keyword.ECHO):
+## Secondary hit of an attack: the Echo strike on the same tile (brass rings) or an Arc zap jumping from the
+## main target to a neighbouring piece (lightning, hits friend and foe alike).
+func _play_secondary_hit(e: ResolutionEvent) -> void:
+	var target: Vector3 = board.grid_to_world(e.to)
+	var echo: bool = _has_keyword(e.piece_id, Keyword.ECHO) and _last_primary_tile != null and e.to == _last_primary_tile
+	if echo:
 		Sfx.play(SfxId.ECHO_RING)
-	if hitter != null:
-		Vfx.lightning(board, hitter.global_position + Vector3(0, 0.35, 0), to_w, chain_flash_color, 0.35)
-	spawn_floating_text(pos, "Chain!", chain_flash_color)
-
-	if _has_keyword(e.piece_id, Keyword.CONDUIT):
-		var origin: Vector2i = e.to
-		var range_tiles: int = maxi(1, _ranges[e.piece_id]) if _ranges.has(e.piece_id) else 2
-		for d: Vector2i in GridPos.ORTHOGONAL_DIRECTIONS:
-			var end: Vector2i = origin
-			for i in range(1, range_tiles + 1):
-				var tile := Vector2i(origin.x + d.x * i, origin.y + d.y * i)
-				var inside: bool = tile.x >= 0 and tile.y >= 0 and tile.x < board.width and tile.y < board.height
-				if not inside or (_play_state != null and _play_state.board.is_wall(tile)):
-					break
-				end = tile
-			if end != origin:
-				Vfx.lightning(board, to_w, board.grid_to_world(end) + Vector3(0, 0.3, 0), chain_flash_color.lerp(Color.WHITE, 0.3), 0.45)
-		RuleVfx.charge_crackle(board, to_w, chain_flash_color, 4, 0.5, 0.3)
-		Vfx.popup_text(board, pos, "Conduit!", chain_flash_color.lightened(0.3), 46, 1.55)
-	if _has_keyword(e.piece_id, Keyword.ECHO):
-		RuleVfx.echo_ring(board, pos, echo_color)
-		Vfx.popup_text(board, pos, "Echo +1", echo_color, 50, 1.55)
-	await view.play_flash(chain_flash_color, 0.3)
+		RuleVfx.echo_ring(board, target, echo_color)
+		Vfx.popup_text(board, target, "Echo!", echo_color, 50, 1.3)
+		await _delay(0.18)
+		Sfx.play(SfxId.MELEE_HIT if e.other_piece_id >= 0 else SfxId.STEP, -5.0, 1.2)
+		Vfx.impact_sparks(board, target + Vector3(0, 0.35, 0), echo_color, 20 if e.other_piece_id >= 0 else 8, 0.6)
+		return
+	var from_w: Vector3 = board.grid_to_world(_last_primary_tile) if _last_primary_tile != null else target
+	Sfx.play(SfxId.ZAP)
+	Vfx.lightning(board, from_w + Vector3(0, 0.35, 0), target + Vector3(0, 0.35, 0), chain_flash_color.lerp(Color.WHITE, 0.3), 0.4)
+	RuleVfx.charge_crackle(board, target + Vector3(0, 0.35, 0), chain_flash_color, 4, 0.5, 0.3)
+	Vfx.popup_text(board, target, "Arc!", chain_flash_color.lightened(0.3), 46, 1.3)
+	await _delay(0.15)
 
 
 # ------------------------------------------------------------------ heal / status / deck
@@ -730,7 +837,7 @@ func _play_status_applied(e: ResolutionEvent, view: PieceView) -> void:
 func _play_status_expired(e: ResolutionEvent, view: PieceView) -> void:
 	var pos: Vector3 = view.global_position if view != null else board.grid_to_world(e.to)
 	status_markers.set_status(e.piece_id, e.status, false, null, true)
-	if e.status == StatusEffectType.OVERCHARGED and e.is_chain:
+	if e.status == StatusEffectType.OVERCHARGED and e.is_secondary:
 		Sfx.play(SfxId.CHARGE_RELEASE)
 		RuleVfx.charge_crackle(board, pos + Vector3(0, 0.35, 0), charge_color.lightened(0.3), 8, 0.95, 0.45)
 		Vfx.glow_flash(board, pos + Vector3(0, 0.4, 0), Color.WHITE, 2.4, 0.25)
@@ -751,7 +858,7 @@ func _play_return_to_deck(e: ResolutionEvent) -> void:
 	if e.amount > 0:
 		Sfx.play(SfxId.SOUL)
 		Vfx.popup_text(board, from_w, "Returns stronger!", soul_color, 54, 1.25)
-		Vfx.popup_text(board, from_w + Vector3(0, -0.32, 0), "%s" % e.card_name, soul_color.lightened(0.4), 40, 1.25)
+		Vfx.popup_text(board, from_w + Vector3(0, -0.32, 0), e.card_name, soul_color.lightened(0.4), 40, 1.25)
 		Vfx.glow_flash(board, from_w + Vector3(0, 0.3, 0), soul_color, 1.8, 0.4)
 		Vfx.sparkle(board, from_w + Vector3(0, 0.3, 0), soul_color, 16, 0.8, 0.4)
 		RuleVfx.soul_wisp(board, from_w + Vector3(0, 0.3, 0), deck, 0.85)
@@ -785,43 +892,147 @@ func _play_spell_cast_event(events: Array, index: int) -> void:
 			type = n.tile_effect
 			tiles.append(board.grid_to_world(n.to))
 	var name_color: Color
-	if type == TileEffectType.LAVA:
-		name_color = RuleVfx.FIRE_COLOR.lightened(0.2)
-	elif type == TileEffectType.WALL:
-		name_color = Color(0.9, 0.84, 0.72)
-	elif type == TileEffectType.HEALING:
-		name_color = heal_text_color
-	else:
-		name_color = Color(0.85, 0.65, 1.0)
+	match type:
+		TileEffectType.LAVA:
+			name_color = RuleVfx.FIRE_COLOR.lightened(0.2)
+		TileEffectType.WALL:
+			name_color = Color(0.9, 0.84, 0.72)
+		TileEffectType.HEALING:
+			name_color = heal_text_color
+		_:
+			name_color = Color(0.85, 0.65, 1.0)
 	if not e.card_name.is_empty():
 		Vfx.popup_text(board, anchor, e.card_name, name_color, 58, 1.5)
-	if type == TileEffectType.LAVA:
-		Sfx.play(SfxId.METEOR_FALL)
-		await RuleVfx.meteor(board, anchor + Vector3(1.6, 7.5, -2.6), anchor + Vector3(0, 0.15, 0), 0.36)
-		Sfx.play(SfxId.EXPLOSION)
-		Vfx.impact_sparks(board, anchor + Vector3(0, 0.3, 0), RuleVfx.FIRE_COLOR, 60, 1.5)
-		RuleVfx.fire_burst(board, anchor, 1.6)
-		Vfx.shockwave(board, anchor + Vector3(0, 0.05, 0), RuleVfx.FIRE_COLOR, 3.2, 0.5, 0.1)
-		Vfx.smoke_puff(board, anchor + Vector3(0, 0.3, 0), Color(0.2, 0.15, 0.12), 16, 1.2)
-		Vfx.light_flash(board, anchor + Vector3(0, 1.0, 0), RuleVfx.FIRE_COLOR, 8.0, 6.0, 0.5)
-		shake(shake_strength * 2.2, 0.32)
-		await _delay(0.08)
-	elif type == TileEffectType.WALL:
-		RuleVfx.magic_circle(board, anchor, Color(0.85, 0.78, 0.6))
-		for t: Vector3 in tiles:
-			Vfx.dust_ring(board, t, dust_color, 0.45, 12)
-		shake(shake_strength * 1.3, 0.35)
-		await _delay(0.15)
-	elif type == TileEffectType.HEALING:
-		RuleVfx.magic_circle(board, anchor, RuleVfx.HEAL_GOLD)
-		for t: Vector3 in tiles:
-			Vfx.glow_flash(board, t + Vector3(0, 0.8, 0), RuleVfx.HEAL_GOLD, 1.6, 0.45)
-			Vfx.sparkle(board, t + Vector3(0, 0.9, 0), RuleVfx.HEAL_COLOR, 10, 0.9, 0.3)
-		Vfx.light_flash(board, anchor + Vector3(0, 1.2, 0), RuleVfx.HEAL_GOLD, 5.0, 5.0, 0.5)
-		await _delay(0.25)
+	match type:
+		TileEffectType.LAVA:
+			Sfx.play(SfxId.METEOR_FALL)
+			await RuleVfx.meteor(board, anchor + Vector3(1.6, 7.5, -2.6), anchor + Vector3(0, 0.15, 0), 0.36)
+			Sfx.play(SfxId.EXPLOSION)
+			Vfx.impact_sparks(board, anchor + Vector3(0, 0.3, 0), RuleVfx.FIRE_COLOR, 60, 1.5)
+			RuleVfx.fire_burst(board, anchor, 1.6)
+			Vfx.shockwave(board, anchor + Vector3(0, 0.05, 0), RuleVfx.FIRE_COLOR, 3.2, 0.5, 0.1)
+			Vfx.smoke_puff(board, anchor + Vector3(0, 0.3, 0), Color(0.2, 0.15, 0.12), 16, 1.2)
+			Vfx.light_flash(board, anchor + Vector3(0, 1.0, 0), RuleVfx.FIRE_COLOR, 8.0, 6.0, 0.5)
+			shake(shake_strength * 2.2, 0.32)
+			await _delay(0.08)
+		TileEffectType.WALL:
+			RuleVfx.magic_circle(board, anchor, Color(0.85, 0.78, 0.6))
+			for t: Vector3 in tiles:
+				Vfx.dust_ring(board, t, dust_color, 0.45, 12)
+			shake(shake_strength * 1.3, 0.35)
+			await _delay(0.15)
+		TileEffectType.HEALING:
+			RuleVfx.magic_circle(board, anchor, RuleVfx.HEAL_GOLD)
+			for t: Vector3 in tiles:
+				Vfx.glow_flash(board, t + Vector3(0, 0.8, 0), RuleVfx.HEAL_GOLD, 1.6, 0.45)
+				Vfx.sparkle(board, t + Vector3(0, 0.9, 0), RuleVfx.HEAL_COLOR, 10, 0.9, 0.3)
+			Vfx.light_flash(board, anchor + Vector3(0, 1.2, 0), RuleVfx.HEAL_GOLD, 5.0, 5.0, 0.5)
+			await _delay(0.25)
+		_:
+			Sfx.play(SfxId.BUFF_CAST)
+			RuleVfx.magic_circle(board, anchor, Color(0.75, 0.45, 1.0))
+			await _delay(0.2)
+
+
+# ------------------------------------------------------------------ triggers
+
+## Deathrattle: a ghostly flash on the death tile, the effect's name, then its own visual.
+func _play_deathrattle(e: ResolutionEvent) -> void:
+	var pos: Vector3 = board.grid_to_world(e.from)
+	var color: Color
+	match e.spell_name:
+		"Explode":
+			color = RuleVfx.FIRE_COLOR
+		"Lava Pool":
+			color = RuleVfx.FIRE_COLOR
+		"Last Blessing":
+			color = heal_text_color
+		"Rubble":
+			color = dust_color.lightened(0.3)
+		"Last Word":
+			color = soul_color
+		_:
+			color = Color(0.85, 0.9, 1.0)
+	Vfx.popup_text(board, pos + Vector3(0, 0.35, 0), "Deathrattle: %s" % e.spell_name, color, 52, 1.5)
+	Vfx.glow_flash(board, pos + Vector3(0, 0.4, 0), color, 2.2, 0.35)
+	match e.spell_name:
+		"Explode":
+			Sfx.play(SfxId.EXPLOSION, -3.0, 1.2)
+			RuleVfx.fire_burst(board, pos, 1.4)
+			Vfx.shockwave(board, pos + Vector3(0, 0.05, 0), RuleVfx.FIRE_COLOR, 2.4, 0.4, 0.1)
+			Vfx.smoke_puff(board, pos + Vector3(0, 0.3, 0), Color(0.2, 0.15, 0.12), 12, 1.0)
+			shake(shake_strength * 1.8, 0.28)
+		"Shockwave":
+			Sfx.play(SfxId.PUSH, 0.0, 0.8)
+			Vfx.shockwave(board, pos + Vector3(0, 0.05, 0), Color(1.0, 0.9, 0.7), 2.6, 0.4, 0.12)
+			Vfx.dust_ring(board, pos, dust_color, 0.8, 20)
+			shake(shake_strength * 1.2, 0.2)
+		"Last Blessing":
+			Sfx.play(SfxId.HEAL)
+			Vfx.shockwave(board, pos + Vector3(0, 0.05, 0), RuleVfx.HEAL_GOLD, 3.0, 0.6, 0.08)
+		"Last Word":
+			Sfx.play(SfxId.CARD_DEAL)
+			Vfx.sparkle(board, pos + Vector3(0, 0.4, 0), soul_color, 16, 0.8, 0.4)
+		_:
+			Sfx.play(SfxId.SPELL_FADE, 4.0)
+	await _delay(0.35)
+
+
+## A building appears next to its builder: the token drops in as a scaffold with hammering.
+func _play_building_started(e: ResolutionEvent) -> void:
+	var building: Piece = _play_state.get_piece(e.other_piece_id) if _play_state != null else null
+	if building == null:
+		return
+	var view: PieceView = spawn_view(building)
+	if view == null:
+		return
+	Sfx.play(SfxId.SUMMON, -4.0, 1.1)
+	Sfx.play_delayed(SfxId.BLOCKED, 0.25, -6.0, 1.3)
+	Sfx.play_delayed(SfxId.BLOCKED, 0.45, -6.0, 1.4)
+	Vfx.dust_ring(board, view.global_position, dust_color, 0.6, 18)
+	var turns: int = (building.complete_turn - building.summoned_turn) / 2 if building.complete_turn > building.summoned_turn else 1
+	Vfx.popup_text(board, view.global_position + Vector3(0, 0.4, 0), "Building %s (%d turns)" % [e.spell_name, turns],
+		Color(1.0, 0.85, 0.55), 46, 1.4)
+	await view.play_squash(0.8)
+
+
+## First-hit effect: a burst on the piece and the effect's name; stat changes update the token.
+func _play_first_hit(e: ResolutionEvent, view: PieceView) -> void:
+	var pos: Vector3 = view.global_position if view != null else board.grid_to_world(e.to)
+	var color: Color
+	match e.spell_name:
+		"Thorns":
+			color = Color(0.55, 0.9, 0.35)
+		"Harden":
+			color = shield_color
+		"Enrage":
+			color = Color(1.0, 0.35, 0.2)
+		_:
+			color = Color(0.9, 0.85, 0.7)
+	var text: String
+	match e.spell_name:
+		"Harden":
+			text = "Harden +%d" % e.amount
+		"Enrage":
+			text = "Enrage +%d Atk" % e.amount
+		_:
+			text = "%s!" % e.spell_name
+	Vfx.popup_text(board, pos + Vector3(0, 0.3, 0), text, color, 50, 1.3)
+	Vfx.sparkle(board, pos + Vector3(0, 0.35, 0), color, 14, 0.7, 0.4)
+	if e.spell_name == "Shockwave":
+		Sfx.play(SfxId.PUSH, 0.0, 0.9)
+		Vfx.shockwave(board, pos + Vector3(0, 0.05, 0), Color(1.0, 0.9, 0.7), 2.2, 0.35, 0.12)
+	elif e.spell_name == "Harden":
+		Sfx.play(SfxId.SHIELD_BLOCK)
 	else:
-		Sfx.play(SfxId.BUFF_CAST)
-		RuleVfx.magic_circle(board, anchor, Color(0.75, 0.45, 1.0))
+		Sfx.play(SfxId.BUFF_CAST, -2.0)
+	if view != null:
+		view.set_stats(e.remaining_hp, e.remaining_shield)
+		var live: Piece = _play_state.get_piece(e.piece_id) if _play_state != null else null
+		if live != null:
+			view.set_attack(live.effective_attack)
+		await view.play_flash(color, 0.25)
+	else:
 		await _delay(0.2)
 
 
@@ -867,10 +1078,18 @@ func _resolve_rig() -> CameraRig:
 func _delay(seconds: float) -> void:
 	if seconds <= 0.0 or not is_inside_tree():
 		return
-	await get_tree().create_timer(seconds).timeout
+	await get_tree().create_timer(seconds * animation_pace).timeout
 
 
-## Starts a coroutine without awaiting it; await its completion later with _await_job.
+## Port helper for C# Enum.TryParse: value whose NAMES entry equals text, else fallback.
+static func _parse_enum(names: Dictionary, text: String, fallback: int) -> int:
+	for key: Variant in names:
+		if names[key] == text:
+			return int(key)
+	return fallback
+
+
+## Port helper: starts a coroutine without awaiting it so it can be awaited later via _await_job.
 func _start_job(c: Callable) -> _Job:
 	var job := _Job.new()
 	job.run(c)

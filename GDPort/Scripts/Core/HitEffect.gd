@@ -2,9 +2,9 @@ class_name HitEffect
 extends RefCounted
 ## Side effects of a single predicted hit (see PredictedHit). Flags.
 
-enum { NONE = 0, LAVA = 1, FROZEN = 2, PUSHED = 4, PUSH_BLOCKED = 8, HEALED = 16, CHAIN_TRIGGERED = 32, KILLED = 64 }
+enum { NONE = 0, LAVA = 1, FROZEN = 2, PUSHED = 4, PUSH_BLOCKED = 8, HEALED = 16, KILLED = 64 }
 
-const NAMES := { NONE: "None", LAVA: "Lava", FROZEN: "Frozen", PUSHED: "Pushed", PUSH_BLOCKED: "PushBlocked", HEALED: "Healed", CHAIN_TRIGGERED: "ChainTriggered", KILLED: "Killed" }
+const NAMES := { NONE: "None", LAVA: "Lava", FROZEN: "Frozen", PUSHED: "Pushed", PUSH_BLOCKED: "PushBlocked", HEALED: "Healed", KILLED: "Killed" }
 
 ## Equivalent of C# [Flags] enum ToString(): ", "-joined names, "None" for 0.
 static func name_of(value: int) -> String:

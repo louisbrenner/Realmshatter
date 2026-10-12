@@ -22,9 +22,11 @@ static func auto_free(node: Node, seconds: float) -> void:
 
 
 ## Creates a gradient from a list of colors spread evenly over 0..1.
-## C# params Color[] -> one Array argument: Vfx.ramp([c1, c2]).
-static func ramp(colors: Array) -> Gradient:
+## C# params Color[]: call as Vfx.ramp(c1, c2, c3); a single Array argument (Vfx.ramp([c1, c2])) also works.
+static func ramp(...colors: Array) -> Gradient:
 	var list: Array = colors
+	if list.size() == 1 and (list[0] is Array or list[0] is PackedColorArray):
+		list = Array(list[0])
 	var packed_colors := PackedColorArray()
 	var offsets := PackedFloat32Array()
 	for i in range(list.size()):
@@ -70,7 +72,7 @@ static func _fire(p: CPUParticles3D) -> void:
 static func impact_sparks(parent: Node3D, pos: Vector3, color: Color, amount: int = 40, power: float = 1.0) -> void:
 	if parent == null:
 		return
-	var p: CPUParticles3D = _create_burst(parent, pos, VfxAssets.glow_quad, amount, 0.5)
+	var p: CPUParticles3D = _create_burst(parent, pos, VfxAssets.get_glow_quad(), amount, 0.5)
 	p.direction = Vector3.UP
 	p.spread = 85.0
 	p.initial_velocity_min = 2.5 * power
@@ -81,7 +83,7 @@ static func impact_sparks(parent: Node3D, pos: Vector3, color: Color, amount: in
 	p.scale_amount_min = 0.14
 	p.scale_amount_max = 0.34
 	p.scale_amount_curve = linear_curve(1.0, 0.0)
-	p.color_ramp = ramp([Color(1.0, 1.0, 0.9, 1.0), color, Color(color.r, color.g * 0.5, color.b * 0.3, 0.0)])
+	p.color_ramp = ramp(Color(1.0, 1.0, 0.9, 1.0), color, Color(color.r, color.g * 0.5, color.b * 0.3, 0.0))
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	p.emission_sphere_radius = 0.08
 	_fire(p)
@@ -94,7 +96,7 @@ static func glow_flash(parent: Node3D, pos: Vector3, color: Color, size: float, 
 	if parent == null:
 		return
 	var flash := MeshInstance3D.new()
-	flash.mesh = VfxAssets.glow_quad
+	flash.mesh = VfxAssets.get_glow_quad()
 	flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(flash)
 	flash.global_position = pos
@@ -112,7 +114,7 @@ static func glow_flash(parent: Node3D, pos: Vector3, color: Color, size: float, 
 static func smoke_puff(parent: Node3D, pos: Vector3, color: Color, amount: int = 10, size: float = 0.6) -> void:
 	if parent == null:
 		return
-	var p: CPUParticles3D = _create_burst(parent, pos, VfxAssets.smoke_quad, amount, 0.95)
+	var p: CPUParticles3D = _create_burst(parent, pos, VfxAssets.get_smoke_quad(), amount, 0.95)
 	p.explosiveness = 0.85
 	p.direction = Vector3.UP
 	p.spread = 70.0
@@ -126,7 +128,7 @@ static func smoke_puff(parent: Node3D, pos: Vector3, color: Color, amount: int =
 	p.scale_amount_curve = linear_curve(0.5, 1.3)
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	p.emission_sphere_radius = 0.2
-	p.color_ramp = ramp([Color(color.r, color.g, color.b, 0.6), Color(color.r, color.g, color.b, 0.35), Color(color.r, color.g, color.b, 0.0)])
+	p.color_ramp = ramp(Color(color.r, color.g, color.b, 0.6), Color(color.r, color.g, color.b, 0.35), Color(color.r, color.g, color.b, 0.0))
 	_fire(p)
 
 
@@ -134,7 +136,7 @@ static func smoke_puff(parent: Node3D, pos: Vector3, color: Color, amount: int =
 static func dust_ring(parent: Node3D, pos: Vector3, color: Color, radius: float = 0.45, amount: int = 18) -> void:
 	if parent == null:
 		return
-	var p: CPUParticles3D = _create_burst(parent, pos + Vector3(0, 0.08, 0), VfxAssets.smoke_quad, amount, 0.7)
+	var p: CPUParticles3D = _create_burst(parent, pos + Vector3(0, 0.08, 0), VfxAssets.get_smoke_quad(), amount, 0.7)
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
 	p.emission_ring_axis = Vector3.UP
 	p.emission_ring_radius = radius
@@ -153,7 +155,7 @@ static func dust_ring(parent: Node3D, pos: Vector3, color: Color, radius: float 
 	p.scale_amount_min = 0.25
 	p.scale_amount_max = 0.45
 	p.scale_amount_curve = linear_curve(0.6, 1.4)
-	p.color_ramp = ramp([Color(color.r, color.g, color.b, 0.65), Color(color.r, color.g, color.b, 0.0)])
+	p.color_ramp = ramp(Color(color.r, color.g, color.b, 0.65), Color(color.r, color.g, color.b, 0.0))
 	_fire(p)
 
 
@@ -175,7 +177,7 @@ static func shatter(parent: Node3D, pos: Vector3, body_color: Color, accent_colo
 	p.initial_velocity_min = 2.5
 	p.initial_velocity_max = 5.0
 	p.gravity = Vector3(0, -13.0, 0)
-	p.set_particle_flag(CPUParticles3D.PARTICLE_FLAG_ROTATE_Y, true)
+	p.particle_flag_rotate_y = true
 	p.angle_min = 0.0
 	p.angle_max = 360.0
 	p.angular_velocity_min = -720.0
@@ -185,7 +187,7 @@ static func shatter(parent: Node3D, pos: Vector3, body_color: Color, accent_colo
 	p.scale_amount_curve = linear_curve(1.0, 0.0, 1.0)
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	p.emission_sphere_radius = 0.3
-	p.color_ramp = ramp([body_color.lightened(0.2), accent_color, body_color.darkened(0.4)])
+	p.color_ramp = ramp(body_color.lightened(0.2), accent_color, body_color.darkened(0.4))
 	_fire(p)
 
 	var gold_shard := BoxMesh.new()
@@ -197,7 +199,7 @@ static func shatter(parent: Node3D, pos: Vector3, body_color: Color, accent_colo
 	g.initial_velocity_min = 2.0
 	g.initial_velocity_max = 4.5
 	g.gravity = Vector3(0, -12.0, 0)
-	g.set_particle_flag(CPUParticles3D.PARTICLE_FLAG_ROTATE_Y, true)
+	g.particle_flag_rotate_y = true
 	g.angular_velocity_min = -900.0
 	g.angular_velocity_max = 900.0
 	g.scale_amount_curve = linear_curve(1.0, 0.0, 1.0)
@@ -229,7 +231,7 @@ static func shield_shatter(parent: Node3D, pos: Vector3) -> void:
 	p.initial_velocity_min = 1.5
 	p.initial_velocity_max = 3.5
 	p.gravity = Vector3(0, -8.0, 0)
-	p.set_particle_flag(CPUParticles3D.PARTICLE_FLAG_ROTATE_Y, true)
+	p.particle_flag_rotate_y = true
 	p.angular_velocity_min = -800.0
 	p.angular_velocity_max = 800.0
 	p.scale_amount_curve = linear_curve(1.0, 0.0, 1.0)
@@ -251,7 +253,7 @@ static func shield_block(parent: Node3D, pos: Vector3) -> void:
 static func sparkle(parent: Node3D, pos: Vector3, color: Color, amount: int = 16, lifetime: float = 0.8, radius: float = 0.45) -> void:
 	if parent == null:
 		return
-	var p: CPUParticles3D = _create_burst(parent, pos, VfxAssets.sparkle_quad, amount, lifetime)
+	var p: CPUParticles3D = _create_burst(parent, pos, VfxAssets.get_sparkle_quad(), amount, lifetime)
 	p.explosiveness = 0.55
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	p.emission_sphere_radius = radius
@@ -263,7 +265,7 @@ static func sparkle(parent: Node3D, pos: Vector3, color: Color, amount: int = 16
 	p.scale_amount_min = 0.22
 	p.scale_amount_max = 0.45
 	p.scale_amount_curve = linear_curve(0.0, 0.0, 1.0)
-	p.color_ramp = ramp([Color(1.0, 1.0, 1.0, 1.0), color, Color(color.r, color.g, color.b, 0.0)])
+	p.color_ramp = ramp(Color(1.0, 1.0, 1.0, 1.0), color, Color(color.r, color.g, color.b, 0.0))
 	_fire(p)
 
 
@@ -288,7 +290,7 @@ static func coin_fountain(parent: Node3D, pos: Vector3, coins: int = 6) -> void:
 	p.initial_velocity_min = 3.0
 	p.initial_velocity_max = 4.3
 	p.gravity = Vector3(0, -8.0, 0)
-	p.set_particle_flag(CPUParticles3D.PARTICLE_FLAG_ROTATE_Y, true)
+	p.particle_flag_rotate_y = true
 	p.angular_velocity_min = 300.0
 	p.angular_velocity_max = 700.0
 	p.scale_amount_curve = linear_curve(1.0, 0.2, 1.0)
@@ -347,7 +349,7 @@ static func damage_number(parent: Node3D, pos: Vector3, text: String, splat_colo
 	root.add_child(splat)
 	var label: Label3D = VfxAssets.create_label(text, 104, 0.0042, Color.WHITE, 20, 42)
 	root.add_child(label)
-	var splat_mat: ShaderMaterial = splat.material_override as ShaderMaterial
+	var splat_mat := splat.material_override as ShaderMaterial
 
 	var side: float = _rng.randf_range(-0.25, 0.25)
 	var start: Vector3 = root.global_position
@@ -367,7 +369,7 @@ static func damage_number(parent: Node3D, pos: Vector3, text: String, splat_colo
 	fade.chain().tween_callback(root.queue_free)
 
 
-## Popping, rising text (info, "+1", "Chain!", ...).
+## Popping, rising text (info, "+1", "Arc!", ...).
 static func popup_text(parent: Node3D, pos: Vector3, text: String, color: Color, font_size: int = 64, lift: float = 1.2) -> void:
 	if parent == null:
 		return
@@ -396,13 +398,13 @@ static func projectile(parent: Node3D, from: Vector3, to: Vector3, color: Color,
 	root.global_position = from
 
 	var head := MeshInstance3D.new()
-	head.mesh = VfxAssets.glow_quad
+	head.mesh = VfxAssets.get_glow_quad()
 	head.scale = Vector3.ONE * 0.7
 	head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	head.set_instance_shader_parameter("tint", color)
 	root.add_child(head)
 	var core := MeshInstance3D.new()
-	core.mesh = VfxAssets.glow_quad
+	core.mesh = VfxAssets.get_glow_quad()
 	core.scale = Vector3.ONE * 0.22
 	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	core.set_instance_shader_parameter("tint", Color(1.0, 1.0, 0.95))
@@ -414,7 +416,7 @@ static func projectile(parent: Node3D, from: Vector3, to: Vector3, color: Color,
 	root.add_child(light)
 
 	var trail := CPUParticles3D.new()
-	trail.mesh = VfxAssets.glow_quad
+	trail.mesh = VfxAssets.get_glow_quad()
 	trail.amount = 48
 	trail.lifetime = 0.32
 	trail.local_coords = false
@@ -426,7 +428,7 @@ static func projectile(parent: Node3D, from: Vector3, to: Vector3, color: Color,
 	trail.scale_amount_min = 0.25
 	trail.scale_amount_max = 0.42
 	trail.scale_amount_curve = linear_curve(1.0, 0.0)
-	trail.color_ramp = ramp([Color(1.0, 1.0, 0.9, 0.9), color, Color(color.r, color.g, color.b, 0.0)])
+	trail.color_ramp = ramp(Color(1.0, 1.0, 0.9, 0.9), color, Color(color.r, color.g, color.b, 0.0))
 	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(trail)
 	trail.emitting = true

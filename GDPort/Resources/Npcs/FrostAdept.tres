@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcFrostAdept.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostArcher.tres" id="r_FrostArcher"]
+
+[resource]
+script = ExtResource("1_npc")
+id = "frost_adept"
+name = "Sigrun"
+title = "Frostbound · Rime Adept"
+clan = 3
+house = 3
+deck = ExtResource("3_deck")
+position = Vector2(720, 470)
+greeting = "Patience is the first lesson of the ice. Let us see yours."
+rematch_line = "Once more, then. The ice is patient."
+defeat_line = "You melted my defence. Well done."
+victory_line = "Still. Cold. Patient. That is how one wins."
+reward_gold = 75
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_FrostArcher")])

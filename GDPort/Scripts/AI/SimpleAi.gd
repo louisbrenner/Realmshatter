@@ -2,13 +2,16 @@ class_name SimpleAi
 extends RefCounted
 ## Heuristic AI opponent. Uses only the public TurnController command API.
 ## AP is budgeted greedily in priority order, re-evaluated after every action:
-## 1. finish a pending draft (free), 2. high-value orders (attacks, entering the scoring zone),
-## 3. units while the own board is weak, 4. draw if the hand has nothing useful,
-## 5. low-value orders (advance toward the zone), 6. remaining cards (spells incl. tile spells, units up to a cap),
-## 7. draw with leftover AP, 8. convert VP into AP for a very valuable order (kills) when the VP lead is safe
+## 1. finish a pending draft (free), 2. high-value actions (attacks, entering the scoring zone),
+## 3. one reinforcement per turn while the own army is critically small, 4. draw if the hand has nothing useful,
+## 5. advance toward the scoring zone (before any further deploys, so the army never camps in its base),
+## 6. buildings, 7. remaining cards (spells incl. tile spells, units up to a cap),
+## 8. draw with leftover AP, 9. convert VP into AP for a very valuable action (kills) when the VP lead is safe
 ## or the opponent is about to win.
-## Orders: move toward a free scoring-zone tile (avoiding lava, friendlies may be passed), attack the target
-## whose TurnController.predict_attack outcome is best (direct hits, chains through friendlies, keyword effects).
+## Actions resolve immediately (TurnController.act), so every decision sees the real board. A piece moves toward
+## a free scoring-zone tile (avoiding lava, friendlies may be passed) and attacks the target whose
+## TurnController.predict_attack outcome is best: enemy damage and kills minus friendly fire (Pierce / Arc can
+## hit own pieces), keyword effects and Mending heals.
 ## It never calls end_turn; the caller does that after presenting the actions.
 
 const MAX_STEPS := 64
@@ -16,24 +19,32 @@ const HIGH_ORDER_VALUE := 3
 const MAX_DESIRED_PIECES := 6
 const VP_ORDER_VALUE := 6
 const LAVA_PENALTY := 25
+const MAX_HAND_TO_DRAW := 6
 
 const _INT_MAX := 2147483647
-const _INT_MIN := -2147483648
 
 var _controller: TurnController
 
 
-## Simulated resolution-time knowledge for the orders already queued this turn.
+## Board knowledge of the current turn (actions resolve immediately, so it mirrors the real board).
 class PlanContext:
 	extends RefCounted
 	## Set of Vector2i (Dictionary used as a set).
 	var sim_occupied: Dictionary = {}
-	## piece id -> planned damage.
+	## Always empty now (no queued damage); kept so the scoring helpers stay uniform. piece id -> damage.
 	var planned_damage: Dictionary = {}
-	## Set of piece ids.
-	var planned: Dictionary = {}
-	## Set of piece ids.
-	var chain_fired: Dictionary = {}
+
+
+class AttackPlan:
+	extends RefCounted
+	var tile: Vector2i = Vector2i.ZERO
+	var value: int = 0
+
+	func copy() -> AttackPlan:
+		var c := AttackPlan.new()
+		c.tile = tile
+		c.value = value
+		return c
 
 
 class OrderCandidate:
@@ -42,7 +53,7 @@ class OrderCandidate:
 	## Vector2i or null.
 	var move: Variant = null
 	## AttackPlan or null.
-	var attack: Variant = null
+	var attack: AttackPlan = null
 	var value: int = 0
 
 	func copy() -> OrderCandidate:
@@ -54,27 +65,19 @@ class OrderCandidate:
 		return c
 
 
-class AttackPlan:
-	extends RefCounted
-	var tile: Vector2i = Vector2i.ZERO
-	var chain_piece_id: int = 0
-	var value: int = 0
-	## Array of [piece_id: int, damage: int].
-	var hits: Array = []
-	var triggered: Array[int] = []
-
-	func copy() -> AttackPlan:
-		var c := AttackPlan.new()
-		c.tile = tile
-		c.chain_piece_id = chain_piece_id
-		c.value = value
-		c.hits = hits
-		c.triggered = triggered
-		return c
-
-
 ## The player this AI controls.
 var player_index: int = 0
+
+
+## Creates an AI for the given player of the controller's game.
+func _init(controller: TurnController, player_index_: int) -> void:
+	if controller == null:
+		push_error("SimpleAi: controller is null")
+	_controller = controller
+	if player_index_ < 0 or player_index_ >= GameState.PLAYER_COUNT:
+		push_error("SimpleAi: player_index out of range")
+	player_index = player_index_
+
 
 var _state: GameState:
 	get:
@@ -92,19 +95,9 @@ var is_my_turn: bool:
 			and (_state.phase == GamePhase.DRAFT or _state.phase == GamePhase.MAIN))
 
 
-## Creates an AI for the given player of the controller's game.
-func _init(controller: TurnController, p_player_index: int) -> void:
-	if controller == null:
-		push_error("SimpleAi: controller is null")
-	if p_player_index < 0 or p_player_index >= GameState.PLAYER_COUNT:
-		push_error("SimpleAi: player_index out of range: %d" % p_player_index)
-	_controller = controller
-	player_index = p_player_index
-
-
 ## Executes the whole turn synchronously via the TurnController (draws, cards, orders, VP conversions) and
-## returns the executed steps in order (Array of AiAction). Does NOT call end_turn. Returns an empty list if it
-## is not this AI's turn. Always leaves the game in Main phase (a started draw is completed).
+## returns the executed steps in order. Does NOT call end_turn. Returns an empty list if it is not this AI's
+## turn. Always leaves the game in Main phase (a started draw is completed).
 func take_turn() -> Array[AiAction]:
 	var actions: Array[AiAction] = []
 	if not is_my_turn:
@@ -114,18 +107,23 @@ func take_turn() -> Array[AiAction]:
 		_do_draft(actions, false)
 
 	var ctx := PlanContext.new()
-	for pos in _board.occupancy.keys():
-		ctx.sim_occupied[pos] = true
-	for _step in range(MAX_STEPS):
+	ctx.sim_occupied = _occupied_set()
+	var reinforced: bool = false
+	for _step: int in range(MAX_STEPS):
 		if _state.phase != GamePhase.MAIN or _state.current_player_index != player_index:
 			break
 		if _try_command(actions, ctx, HIGH_ORDER_VALUE, false):
 			continue
-		if _is_board_weak() and _try_play_best_card(actions, ctx, true):
+		if not reinforced and _is_army_critical() and _try_play_best_card(actions, ctx, true):
+			reinforced = true
 			continue
 		if _should_draw_early() and _try_draw(actions):
 			continue
 		if _try_command(actions, ctx, 1, false):
+			continue
+		if _try_trap(actions):
+			continue
+		if _try_build(actions):
 			continue
 		if _try_play_best_card(actions, ctx, false):
 			continue
@@ -143,13 +141,13 @@ func take_turn() -> Array[AiAction]:
 
 ## Picks the index of the best card in a draft offer, or -1 for an empty offer.
 ## Early on, Resource units are preferred while few own Resource pieces exist; otherwise the
-## strongest unit (attack + hp + shield + keywords); spells only score well once own pieces are on the board.
-func choose_draft_index(offer: Array) -> int:
+## strongest unit (Attack + Hp + Shield + keywords); spells only score well once own pieces are on the board.
+func choose_draft_index(offer: Array[CardData]) -> int:
 	if offer == null or offer.size() == 0:
 		return -1
 
 	var me: PlayerState = _state.players[player_index]
-	var my_pieces: Array = _state.get_pieces_of(player_index)
+	var my_pieces: Array[Piece] = _state.get_pieces_of(player_index)
 	var resource_count: int = 0
 	var hand_units: int = 0
 	var hand_spells: int = 0
@@ -167,10 +165,17 @@ func choose_draft_index(offer: Array) -> int:
 				resource_count += 1
 	var early: bool = _state.turn_number <= 8
 	var have_units: bool = my_pieces.size() + hand_units > 0
+	# Units above the AP income are dead weight until Mana Wells / VP conversions pay for them; while no unit in
+	# hand is affordable at all, a cheap unit beats a strong one.
+	var income: int = _state.config.base_ap + me.bonus_ap_per_turn
+	var affordable_in_hand: bool = false
+	for c: CardData in me.hand:
+		if c != null and c.card_type == CardType.UNIT and _controller.get_card_cost(c) <= income:
+			affordable_in_hand = true
 
 	var best: int = -1
 	var best_score: float = -INF
-	for i in range(offer.size()):
+	for i: int in range(offer.size()):
 		var card: CardData = offer[i]
 		if card == null:
 			continue
@@ -178,12 +183,19 @@ func choose_draft_index(offer: Array) -> int:
 		if card.card_type == CardType.UNIT:
 			score = float(_unit_strength(card))
 			if card.role == UnitRole.RESOURCE and early and resource_count < 2:
-				score += 10.0
+				score += 10
+			var over: int = _controller.get_card_cost(card) - income
+			if over > 0:
+				score -= 4 * over
+			elif not affordable_in_hand:
+				score += 6
 		else:
-			score = (_spell_draft_value(card) * 1.5 + 1.0 - hand_spells * 2.0) \
-				if (my_pieces.size() > 0 or card.targets_tile) else -5.0
+			if my_pieces.size() > 0 or card.targets_tile:
+				score = _spell_draft_value(card) * 1.5 + 1 - hand_spells * 2
+			else:
+				score = -5.0
 			if not have_units:
-				score -= 10.0
+				score -= 10
 		if score > best_score:
 			best_score = score
 			best = i
@@ -194,10 +206,21 @@ func choose_draft_index(offer: Array) -> int:
 
 ## Pays for a Draw and picks the best offered card. False if drawing is not possible.
 func _try_draw(actions: Array[AiAction]) -> bool:
-	if not _controller.can_draw() or not _controller.draw():
+	# Do not hoard: with a full hand the AP is better spent on the board - unless no unit in hand is affordable
+	# (a hand of spells and expensive units cannot reach the board and would stall the AI forever).
+	if (_state.players[player_index].hand.size() >= MAX_HAND_TO_DRAW and _has_affordable_unit()) or not _controller.can_draw() or not _controller.draw():
 		return false
 	_do_draft(actions, true)
 	return true
+
+
+## True if a unit card in hand costs no more than the AP left.
+func _has_affordable_unit() -> bool:
+	var me: PlayerState = _state.players[player_index]
+	for card: CardData in me.hand:
+		if card.card_type == CardType.UNIT and _controller.get_card_cost(card) <= me.action_points:
+			return true
+	return false
 
 
 func _do_draft(actions: Array[AiAction], paid: bool) -> void:
@@ -210,24 +233,35 @@ func _do_draft(actions: Array[AiAction], paid: bool) -> void:
 	var card: CardData = me.draft_offer[index]
 	if not _controller.choose_draft_card(index) and not _controller.choose_draft_card(0):
 		return
-	var desc: String
+	var a := AiAction.new()
+	a.kind = AiActionKind.DRAFT
+	a.player_index = player_index
+	a.card = card
 	if paid:
-		desc = "Drew (%d AP) and kept %s" % [_state.config.draw_ap_cost, _card_name(card)]
+		a.description = "Drew (%d AP) and kept %s" % [_state.config.draw_ap_cost, _card_name(card)]
 	else:
-		desc = "Drafted %s" % _card_name(card)
-	actions.append(_make_action(AiActionKind.DRAFT, card, -1, null, null, null, desc))
+		a.description = "Drafted %s" % _card_name(card)
+	actions.append(a)
 
 
-## Few own pieces, or fewer than the opponent.
+## Fewer than 3 own units, or fewer units than the opponent (buildings do not count).
 func _is_board_weak() -> bool:
-	var mine: int = _state.get_pieces_of(player_index).size()
-	var theirs: int = _state.get_pieces_of(1 - player_index).size()
+	var mine: int = _count_units(_state.get_pieces_of(player_index))
+	var theirs: int = _count_units(_state.get_pieces_of(1 - player_index))
 	return mine < 3 or mine < theirs
+
+
+## Reinforcing BEFORE moving is only worth it with almost no army (fewer than 2 units, or 2+ units behind the
+## opponent); otherwise the existing units advance first and new units are deployed with the remaining AP.
+func _is_army_critical() -> bool:
+	var mine: int = _count_units(_state.get_pieces_of(player_index))
+	var theirs: int = _count_units(_state.get_pieces_of(1 - player_index))
+	return mine < 2 or mine + 2 <= theirs
 
 
 ## Draw before spending AP elsewhere if the hand is empty, or the board is weak and no unit is in hand.
 func _should_draw_early() -> bool:
-	var hand: Array = _state.players[player_index].hand
+	var hand: Array[CardData] = _state.players[player_index].hand
 	if hand.size() == 0:
 		return true
 	if not _is_board_weak():
@@ -256,8 +290,11 @@ func _should_spend_vp() -> bool:
 func _try_convert_vp(actions: Array[AiAction], reason: String) -> bool:
 	if not _should_spend_vp() or not _controller.convert_vp_to_ap():
 		return false
-	actions.append(_make_action(AiActionKind.CONVERT_VP, null, -1, null, null, null,
-		"Converted 1 VP into 1 AP (%s)" % reason))
+	var a := AiAction.new()
+	a.kind = AiActionKind.CONVERT_VP
+	a.player_index = player_index
+	a.description = "Converted 1 VP into 1 AP (%s)" % reason
+	actions.append(a)
 	return true
 
 
@@ -265,7 +302,7 @@ func _try_convert_vp(actions: Array[AiAction], reason: String) -> bool:
 
 func _try_play_best_card(actions: Array[AiAction], ctx: PlanContext, units_only: bool) -> bool:
 	var me: PlayerState = _state.players[player_index]
-	var units_allowed: bool = units_only or _state.get_pieces_of(player_index).size() < MAX_DESIRED_PIECES
+	var units_allowed: bool = units_only or _count_units(_state.get_pieces_of(player_index)) < MAX_DESIRED_PIECES
 	var best_card: CardData = null
 	var best_tile: Vector2i = Vector2i.ZERO
 	var best_target: Piece = null
@@ -291,12 +328,12 @@ func _try_play_best_card(actions: Array[AiAction], ctx: PlanContext, units_only:
 			tile = deploy
 			value = float(_unit_strength(card))
 		elif card.targets_tile:
-			var res: Array = _find_tile_spell_target(card, ctx)
-			var anchor: Variant = res[0]
+			var found: Dictionary = _find_tile_spell_target(card, ctx)
+			var anchor: Variant = found.result
 			if anchor == null:
 				continue
 			tile = anchor
-			value = float(res[1])
+			value = float(found.best_value)
 		else:
 			target = _find_spell_target(card)
 			if target == null:
@@ -318,51 +355,73 @@ func _try_play_best_card(actions: Array[AiAction], ctx: PlanContext, units_only:
 		if piece == null:
 			return false
 		ctx.sim_occupied[best_tile] = true
-		actions.append(_make_action(AiActionKind.PLAY_UNIT, best_card, piece.id, best_tile, null, null,
-			"Deployed %s at %s" % [_card_name(best_card), str(best_tile)]))
+		var a := AiAction.new()
+		a.kind = AiActionKind.PLAY_UNIT
+		a.player_index = player_index
+		a.card = best_card
+		a.piece_id = piece.id
+		a.target = best_tile
+		a.description = "Deployed %s at %s" % [_card_name(best_card), str(best_tile)]
+		actions.append(a)
 	elif best_card.targets_tile:
 		if not _controller.play_spell_on_tile(best_card, best_tile):
 			return false
 		# Kills from the spell free tiles; walls are respected by _simulated_reachable via the board.
-		for p in ctx.sim_occupied.keys():
-			if not _board.is_occupied(p) and not _is_planned_destination(ctx, p):
+		for p: Vector2i in ctx.sim_occupied.keys():
+			if not _board.is_occupied(p):
 				ctx.sim_occupied.erase(p)
-		actions.append(_make_action(AiActionKind.PLAY_SPELL, best_card, -1, best_tile, null, null,
-			"Cast %s on %s" % [_card_name(best_card), str(best_tile)]))
+		var a := AiAction.new()
+		a.kind = AiActionKind.PLAY_SPELL
+		a.player_index = player_index
+		a.card = best_card
+		a.piece_id = -1
+		a.target = best_tile
+		a.description = "Cast %s on %s" % [_card_name(best_card), str(best_tile)]
+		actions.append(a)
 	else:
 		var target_pos: Vector2i = best_target.position
 		if not _controller.play_spell_card(best_card, best_target):
 			return false
-		actions.append(_make_action(AiActionKind.PLAY_SPELL, best_card, best_target.id, target_pos, null, null,
-			"Cast %s on #%d %s at %s" % [_card_name(best_card), best_target.id, _card_name(best_target.source), str(target_pos)]))
+		var a := AiAction.new()
+		a.kind = AiActionKind.PLAY_SPELL
+		a.player_index = player_index
+		a.card = best_card
+		a.piece_id = best_target.id
+		a.target = target_pos
+		a.description = "Cast %s on #%d %s at %s" % [_card_name(best_card), best_target.id, _card_name(best_target.source), str(target_pos)]
+		actions.append(a)
 	return true
 
 
-func _is_planned_destination(ctx: PlanContext, pos: Vector2i) -> bool:
-	for p: Piece in _state.get_pieces_of(player_index):
-		if ctx.planned.has(p.id) and p.order != null and p.order.move_target != null and p.order.move_target == pos:
-			return true
-	return false
-
-
 ## Free own deploy tile closest to the scoring zone (ties: free tile ahead, then center column). Avoids lava.
-## Returns Vector2i or null.
+## Planted units may go forward (near own units): they are placed where they threaten the most enemies, close to the
+## scoring zone, but not right next to an enemy that would kill them at once. Returns Vector2i or null.
 func _find_deploy_tile(card: CardData) -> Variant:
 	var best: Variant = null
 	var best_score: int = _INT_MAX
 	var forward: int = BoardState.forward_direction(player_index)
-	for y in range(_board.height):
-		for x in range(_board.width):
+	var planted: bool = card.has_keyword(Keyword.PLANTED)
+	for y: int in range(_board.height):
+		for x: int in range(_board.width):
 			var pos := Vector2i(x, y)
-			if not _board.is_in_deploy_zone(player_index, pos) or _board.is_occupied(pos):
+			if (not planted and not _board.is_in_deploy_zone(player_index, pos)) or _board.is_occupied(pos):
 				continue
 			if not _controller.can_play_unit_card(card, pos):
 				continue
-			var ahead := Vector2i(x, y + forward)
-			var score: int = _distance_to_zone_rect(pos) * 20 \
-				+ (10 if _board.is_inside(ahead) and (_board.is_occupied(ahead) or _board.is_wall(ahead)) else 0) \
-				+ (50 if _board.get_tile_effect_type(pos) == TileEffectType.LAVA else 0) \
-				+ absi(2 * x - (_board.width - 1))
+			var score: int
+			if planted:
+				var enemy_dist: int = _nearest_enemy_distance(pos)
+				var reach: int = maxi(1, card.range)
+				score = (_distance_to_zone_rect(pos) * 6
+					+ (0 if enemy_dist <= reach else (enemy_dist - reach) * 8)
+					+ (25 if enemy_dist <= 1 else 0)
+					+ (50 if _board.get_tile_effect_type(pos) == TileEffectType.LAVA else 0))
+			else:
+				var ahead := Vector2i(x, y + forward)
+				score = (_distance_to_zone_rect(pos) * 20
+					+ (10 if _board.is_inside(ahead) and (_board.is_occupied(ahead) or _board.is_wall(ahead)) else 0)
+					+ (50 if _board.get_tile_effect_type(pos) == TileEffectType.LAVA else 0)
+					+ absi(2 * x - (_board.width - 1)))
 			if score < best_score:
 				best_score = score
 				best = pos
@@ -370,7 +429,7 @@ func _find_deploy_tile(card: CardData) -> Variant:
 
 
 ## Buff (net positive deltas): own piece nearest the zone / most threatened. Debuff: strongest enemy.
-## Overcharge-like status spells: own piece whose chain would hit the most enemies.
+## Overcharge-like status spells: own piece that can still act and has an enemy within striking distance.
 func _find_spell_target(card: CardData) -> Piece:
 	if card.grant_status == StatusEffectType.OVERCHARGED:
 		return _find_overcharge_target(card)
@@ -396,49 +455,41 @@ func _find_spell_target(card: CardData) -> Piece:
 			score = float(p.effective_attack * 2 + p.current_hp + p.total_shield
 				+ (10 if _board.is_in_scoring_zone(p.position) else 0))
 		if _has_spell(p, card):
-			score -= 15.0
+			score -= 15
 		if score > best_score and _controller.can_play_spell_card(card, p):
 			best_score = score
 			best = p
 	return best
 
 
-## Own piece (not yet Overcharged) whose chain directions hold enemies and that a friendly can trigger.
+## Own piece (not yet Overcharged) that can still act this turn and reach an enemy with its attack.
 func _find_overcharge_target(card: CardData) -> Piece:
 	var best: Piece = null
-	var best_value: int = 1
+	var best_value: int = 0
 	for p: Piece in _state.get_pieces_of(player_index):
-		if p.has_status(StatusEffectType.OVERCHARGED) or p.effective_attack <= 0 or not _controller.can_play_spell_card(card, p):
+		if (p.has_status(StatusEffectType.OVERCHARGED) or p.effective_attack <= 0 or p.has_acted(_state.turn_number)
+				or p.is_summoning_sick(_state.turn_number) or not _controller.can_play_spell_card(card, p)):
 			continue
-		var enemies: int = _chain_hits(p).size()
-		if enemies == 0 or not _can_be_triggered(p):
-			continue
-		var value: int = enemies * 2 + p.effective_attack
-		if value > best_value:
-			best_value = value
-			best = p
+		var reach: int = p.effective_movement + p.effective_range
+		for e: Piece in _state.pieces:
+			if e.owner_index == player_index or GridPos.manhattan_distance(e.position, p.position) > reach:
+				continue
+			var value: int = p.effective_attack * 2 + (4 if e.current_hp + e.total_shield <= p.effective_attack * 2 else 1)
+			if value > best_value:
+				best_value = value
+				best = p
 	return best
-
-
-## True if another own commandable piece has this piece within attack range (from its current tile).
-func _can_be_triggered(target: Piece) -> bool:
-	for p: Piece in _state.get_pieces_of(player_index):
-		if (p != target and p.order == null and not p.is_summoning_sick(_state.turn_number)
-				and _board.is_in_attack_range(p.position, target.position, p.effective_range)):
-			return true
-	return false
 
 
 ## Best anchor for a tile/area spell, scored by: enemy damage / kills, lava under enemies (minus own pieces
 ## on lava), walls in front of advancing enemies (minus walls in front of own pieces), healing of
-## damaged own pieces. Returns [anchor: Vector2i or null, best_value: int]; anchor null if nothing reaches
-## the minimum value.
-func _find_tile_spell_target(card: CardData, ctx: PlanContext) -> Array:
+## damaged own pieces. Returns {"result": Vector2i or null, "best_value": int}.
+func _find_tile_spell_target(card: CardData, ctx: PlanContext) -> Dictionary:
 	var best_value: int = 0
 	var best: Variant = null
 	var min_value: int = 3 if card.tile_effect == TileEffectType.WALL else (2 if card.tile_effect == TileEffectType.HEALING else 4)
-	for y in range(_board.height):
-		for x in range(_board.width):
+	for y: int in range(_board.height):
+		for x: int in range(_board.width):
 			var anchor := Vector2i(x, y)
 			if not _controller.can_play_spell_on_tile(card, anchor):
 				continue
@@ -446,7 +497,7 @@ func _find_tile_spell_target(card: CardData, ctx: PlanContext) -> Array:
 			if value >= min_value and value > best_value:
 				best_value = value
 				best = anchor
-	return [best, best_value]
+	return {"result": best, "best_value": best_value}
 
 
 func _score_tile_spell(card: CardData, anchor: Vector2i, ctx: PlanContext) -> int:
@@ -457,12 +508,12 @@ func _score_tile_spell(card: CardData, anchor: Vector2i, ctx: PlanContext) -> in
 		var mine: bool = p != null and p.owner_index == player_index
 		if enemy and card.spell_damage > 0:
 			var kills: bool = p.current_hp + p.total_shield <= card.spell_damage
-			if kills and ctx.planned_damage.has(p.id):
-				# A queued attack targets this tile: killing it now would make that order hit an empty tile.
-				return _INT_MIN
 			value += 6 if kills else 2
 		if mine and card.spell_heal > 0:
 			value += mini(card.spell_heal, p.max_hp - p.current_hp)
+		if card.spell_push and p != null:
+			var spot: int = (2 if _board.is_in_scoring_zone(t) else 0) + (2 if _board.is_in_hot_zone(t) else 0)
+			value += (1 + spot) if enemy else -(1 + spot)
 		match card.tile_effect:
 			TileEffectType.LAVA:
 				value += 1 if enemy else 0
@@ -493,9 +544,9 @@ func _wall_value(t: Vector2i) -> int:
 
 # ---------------------------------------------------------------- orders
 
-## Evaluates every commandable own piece without an order and queues the best order whose value is at
-## least min_value. If AP is missing and allow_vp is set, converts 1 VP into AP first (_should_spend_vp).
-## False if none qualifies.
+## Evaluates every own piece that can still act and executes the best action (TurnController.act, resolves
+## immediately) whose value is at least min_value. If AP is missing and allow_vp is set, converts 1 VP into AP
+## first (_should_spend_vp). False if none qualifies.
 func _try_command(actions: Array[AiAction], ctx: PlanContext, min_value: int, allow_vp: bool) -> bool:
 	var need_ap: bool = _state.config.order_ap_cost > _state.players[player_index].action_points
 	if need_ap and not (allow_vp and _should_spend_vp()):
@@ -503,9 +554,10 @@ func _try_command(actions: Array[AiAction], ctx: PlanContext, min_value: int, al
 	if not need_ap and allow_vp:
 		return false
 
+	ctx.sim_occupied = _occupied_set()
 	var best: OrderCandidate = null
 	for piece: Piece in _state.get_pieces_of(player_index):
-		if piece.order != null or ctx.planned.has(piece.id) or not _controller.can_command(piece):
+		if not _controller.can_command(piece):
 			continue
 		var c: OrderCandidate = _evaluate_order(piece, ctx)
 		if c == null or c.value < min_value:
@@ -517,30 +569,25 @@ func _try_command(actions: Array[AiAction], ctx: PlanContext, min_value: int, al
 
 	var pick: OrderCandidate = best
 	var p: Piece = pick.piece
-	var attack_plan: AttackPlan = pick.attack
-	var attack_tile: Variant = attack_plan.tile if attack_plan != null else null
+	var attack_tile: Variant = pick.attack.tile if pick.attack != null else null
 	while _state.config.order_ap_cost > _state.players[player_index].action_points:
-		if not _try_convert_vp(actions, "for %s's order" % _card_name(p.source)):
+		if not _try_convert_vp(actions, "for %s's action" % _card_name(p.source)):
 			return false
-	if not _controller.set_order(p, pick.move, attack_tile):
+	var description: String = _describe_order(p, pick.move, pick.attack)
+	if _controller.act(p, pick.move, attack_tile) == null:
 		return false
+	ctx.sim_occupied = _occupied_set()
 
-	ctx.planned[p.id] = true
-	if pick.move != null:
-		ctx.sim_occupied.erase(p.position)
-		ctx.sim_occupied[pick.move] = true
-	if attack_plan != null:
-		for hit: Array in attack_plan.hits:
-			var id: int = hit[0]
-			var dmg: int = hit[1]
-			var prev: int = ctx.planned_damage.get(id, 0)
-			ctx.planned_damage[id] = prev + dmg
-		for id: int in attack_plan.triggered:
-			ctx.chain_fired[id] = true
-
-	actions.append(_make_action(AiActionKind.SET_ORDER, p.source, p.id,
-		attack_tile if attack_tile != null else pick.move, pick.move, attack_tile,
-		_describe_order(p, pick.move, attack_plan) + " (%d AP)" % _state.config.order_ap_cost))
+	var a := AiAction.new()
+	a.kind = AiActionKind.COMMAND
+	a.player_index = player_index
+	a.card = p.source
+	a.piece_id = p.id
+	a.move_target = pick.move
+	a.attack_target = attack_tile
+	a.target = attack_tile if attack_tile != null else pick.move
+	a.description = description + " (%d AP)" % _state.config.order_ap_cost
+	actions.append(a)
 	return true
 
 
@@ -557,38 +604,44 @@ func _is_better(a: OrderCandidate, b: OrderCandidate) -> bool:
 ## Null if the order would do nothing useful. Validity is checked without AP (_try_command handles AP).
 func _evaluate_order(piece: Piece, ctx: PlanContext) -> OrderCandidate:
 	var dest: Vector2i = _choose_move(piece, ctx.sim_occupied, ctx.planned_damage)
-	var attack: AttackPlan = null if ctx.chain_fired.has(piece.id) else _choose_attack(piece, dest, ctx)
+	var attack: AttackPlan = _choose_attack(piece, dest, ctx)
 	var move: Variant = dest if dest != piece.position else null
 
 	if move != null and not _controller.get_valid_move_targets(piece).has(move):
 		move = null
-		attack = null if ctx.chain_fired.has(piece.id) else _choose_attack(piece, piece.position, ctx)
-	var attack_from: Vector2i = move if move != null else piece.position
-	if attack != null and not _board.is_in_attack_range(attack_from, attack.tile, piece.effective_range):
+		attack = _choose_attack(piece, piece.position, ctx)
+	var from_pos: Vector2i = move if move != null else piece.position
+	if attack != null and not _board.is_in_attack_range(from_pos, attack.tile, piece.effective_range):
 		attack = null
 	if move == null and attack == null:
 		return null
 
 	var value: int = attack.value if attack != null else 0
 	if move != null:
+		var move_pos: Vector2i = move
 		var was_in_zone: bool = _board.is_in_scoring_zone(piece.position)
-		if not was_in_zone and _board.is_in_scoring_zone(move):
+		if not _board.is_in_hot_zone(piece.position) and _board.is_in_hot_zone(move_pos):
+			value += 3 if was_in_zone else 6
+		elif not was_in_zone and _board.is_in_scoring_zone(move_pos):
 			value += 4
 		else:
-			var progress: int = _distance_to_zone_rect(piece.position) - _distance_to_zone_rect(move)
+			var progress: int = _distance_to_zone_rect(piece.position) - _distance_to_zone_rect(move_pos)
 			if progress > 0:
 				value += 2 if progress >= 2 else 1
+				# Getting units out of the home rows matters most: an army parked at home never scores.
+				if _board.is_in_deploy_zone(player_index, piece.position) and not _board.is_in_deploy_zone(player_index, move_pos):
+					value += 1
 		if (_board.get_tile_effect_type(piece.position) == TileEffectType.LAVA
-				and _board.get_tile_effect_type(move) != TileEffectType.LAVA):
+				and _board.get_tile_effect_type(move_pos) != TileEffectType.LAVA):
 			value += 1
 	if value <= 0:
 		return null
-	var cand := OrderCandidate.new()
-	cand.piece = piece
-	cand.move = move
-	cand.attack = attack
-	cand.value = value
-	return cand
+	var c := OrderCandidate.new()
+	c.piece = piece
+	c.move = move
+	c.attack = attack
+	c.value = value
+	return c
 
 
 ## Chooses a destination: nearest to a free scoring-zone tile, then best attack opportunity, then fewest steps.
@@ -606,8 +659,8 @@ func _choose_move(piece: Piece, sim_occupied: Dictionary, planned_damage: Dictio
 
 	var free_zone: Array[Vector2i] = []
 	var zone: Rect2i = _board.scoring_zone
-	for y in range(zone.position.y, zone.end.y):
-		for x in range(zone.position.x, zone.end.x):
+	for y: int in range(zone.position.y, zone.end.y):
+		for x: int in range(zone.position.x, zone.end.x):
 			var z := Vector2i(x, y)
 			if _board.is_passable(z) and (z == start or not sim_occupied.has(z)):
 				free_zone.append(z)
@@ -625,9 +678,12 @@ func _choose_move(piece: Piece, sim_occupied: Dictionary, planned_damage: Dictio
 		else:
 			dist = _distance_to_zone_rect(c)
 		var score: int = dist * 10 - _attack_opportunity(piece, c, planned_damage) * 2 + GridPos.manhattan_distance(start, c)
-		if _board.get_tile_effect_type(c) == TileEffectType.LAVA:
+		if _board.is_in_hot_zone(c):
+			score -= 12
+		var effect: int = _board.get_tile_effect_type(c)
+		if effect == TileEffectType.LAVA or effect == TileEffectType.STORM:
 			score += LAVA_PENALTY * 3 if piece.current_hp <= _state.config.lava_damage else LAVA_PENALTY
-		elif _board.get_tile_effect_type(c) == TileEffectType.HEALING and piece.current_hp < piece.max_hp:
+		elif effect == TileEffectType.HEALING and piece.current_hp < piece.max_hp:
 			score -= 5
 		if score < best_score:
 			best_score = score
@@ -654,117 +710,166 @@ func _attack_opportunity(piece: Piece, from: Vector2i, planned_damage: Dictionar
 	return result
 
 
-## Attack from 'from': every occupied tile in range is evaluated with TurnController.predict_attack (direct
-## enemy hits as well as chains through unplanned friendlies) and scored by _score_preview. Ties prefer direct
-## hits. Null if nothing has a positive value.
+## Attack from 'from': every occupied tile in range is evaluated with TurnController.predict_attack (enemy
+## damage, friendly fire, Mending heals) and scored by _score_preview. Null if nothing has a positive value.
 func _choose_attack(piece: Piece, from: Vector2i, ctx: PlanContext) -> AttackPlan:
 	var best: AttackPlan = null
-	var best_direct: bool = false
 	for tile: Vector2i in _controller.get_valid_attack_targets(piece, from):
 		var target: Piece = _board.get_piece_at(tile)
 		if target == null or target == piece or not target.is_alive:
 			continue
 		var friendly: bool = target.owner_index == player_index
-		if friendly and (ctx.planned.has(target.id) or ctx.chain_fired.has(target.id)):
-			continue
-		if not friendly and _remaining_ehp(target, ctx.planned_damage) <= 0:
+		if friendly and not (piece.has_keyword(Keyword.MENDING) and target.current_hp < target.max_hp):
 			continue
 		var preview: ChainPreview = _controller.predict_attack(piece, from, tile)
 		if not preview.is_valid:
 			continue
-		var plan: AttackPlan = _score_preview(preview, ctx, tile, target.id if friendly else -1)
-		if plan.value <= 0:
-			continue
-		var direct: bool = not friendly
-		if best == null or plan.value > best.value or (plan.value == best.value and direct and not best_direct):
+		var plan: AttackPlan = _score_preview(preview, ctx, tile)
+		if plan.value > 0 and (best == null or plan.value > best.value):
 			best = plan
-			best_direct = direct
 	return best
 
 
-## Scores a preview: per enemy hit 3 (6 if it kills given planned damage), +1 per keyword effect, + heals.
-func _score_preview(preview: ChainPreview, ctx: PlanContext, tile: Vector2i, chain_piece_id: int) -> AttackPlan:
-	var hits: Array = []
+## Scores a preview: per enemy hit 3 (6 if it kills), +1 per keyword effect, + heals; friendly fire costs
+## 3 per damaged own piece (8 if it dies).
+func _score_preview(preview: ChainPreview, ctx: PlanContext, tile: Vector2i) -> AttackPlan:
 	var local: Dictionary = {}
 	var value: int = 0
+	var hit_enemy_hp: int = 0
 	for hit: PredictedHit in preview.hits:
-		if hit.target_piece_id < 0 or hit.is_friendly:
+		if hit.target_piece_id < 0:
+			continue
+		if hit.is_friendly:
 			continue
 		var enemy: Piece = _state.get_piece(hit.target_piece_id)
 		if enemy == null:
 			continue
-		var already: int = local.get(enemy.id, 0)
+		var already: int = int(local.get(enemy.id, 0))
 		var ehp: int = _remaining_ehp(enemy, ctx.planned_damage) - already
 		if ehp <= 0:
 			continue
 		if hit.damage > 0:
 			value += 6 if ehp <= hit.damage else 3
 			local[enemy.id] = already + hit.damage
-			hits.append([enemy.id, hit.damage])
+			hit_enemy_hp += hit.hp_lost
 		if (hit.effects & HitEffect.FROZEN) != 0:
 			value += 1
 		if (hit.effects & HitEffect.LAVA) != 0:
 			value += 1
 		if (hit.effects & HitEffect.PUSHED) != 0:
-			value += 3 if (_board.is_in_scoring_zone(enemy.position) and hit.pushed_to != null
-				and not _board.is_in_scoring_zone(hit.pushed_to)) else 1
+			var pushed_out: bool = (_board.is_in_scoring_zone(enemy.position) and hit.pushed_to != null
+				and not _board.is_in_scoring_zone(hit.pushed_to))
+			value += 3 if pushed_out else 1
 	value += preview.friendly_healed
+	# Everything that is not a direct hit: deathrattles, thorns, Arc / Pierce on own pieces.
+	value += maxi(0, preview.enemy_hp_lost - hit_enemy_hp) * 2
+	value -= preview.friendly_hp_lost * 2 + preview.friendly_kills * 6
 	var plan := AttackPlan.new()
 	plan.tile = tile
-	plan.chain_piece_id = chain_piece_id
 	plan.value = value
-	plan.hits = hits
-	var triggered: Array[int] = []
-	for id: int in preview.triggered_piece_ids:
-		triggered.append(id)
-	plan.triggered = triggered
 	return plan
 
 
-## Enemies the friendly's chain fire would hit directly (nearest piece per chain direction, walls stop).
-func _chain_hits(shooter: Piece) -> Array[int]:
-	var hits: Array[int] = []
-	var left: int = BoardState.left_direction(shooter.owner_index)
-	var fwd: int = BoardState.forward_direction(shooter.owner_index)
-	var dirs: Array[Vector2i] = [Vector2i(left, 0), Vector2i(-left, 0)]
-	if shooter.has_keyword(Keyword.CONDUIT):
-		dirs.append(Vector2i(0, fwd))
-		dirs.append(Vector2i(0, -fwd))
-	for dir: Vector2i in dirs:
-		for d in range(1, shooter.effective_range + 1):
-			var tile := Vector2i(shooter.position.x + dir.x * d, shooter.position.y + dir.y * d)
-			if not _board.is_passable(tile):
-				break
-			var p: Piece = _board.get_piece_at(tile)
-			if p == null:
-				continue
-			if p.owner_index != player_index:
-				hits.append(p.id)
-			break
-	return hits
-
-
-## Tiles reachable with the v3 move rules where the piece may END (not sim-occupied). Own pieces are passable.
-## Returns a Dictionary used as a set of Vector2i.
-func _simulated_reachable(from: Vector2i, movement: int, occupied: Dictionary) -> Dictionary:
-	var dist: Dictionary = {from: 0}
-	var queue: Array[Vector2i] = [from]
-	var result: Dictionary = {}
-	while queue.size() > 0:
-		var cur: Vector2i = queue.pop_front()
-		var d: int = dist[cur]
-		if d >= movement:
+## Lets an idle Builder start its building when AP allows (keeping 1 AP spare) and the player has fewer than
+## two buildings of that kind. Turrets / Barricades go toward the scoring zone, the rest away from enemies.
+func _try_build(actions: Array[AiAction]) -> bool:
+	var ap: int = _state.players[player_index].action_points
+	for piece: Piece in _state.get_pieces_of(player_index):
+		var type: int = _controller.get_build_type(piece)
+		# A builder in the scoring zone would stop scoring while it builds: keep it scoring instead.
+		if (type == BuildingType.NONE or piece.constructing_id >= 0 or not _controller.can_command(piece)
+				or BuildingInfo.get_cost(type) + 1 > ap or _board.is_in_scoring_zone(piece.position)):
 			continue
-		for next: Vector2i in GridPos.neighbors(cur):
-			if not _board.is_passable(next) or dist.has(next):
-				continue
-			var occupant: Piece = _board.get_piece_at(next)
-			if occupant != null and occupant.owner_index != player_index:
-				continue
-			dist[next] = d + 1
-			if not occupied.has(next):
-				result[next] = true
-			queue.append(next)
+		var same: int = 0
+		for p: Piece in _state.get_pieces_of(player_index):
+			same += 1 if p.building == type else 0
+		if same >= 2:
+			continue
+		# Best tiles first (Barricades: the two best).
+		var forward: bool = type == BuildingType.TURRET or type == BuildingType.BARRICADE
+		var scored: Array[Dictionary] = []
+		for tile: Vector2i in _controller.get_valid_build_tiles(piece):
+			var score: int = _distance_to_zone_rect(tile) * 10 if forward else -_nearest_enemy_distance(tile) * 3
+			if _board.get_tile_effect_type(tile) == TileEffectType.LAVA or (_board.is_in_scoring_zone(tile) and not forward):
+				score += 30
+			scored.append({"tile": tile, "score": score})
+		if scored.size() == 0:
+			continue
+		scored.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.score) < int(b.score))
+		var tiles: Array[Vector2i] = []
+		var i: int = 0
+		while i < scored.size() and tiles.size() < BuildingInfo.get_build_count(type):
+			tiles.append(scored[i].tile)
+			i += 1
+		if _controller.build(piece, tiles, null) == null:
+			continue
+		var tile_texts := PackedStringArray()
+		for t: Vector2i in tiles:
+			tile_texts.append(str(t))
+		var what: String
+		if tiles.size() > 1:
+			what = "%d %ss" % [tiles.size(), BuildingInfo.display_name(type)]
+		else:
+			what = "a %s" % BuildingInfo.display_name(type)
+		var a := AiAction.new()
+		a.kind = AiActionKind.BUILD
+		a.player_index = player_index
+		a.card = piece.source
+		a.piece_id = piece.id
+		a.target = tiles[0]
+		a.description = ("#%d %s builds %s " % [piece.id, _card_name(piece.source), what]
+			+ "at %s (%d AP)" % [" and ".join(tile_texts), BuildingInfo.get_cost(type)])
+		actions.append(a)
+		return true
+	return false
+
+
+## A Trapper with nothing better to do (no worthwhile move or attack this turn) hides a trap next to it when
+## enemies are near: on the free neighbour tile closest to them, preferably inside the scoring zone.
+## The AI knows nothing about the opponent's traps.
+func _try_trap(actions: Array[AiAction]) -> bool:
+	if _state.config.trap_ap_cost > _state.players[player_index].action_points:
+		return false
+	for piece: Piece in _state.get_pieces_of(player_index):
+		if _controller.get_trap_type(piece) == null or not _controller.can_command(piece) or _nearest_enemy_distance(piece.position) > 7:
+			continue
+		var best: Variant = null
+		var best_score: int = _INT_MAX
+		for tile: Vector2i in _controller.get_valid_trap_tiles(piece):
+			var score: int = (_nearest_enemy_distance(tile) * 3 + _distance_to_zone_rect(tile) * 2
+				+ (10 if _board.get_tile_effect_type(tile) == TileEffectType.LAVA else 0))
+			if score < best_score:
+				best_score = score
+				best = tile
+		if best == null or _controller.set_trap(piece, best, null) == null:
+			continue
+		var a := AiAction.new()
+		a.kind = AiActionKind.TRAP
+		a.player_index = player_index
+		a.card = piece.source
+		a.piece_id = piece.id
+		a.target = best
+		a.description = "#%d %s hides a trap (%d AP)" % [piece.id, _card_name(piece.source), _state.config.trap_ap_cost]
+		actions.append(a)
+		return true
+	return false
+
+
+func _nearest_enemy_distance(tile: Vector2i) -> int:
+	var best: int = 99
+	for p: Piece in _state.pieces:
+		if p.owner_index != player_index:
+			best = mini(best, GridPos.manhattan_distance(p.position, tile))
+	return best
+
+
+## Tiles reachable with the move rules (water costs extra movement, own pieces are passable) where the piece may
+## END (not sim-occupied). Returns a Dictionary used as a set of Vector2i.
+func _simulated_reachable(from: Vector2i, movement: int, occupied: Dictionary) -> Dictionary:
+	var result: Dictionary = {}
+	for tile: Vector2i in _board.get_reachable_tiles(from, movement, player_index):
+		if not occupied.has(tile):
+			result[tile] = true
 	return result
 
 
@@ -786,8 +891,25 @@ func _threat_count(piece: Piece) -> int:
 	return threats
 
 
+## Set (Dictionary) of all currently occupied tiles (C#: new HashSet<GridPos>(Board.Occupancy.Keys)).
+func _occupied_set() -> Dictionary:
+	var result: Dictionary = {}
+	for k: Vector2i in _board.occupancy.keys():
+		result[k] = true
+	return result
+
+
+## Number of non-building pieces in the list (C#: FindAll(p => !p.IsBuilding).Count).
+static func _count_units(pieces: Array[Piece]) -> int:
+	var n: int = 0
+	for p: Piece in pieces:
+		if not p.is_building:
+			n += 1
+	return n
+
+
 static func _remaining_ehp(target: Piece, planned_damage: Dictionary) -> int:
-	var dmg: int = planned_damage.get(target.id, 0)
+	var dmg: int = int(planned_damage.get(target.id, 0))
 	return target.current_hp + target.total_shield - dmg
 
 
@@ -808,8 +930,7 @@ static func _spell_net(card: CardData) -> int:
 
 static func _spell_draft_value(card: CardData) -> int:
 	return (absi(_spell_net(card)) + card.spell_damage * 2 + card.spell_heal
-		+ (2 if card.tile_effect != TileEffectType.NONE else 0)
-		+ (2 if card.grant_status != StatusEffectType.NONE else 0))
+		+ (2 if card.tile_effect != TileEffectType.NONE else 0) + (2 if card.grant_status != StatusEffectType.NONE else 0))
 
 
 static func _card_name(card: CardData) -> String:
@@ -822,23 +943,5 @@ func _describe_order(piece: Piece, move: Variant, attack: AttackPlan) -> String:
 	if attack != null:
 		var target: Piece = _board.get_piece_at(attack.tile)
 		var target_name: String = ("#%d %s" % [target.id, _card_name(target.source)]) if target != null else "tile"
-		if attack.chain_piece_id >= 0:
-			text += ", triggers chain via %s at %s" % [target_name, str(attack.tile)]
-		else:
-			text += ", attacks %s at %s" % [target_name, str(attack.tile)]
+		text += ", attacks %s at %s" % [target_name, str(attack.tile)]
 	return text
-
-
-## Replaces the C# object initializer `new AiAction { ... }`.
-func _make_action(kind: int, card: CardData, piece_id: int, target: Variant, move_target: Variant,
-		attack_target: Variant, description: String) -> AiAction:
-	var a := AiAction.new()
-	a.kind = kind
-	a.player_index = player_index
-	a.card = card
-	a.piece_id = piece_id
-	a.target = target
-	a.move_target = move_target
-	a.attack_target = attack_target
-	a.description = description
-	return a

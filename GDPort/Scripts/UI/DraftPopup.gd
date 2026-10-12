@@ -27,22 +27,21 @@ func _ready() -> void:
 	_apply_style()
 
 
-## Shows the offer (Array of CardData) and makes the popup visible. cost_of: Callable(CardData) -> int
-## (an invalid Callable falls back to the card's ap_cost).
-func show_offer(offer: Array, cost_of: Callable = Callable()) -> void:
+## Shows the offer and makes the popup visible. cost_of: Callable(CardData) -> int, may be invalid.
+func show_offer(offer: Array, cost_of: Callable) -> void:
 	_clear_cards()
 	if card_scene == null:
 		push_error("DraftPopup: CardScene is not assigned.")
 		return
 
-	if offer != null:
-		for card: CardData in offer:
-			var view := card_scene.instantiate() as CardView
-			_card_row.add_child(view)
-			view.setup(card, int(cost_of.call(card)) if cost_of.is_valid() else card.ap_cost)
-			view.card_clicked.connect(_on_card_clicked)
-			view.hover_changed.connect(_on_card_hover_changed)
-			_cards.append(view)
+	for card in offer:
+		var card_data := card as CardData
+		var view := card_scene.instantiate() as CardView
+		_card_row.add_child(view)
+		view.setup(card_data, cost_of.call(card_data) if cost_of.is_valid() else card_data.ap_cost)
+		view.card_clicked.connect(_on_card_clicked)
+		view.hover_changed.connect(_on_card_hover_changed)
+		_cards.append(view)
 
 	_title_label.text = "Choose a card"
 	visible = true
@@ -86,7 +85,7 @@ func _apply_style() -> void:
 		style.set_corner_radius_all(16)
 		style.set_border_width_all(3)
 		panel.add_theme_stylebox_override("panel", style)
-	var font: Font = VfxAssets.card_font
+	var font: Font = VfxAssets.get_card_font()
 	if font != null:
 		_title_label.add_theme_font_override("font", font)
 	_title_label.add_theme_font_size_override("font_size", 30)
@@ -110,7 +109,7 @@ func _on_card_hover_changed(card: CardView, hovered: bool) -> void:
 
 
 func _clear_cards() -> void:
-	for view: CardView in _cards:
+	for view in _cards:
 		view.card_clicked.disconnect(_on_card_clicked)
 		view.hover_changed.disconnect(_on_card_hover_changed)
 		card_hover_changed.emit(view, false)

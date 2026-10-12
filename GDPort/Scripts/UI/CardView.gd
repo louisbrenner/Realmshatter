@@ -1,9 +1,11 @@
 class_name CardView
 extends Control
-## Hearthstone-style card (root of Scenes/UI/Card.tscn): stone frame with gold trim, oval (unit) or
-## rounded (spell) art window, blue mana gem with the AP cost, name ribbon, parchment text box,
-## attack/health badges for units, shield and AP bonus mini badges. Playable cards glow green,
-## selected cards glow gold and lift. The root Control receives the mouse; the inner "Body" animates.
+## Printed tabletop card (root of Scenes/UI/Card.tscn): the artwork fills the whole face (CardData.art, or a
+## procedural painting while a card has no picture yet) inside a thin clan-coloured card-stock border. A printed
+## overlay (card_overlay.gdshader) adds the name bar, a rules panel (only when the card has rules text) and the
+## type plate at the bottom, whose outline shows the kind of card. Attack / health badges sit in the bottom
+## corners, the shield badge stacks above the health badge. Playable cards glow green, selected cards glow gold
+## and lift. The root Control receives the mouse; the inner "Body" animates.
 
 signal card_clicked(card: CardView)
 
@@ -17,13 +19,27 @@ const DESCRIPTION_MAX_FONT := 12
 const DESCRIPTION_MIN_FONT := 9
 const NAME_MAX_FONT := 15
 const STATS_MAX_FONT := 11
-## Parchment text box (x, y, w, h) drawn by card_frame.gdshader; holds the stats line and the text.
-const TEXT_RECT := Vector4(11.0, 106.0, 128.0, 80.0)
+## Rules panel (x, y, w, h) drawn by card_overlay.gdshader; holds the rules text.
+const TEXT_RECT := Vector4(10.0, 124.0, 130.0, 44.0)
+## Name bar (x, y, w, h) drawn by card_overlay.gdshader.
+const NAME_RECT := Vector4(5.0, 5.0, 140.0, 25.0)
+## Type plate (x, y, w, h) at the bottom; its outline depends on the card kind.
+const PLATE_RECT := Vector4(38.0, 186.0, 74.0, 20.0)
+## Painting centre offset (pixels, y down) so the subject sits above the rules panel.
+const ART_FOCUS_WITH_TEXT := Vector2(0.0, -34.0)
+const ART_FOCUS_NO_TEXT := Vector2(0.0, -16.0)
 
-const UNIT_FRAME_COLOR := Color(0.5, 0.44, 0.37)
-const SPELL_FRAME_COLOR := Color(0.38, 0.34, 0.54)
 const UNIT_BANNER_COLOR := Color(0.78, 0.6, 0.36)
-const SPELL_BANNER_COLOR := Color(0.6, 0.5, 0.82)
+## Card colour of neutral (clan-less) cards: near-black card stock.
+const NEUTRAL_CARD_COLOR := Color(0.14, 0.13, 0.125)
+const RULES_INK := Color(0.16, 0.1, 0.05)
+## Every icon in the rules panel has the same size, however many there are.
+const RULE_ICON_SIZE := 21.0
+const RULE_FONT_SIZE := 12
+const RULE_ICON_GAP := 2.0
+const RULE_H_GAP := 5.0
+const RULE_V_GAP := 1.0
+const RULE_MIN_SCALE := 0.6
 const PLAYABLE_GLOW_COLOR := Color(0.3, 1.0, 0.38)
 const SELECTED_GLOW_COLOR := Color(1.0, 0.82, 0.25)
 const HOVER_GLOW_COLOR := Color(1.0, 0.9, 0.6)
@@ -49,10 +65,15 @@ var _shield_label: Label
 var _attack_label: Label
 var _health_label: Label
 var _rich_description: RichTextLabel
-var _keyword_row: HBoxContainer
+var _rules_box: VBoxContainer
+var _rules_flow: HFlowContainer
+var _rule_items: Array[RuleItem] = []
 var _frame_mat: ShaderMaterial
 var _art_mat: ShaderMaterial
 var _banner_mat: ShaderMaterial
+var _plate_mat: ShaderMaterial
+var _overlay_mat: ShaderMaterial
+var _overlay: ColorRect
 var _glow_style: StyleBoxFlat
 var _raise_tween: Tween
 var _reveal_tween: Tween
@@ -120,15 +141,31 @@ func _ready() -> void:
 	_frame_mat = ShaderMaterial.new()
 	_frame_mat.shader = VfxAssets.get_shader("card_frame")
 	_frame_mat.set_shader_parameter("card_size", size if size.x > 0 else Vector2(150, 210))
-	_frame_mat.set_shader_parameter("art_rect", Vector4(_art.position.x, _art.position.y, _art.size.x, _art.size.y))
-	_frame_mat.set_shader_parameter("text_rect", TEXT_RECT)
 	_frame.material = _frame_mat
 	_art_mat = ShaderMaterial.new()
 	_art_mat.shader = VfxAssets.get_shader("card_art")
 	_art_mat.set_shader_parameter("rect_size", _art.size)
+	_art_mat.set_shader_parameter("frame_shape", 2)
 	_art.material = _art_mat
+	_overlay_mat = ShaderMaterial.new()
+	_overlay_mat.shader = VfxAssets.get_shader("card_overlay")
+	_overlay_mat.set_shader_parameter("card_size", size if size.x > 0 else Vector2(150, 210))
+	_overlay_mat.set_shader_parameter("name_rect", NAME_RECT)
+	_overlay_mat.set_shader_parameter("text_rect", TEXT_RECT)
+	_overlay_mat.set_shader_parameter("plate_rect", PLATE_RECT)
+	_overlay = ColorRect.new()
+	_overlay.name = "Overlay"
+	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay.material = _overlay_mat
+	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_body.add_child(_overlay)
+	_body.move_child(_overlay, _art.get_index() + 1)
+	# Drawn by the overlay now; the old ribbon / plate nodes and the stats line stay hidden.
+	_banner.visible = false
+	_type_plate.visible = false
+	_stats_label.visible = false
 	_banner_mat = _create_badge_material(_banner, 4, UNIT_BANNER_COLOR)
-	_create_badge_material(_type_plate, 5, Color(0.42, 0.36, 0.3))
+	_plate_mat = _create_badge_material(_type_plate, 5, Color(0.42, 0.36, 0.3))
 	_create_badge_material(_gem, 3, Color(0.22, 0.5, 1.0))
 	_create_badge_material(_ap_badge, 6, Color(0.2, 0.65, 0.25))
 	_create_badge_material(_shield_badge, 2, Color(0.78, 0.8, 0.86))
@@ -150,7 +187,7 @@ func _ready() -> void:
 	_create_keyword_nodes()
 
 	for child: Node in _body.get_children():
-		if child is CanvasItem and child != _glow and child != _frame:
+		if child is CanvasItem and child != _glow and child != _frame and child != _banner and child != _type_plate and child != _stats_label:
 			_face_items.append(child as CanvasItem)
 
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -209,7 +246,7 @@ func set_selected(selected: bool) -> void:
 		_update_raise()
 
 
-## Dramatic reveal: fades in as a card back, flips to the face and flashes gold.
+## Dramatic reveal: fades in as a card back, flips to the face and flashes gold (coroutine).
 func play_reveal(delay: float) -> void:
 	if not is_node_ready():
 		return
@@ -272,7 +309,7 @@ func _on_mouse_exited() -> void:
 
 func _set_show_back(back: bool) -> void:
 	_frame_mat.set_shader_parameter("show_back", back)
-	for item: CanvasItem in _face_items:
+	for item in _face_items:
 		item.visible = not back
 	if not back:
 		_refresh()
@@ -290,36 +327,46 @@ func _refresh() -> void:
 		_description_label.text = ""
 		_rich_description.text = ""
 		tooltip_text = ""
-		_keyword_row.visible = false
+		_rules_box.visible = false
 		_art_mat.set_shader_parameter("has_art", false)
 		return
 
 	var unit: bool = card.card_type == CardType.UNIT
+	var planted: bool = unit and card.has_keyword(Keyword.PLANTED)
 	var tint := Color(card.tint.r, card.tint.g, card.tint.b)
-	_frame_mat.set_shader_parameter("style", 0 if unit else 1)
-	_frame_mat.set_shader_parameter("frame_color", UNIT_FRAME_COLOR if unit else SPELL_FRAME_COLOR)
-	_frame_mat.set_shader_parameter("accent_color", tint)
-	_banner_mat.set_shader_parameter("fill_color", UNIT_BANNER_COLOR if unit else SPELL_BANNER_COLOR)
+	var clan: Color = NEUTRAL_CARD_COLOR if card.clan == Clan.NONE else ClanInfo.get_color(card.clan)
+	# Legendary cards get a gold card stock border.
+	_frame_mat.set_shader_parameter("frame_color", Color(0.95, 0.72, 0.3) if card.rarity == CardRarity.LEGENDARY else clan.darkened(0.12))
 
+	# Artwork: a real picture (CardData.art) fills the face; without one the procedural painting stands in.
 	_art_mat.set_shader_parameter("has_art", card.art != null)
 	if card.art != null:
 		_art_mat.set_shader_parameter("art_texture", card.art)
 	_art_mat.set_shader_parameter("tint", tint)
-	_art_mat.set_shader_parameter("frame_shape", 0 if unit else 1)
 	_art_mat.set_shader_parameter("emblem", _role_emblem(card.role) if unit else (3 if _spell_is_positive(card) else 4))
-	var card_name: String = card.name
-	_art_mat.set_shader_parameter("seed", float(absi(card_name.hash()) % 1000) * 0.01)
+	_art_mat.set_shader_parameter("glyph", ClassVisuals.art_glyph(card))
+	_art_mat.set_shader_parameter("animate", card.rarity != CardRarity.COMMON)
+	_art_mat.set_shader_parameter("seed", float(absi(card.name.hash()) % 1000) * 0.01)
 
-	_name_label.text = "(unnamed)" if card_name.is_empty() else card_name
+	# Rules panel: icons (keywords, triggers, stat changes, statuses, tile effects) with short values.
+	_rule_items = _unit_rule_items(card) if unit else _spell_rule_items(card)
+	var rule_items: int = _rule_items.size()
+	_rules_box.visible = rule_items > 0
+	var has_text: bool = rule_items > 0
+	_art_mat.set_shader_parameter("focus", ART_FOCUS_WITH_TEXT if has_text else ART_FOCUS_NO_TEXT)
+	_overlay_mat.set_shader_parameter("has_text", has_text)
+	_overlay_mat.set_shader_parameter("clan_color", clan)
+	_overlay_mat.set_shader_parameter("rarity_color", CardEconomy.rarity_color(card.rarity))
+	_overlay_mat.set_shader_parameter("plate_shape", (3 if planted else 0) if unit else (2 if card.targets_tile else 1))
+
+	_name_label.text = "(unnamed)" if card.name.is_empty() else card.name
 	_cost_label.text = str(_ap_cost)
-	_type_label.text = UnitRole.name_of(card.role) if unit else ("Area Spell" if card.targets_tile else "Spell")
-	_stats_label.text = ("Move %d  ·  Range %d" % [card.movement, card.range]) if unit else _build_spell_stats(card)
-	_fit_label(_name_label, NAME_MAX_FONT, 10)
-	_fit_label(_stats_label, STATS_MAX_FONT, 8)
+	_type_label.text = ClassInfo.class_or_role(card) if unit else ("Area Spell" if card.targets_tile else "Spell")
+	_fit_label(_type_label, 10, 7)
+	_fit_label(_name_label, NAME_MAX_FONT, 8)
 	_description_label.text = ""
-	_rich_description.text = _build_description_bbcode(card)
-	_layout_description(unit)
-	_build_keyword_emblems(card)
+	_rich_description.text = ""
+	_rich_description.visible = false
 	# Full rules are shown by the HUD's card info panel instead of a delayed native tooltip.
 	tooltip_text = ""
 
@@ -333,16 +380,11 @@ func _refresh() -> void:
 	_shield_badge.visible = shield
 	_shield_label.visible = shield
 	_shield_label.text = str(card.shield)
+	_layout_description(shield)
 	var ap: bool = unit and card.ap_bonus != 0
 	_ap_badge.visible = ap
 	_ap_label.visible = ap
 	_ap_label.text = _format_delta(card.ap_bonus)
-	_stats_label.modulate = Color.WHITE
-	if not unit:
-		if card.targets_tile:
-			_stats_label.modulate = _tile_effect_text_color(card.tile_effect)
-		else:
-			_stats_label.modulate = Color(0.3, 0.75, 0.3) if _spell_is_positive(card) else Color(0.8, 0.4, 1.0)
 
 
 # ------------------------------------------------------------------ keywords
@@ -351,12 +393,33 @@ func _refresh() -> void:
 func _apply_sharp_fonts() -> void:
 	for child: Node in _body.get_children():
 		if child is Label:
-			(child as Label).add_theme_font_override("font", VfxAssets.card_text_bold_font)
+			(child as Label).add_theme_font_override("font", VfxAssets.get_card_text_bold_font())
+	# Badge numbers: lining figures, centred in their badge (label box = badge box, ink centred via margins).
+	var pairs: Array = [
+		{"number": _cost_label, "badge": _gem},
+		{"number": _attack_label, "badge": _attack_badge},
+		{"number": _health_label, "badge": _health_badge},
+		{"number": _shield_label, "badge": _shield_badge},
+		{"number": _ap_label, "badge": _ap_badge},
+	]
+	for pair: Dictionary in pairs:
+		var number: Label = pair["number"]
+		var badge: ColorRect = pair["badge"]
+		number.add_theme_font_override("font", VfxAssets.get_number_font())
+		number.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		number.position = badge.position
+		number.size = badge.size
+		var drop: float = VfxAssets.digit_drop(number.get_theme_font_size("font_size"))
+		var empty := StyleBoxEmpty.new()
+		empty.content_margin_top = maxf(0.0, -drop * 2.0)
+		empty.content_margin_bottom = maxf(0.0, drop * 2.0)
+		number.add_theme_stylebox_override("normal", empty)
 
 
 ## Shrinks a single-line label's font until the text fits its width.
 static func _fit_label(label: Label, max_size: int, min_size: int) -> void:
-	var font: Font = VfxAssets.card_text_bold_font
+	var font: Font = VfxAssets.get_card_text_bold_font()
 	var width: float = label.size.x - 4.0
 	var font_size: int = max_size
 	while font_size > min_size and font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > width:
@@ -364,24 +427,24 @@ static func _fit_label(label: Label, max_size: int, min_size: int) -> void:
 	label.add_theme_font_size_override("font_size", font_size)
 
 
-## Places the card text inside the parchment box (narrower and shorter for units so the attack / health badges
-## never cover it) and picks the largest font size at which the whole text fits.
-func _layout_description(unit: bool) -> void:
+## Places the rules text inside the rules panel (leaving room on the right for the shield badge) and picks the
+## largest font size at which the whole text fits; the rule icons are built at the largest scale that fits.
+func _layout_description(shield: bool) -> void:
 	var pos: Vector2 = _description_label.position
 	var box_size: Vector2 = _description_label.size
-	if unit:
-		pos.x += 4.0
-		box_size.x -= 8.0
-		box_size.y -= 10.0
+	if shield:
+		box_size.x -= 18.0
 	_rich_description.position = pos
 	_rich_description.size = box_size
-	var font_size: int = DESCRIPTION_MAX_FONT
-	while font_size >= DESCRIPTION_MIN_FONT:
+	# The icon box keeps clear of the shield badge, which overlaps the panel's right corner.
+	_rules_box.position = Vector2(TEXT_RECT.x + 3.0, TEXT_RECT.y + 2.0)
+	_rules_box.size = Vector2(TEXT_RECT.z - 6.0 - (20.0 if shield else 0.0), TEXT_RECT.w - 4.0)
+	_build_rule_icons(_rule_items, _fit_rule_scale(_rule_items, _rules_box.size))
+	for font_size in range(DESCRIPTION_MAX_FONT, DESCRIPTION_MIN_FONT - 1, -1):
 		_rich_description.add_theme_font_size_override("normal_font_size", font_size)
 		_rich_description.add_theme_font_size_override("bold_font_size", font_size)
 		if _rich_description.get_content_height() <= box_size.y:
 			break
-		font_size -= 1
 
 
 func _create_keyword_nodes() -> void:
@@ -396,8 +459,8 @@ func _create_keyword_nodes() -> void:
 	_rich_description.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rich_description.position = _description_label.position
 	_rich_description.size = _description_label.size
-	_rich_description.add_theme_font_override("normal_font", VfxAssets.card_text_font)
-	_rich_description.add_theme_font_override("bold_font", VfxAssets.card_text_bold_font)
+	_rich_description.add_theme_font_override("normal_font", VfxAssets.get_card_text_font())
+	_rich_description.add_theme_font_override("bold_font", VfxAssets.get_card_text_bold_font())
 	_rich_description.add_theme_font_size_override("normal_font_size", DESCRIPTION_MAX_FONT)
 	_rich_description.add_theme_font_size_override("bold_font_size", DESCRIPTION_MAX_FONT)
 	_rich_description.add_theme_color_override("default_color", Color(0.13, 0.08, 0.03))
@@ -406,79 +469,214 @@ func _create_keyword_nodes() -> void:
 	_body.add_child(_rich_description)
 	_body.move_child(_rich_description, _description_label.get_index() + 1)
 
-	_keyword_row = HBoxContainer.new()
-	_keyword_row.name = "KeywordRow"
-	_keyword_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_keyword_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_keyword_row.position = Vector2(_art.position.x, _art.position.y + _art.size.y - 32.0)
-	_keyword_row.size = Vector2(_art.size.x, 26.0)
-	_keyword_row.add_theme_constant_override("separation", 2)
-	_body.add_child(_keyword_row)
-	_body.move_child(_keyword_row, _banner.get_index())
+	_rules_box = VBoxContainer.new()
+	_rules_box.name = "RulesBox"
+	_rules_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rules_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_rules_box.position = Vector2(TEXT_RECT.x + 3.0, TEXT_RECT.y + 2.0)
+	_rules_box.size = Vector2(TEXT_RECT.z - 6.0, TEXT_RECT.w - 4.0)
+	_rules_box.visible = false
+	_rules_flow = HFlowContainer.new()
+	_rules_flow.name = "RulesFlow"
+	_rules_flow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rules_flow.alignment = FlowContainer.ALIGNMENT_CENTER
+	_rules_flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_rules_flow.add_theme_constant_override("h_separation", int(RULE_H_GAP))
+	_rules_flow.add_theme_constant_override("v_separation", int(RULE_V_GAP))
+	_rules_box.add_child(_rules_flow)
+	_body.add_child(_rules_box)
+	_body.move_child(_rules_box, _rich_description.get_index() + 1)
 
 
-func _build_keyword_emblems(p_card: CardData) -> void:
-	for child: Node in _keyword_row.get_children():
-		_keyword_row.remove_child(child)
+## One entry of the rules panel: a keyword emblem (glyph = FxIconShape) or a card badge (badge = card_badge shape:
+## 0 attack, 1 health, 2 shield), its colours, an optional value / name next to it and an optional small overlay
+## (Undying level). glyph and badge both -1 = plain text.
+class RuleItem:
+	var glyph: int
+	var badge: int
+	var fg: Color
+	var bg: Color
+	var label: String
+	var overlay: String
+
+	func _init(p_glyph: int = -1, p_badge: int = -1, p_fg: Color = Color.WHITE, p_bg: Color = Color.WHITE, p_label: String = "", p_overlay: String = "") -> void:
+		glyph = p_glyph
+		badge = p_badge
+		fg = p_fg
+		bg = p_bg
+		label = p_label
+		overlay = p_overlay
+
+
+static func _emblem(shape: int, fg: Color, bg: Color, label: String = "") -> RuleItem:
+	return RuleItem.new(shape, -1, fg, bg, label)
+
+
+static func _stat_badge(badge: int, fill: Color, label: String) -> RuleItem:
+	return RuleItem.new(-1, badge, fill, fill, label)
+
+
+const ATTACK_FILL := Color(1.0, 0.66, 0.2)
+const HEALTH_FILL := Color(0.86, 0.12, 0.1)
+const SHIELD_FILL := Color(0.78, 0.8, 0.86)
+
+
+## Unit rules: one emblem per keyword (the icon replaces the name; Builder adds its building, Undying its level), then triggers.
+static func _unit_rule_items(c: CardData) -> Array[RuleItem]:
+	var items: Array[RuleItem] = []
+	for k: int in KeywordInfo.split(c.keywords):
+		var fg: Color = KeywordVisuals.get_foreground(k)
+		var bg: Color = KeywordVisuals.get_background(k)
+		if k == Keyword.AURA:
+			fg = ClanInfo.get_color(c.clan).lightened(0.35)
+			bg = ClanInfo.get_color(c.clan).darkened(0.65)
+		var label: String = ""
+		if k == Keyword.BUILDER and BuildingInfo.for_class(c.class_) != BuildingType.NONE:
+			label = BuildingInfo.display_name(BuildingInfo.for_class(c.class_))
+		elif k == Keyword.TRAPPER:
+			label = TrapInfo.display_name(TrapInfo.for_clan(c.clan))
+		var overlay: String = "+%d" % c.level if k == Keyword.UNDYING and c.level > 0 else ""
+		items.append(RuleItem.new(KeywordVisuals.get_shape(k), -1, fg, bg, label, overlay))
+	if c.legend != LegendEffect.NONE:
+		items.append(_emblem(LegendInfo.get_shape(c.legend), LegendInfo.get_color(c.legend), LegendInfo.EMBLEM_BACKGROUND, LegendInfo.display_name(c.legend)))
+	for line: String in TriggerInfo.card_face_lines(c):
+		var colon: int = line.find(":")
+		var head: String = line.substr(0, colon) if colon >= 0 else line
+		var effect: String = line.substr(colon + 1).strip_edges() if colon >= 0 else ""
+		if head == "First hit":
+			items.append(_emblem(FxIconShape.BURST, Color(1.0, 0.82, 0.45), Color(0.45, 0.16, 0.08, 0.97), effect))
+		elif head == "Deathrattle":
+			items.append(_emblem(FxIconShape.TOMB, Color(0.85, 0.85, 0.95), Color(0.18, 0.16, 0.26, 0.97), effect))
+	return items
+
+
+## Spell rules: area (text), damage / heal / push, tile effect with its duration, stat changes, status, AP.
+static func _spell_rule_items(c: CardData) -> Array[RuleItem]:
+	var items: Array[RuleItem] = []
+	if c.targets_tile:
+		items.append(RuleItem.new(-1, -1, RULES_INK, RULES_INK, _area_name(AreaShape.SINGLE if c.spell_target == SpellTargetType.TILE else c.area_shape)))
+		if c.spell_damage > 0:
+			items.append(_emblem(FxIconShape.BURST, Color(1.0, 0.75, 0.4), Color(0.5, 0.1, 0.06, 0.97), str(c.spell_damage)))
+		if c.spell_heal > 0:
+			items.append(_stat_badge(1, HEALTH_FILL, "+%d" % c.spell_heal))
+		if c.spell_push:
+			items.append(_emblem(FxIconShape.FIST, KeywordVisuals.get_foreground(Keyword.PUSH), KeywordVisuals.get_background(Keyword.PUSH)))
+		if c.tile_effect != TileEffectType.NONE:
+			var shape: int
+			var fg: Color
+			var bg: Color
+			match c.tile_effect:
+				TileEffectType.LAVA:
+					shape = FxIconShape.FLAME
+					fg = Color(1.0, 0.55, 0.15)
+					bg = Color(0.42, 0.1, 0.03, 0.97)
+				TileEffectType.HEALING:
+					shape = FxIconShape.PLUS
+					fg = Color(0.55, 1.0, 0.55)
+					bg = Color(0.1, 0.38, 0.14, 0.97)
+				_:
+					shape = FxIconShape.BRICKS
+					fg = Color(0.88, 0.82, 0.72)
+					bg = Color(0.3, 0.27, 0.24, 0.97)
+			items.append(_emblem(shape, fg, bg, "%dT" % c.tile_effect_duration))
+	else:
+		_add_stat(items, c.attack_delta, 0, ATTACK_FILL)
+		_add_stat(items, c.hp_delta, 1, HEALTH_FILL)
+		_add_stat(items, c.shield_delta, 2, SHIELD_FILL)
+		if c.movement_delta != 0:
+			items.append(_emblem(FxIconShape.CHEVRONS, Color(0.75, 1.0, 0.7), Color(0.14, 0.32, 0.16, 0.97), _format_delta(c.movement_delta)))
+		if c.range_delta != 0:
+			items.append(_emblem(FxIconShape.CROSSHAIR, Color(1.0, 0.88, 0.65), Color(0.38, 0.22, 0.1, 0.97), _format_delta(c.range_delta)))
+		if c.grant_status == StatusEffectType.FROZEN:
+			items.append(_emblem(FxIconShape.SNOWFLAKE, KeywordVisuals.get_foreground(Keyword.FROST), KeywordVisuals.get_background(Keyword.FROST)))
+		elif c.grant_status == StatusEffectType.OVERCHARGED:
+			items.append(_emblem(FxIconShape.BOLT, KeywordVisuals.get_foreground(Keyword.ARC), KeywordVisuals.get_background(Keyword.ARC), "x2"))
+	if c.ap_gain > 0:
+		items.append(_emblem(FxIconShape.GEM, KeywordVisuals.get_foreground(Keyword.PLUNDER), KeywordVisuals.get_background(Keyword.PLUNDER), "+%d" % c.ap_gain))
+	return items
+
+
+static func _add_stat(items: Array[RuleItem], value: int, badge: int, fill: Color) -> void:
+	if value != 0:
+		items.append(_stat_badge(badge, fill, _format_delta(value)))
+
+
+## Largest scale (1 = full size, down to RULE_MIN_SCALE) at which the rule items, flowed into rows like the
+## HFlowContainer does, fit the rules panel (long trigger names on legendaries / epics would overflow it).
+static func _fit_rule_scale(items: Array[RuleItem], box: Vector2) -> float:
+	var font: Font = VfxAssets.get_card_text_bold_font()
+	var rule_scale: float = 1.0
+	while rule_scale > RULE_MIN_SCALE:
+		var icon: float = RULE_ICON_SIZE * rule_scale
+		var font_size: int = maxi(7, roundi(RULE_FONT_SIZE * rule_scale))
+		var row_height: float = maxf(icon, font.get_height(font_size))
+		var rows: int = 1
+		var x: float = 0.0
+		for rule in items:
+			var has_icon: bool = rule.glyph >= 0 or rule.badge >= 0
+			var w: float = (icon if has_icon else 0.0) + (RULE_ICON_GAP if has_icon and rule.label.length() > 0 else 0.0) \
+				+ (font.get_string_size(rule.label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x if rule.label.length() > 0 else 0.0)
+			if x > 0.0 and x + RULE_H_GAP + w > box.x:
+				rows += 1
+				x = w
+			else:
+				x += (RULE_H_GAP if x > 0.0 else 0.0) + w
+		if rows * row_height + (rows - 1) * RULE_V_GAP <= box.y:
+			return rule_scale
+		rule_scale -= 0.05
+	return RULE_MIN_SCALE
+
+
+## Fills the rules panel with the given items (icon + value) at a size scale; returns their number (0 = no panel).
+func _build_rule_icons(items: Array[RuleItem], rule_scale: float = 1.0) -> int:
+	for child: Node in _rules_flow.get_children():
+		_rules_flow.remove_child(child)
 		child.queue_free()
-	for k: int in KeywordInfo.split(p_card.keywords):
-		var emblem := ColorRect.new()
-		emblem.custom_minimum_size = Vector2(26.0, 26.0)
-		emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		emblem.material = _create_keyword_material(k)
-		_keyword_row.add_child(emblem)
-		if k == Keyword.UNDYING and p_card.level > 0:
-			var lv := Label.new()
-			lv.text = "+%d" % p_card.level
-			lv.position = Vector2(13.0, 11.0)
-			lv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			lv.add_theme_font_override("font", VfxAssets.card_text_bold_font)
-			lv.add_theme_font_size_override("font_size", 11)
-			lv.add_theme_color_override("font_color", Color(0.75, 1.0, 0.9))
-			lv.add_theme_color_override("font_outline_color", Color(0.03, 0.08, 0.07))
-			lv.add_theme_constant_override("outline_size", 4)
-			emblem.add_child(lv)
-	_keyword_row.visible = _keyword_row.get_child_count() > 0 or p_card.keywords != Keyword.NONE
-
-
-static func _create_keyword_material(k: int) -> ShaderMaterial:
-	var mat := ShaderMaterial.new()
-	mat.shader = VfxAssets.get_shader("keyword_icon")
-	mat.set_shader_parameter("shape", int(KeywordVisuals.get_shape(k)))
-	mat.set_shader_parameter("fg_color", KeywordVisuals.get_foreground(k))
-	mat.set_shader_parameter("bg_color", KeywordVisuals.get_background(k))
-	return mat
-
-
-## Description with bold keyword names first ("Burning. ..."), as BBCode.
-static func _build_description_bbcode(p_card: CardData) -> String:
-	var text: String = p_card.description
-	var heads: Array[String] = []
-	for k: int in KeywordInfo.split(p_card.keywords):
-		var kw_name: String = KeywordInfo.get_keyword_name(k)
-		var trimmed: String = text.strip_edges(true, false)
-		if trimmed.begins_with(kw_name + ".") or trimmed.begins_with(kw_name + ":"):
-			text = trimmed.substr(kw_name.length() + 1).strip_edges(true, false)
-		heads.append(("%s +%d" % [kw_name, p_card.level]) if (k == Keyword.UNDYING and p_card.level > 0) else kw_name)
-	var body: String = _escape_bbcode(text)
-	var head: String = ("[b]%s.[/b] " % ", ".join(heads)) if heads.size() > 0 else ""
-	return "[center]%s%s[/center]" % [head, body]
-
-
-static func _escape_bbcode(text: String) -> String:
-	return text.replace("[", "[lb]")
-
-
-static func _tile_effect_text_color(type: int) -> Color:
-	match type:
-		TileEffectType.LAVA:
-			return Color(0.85, 0.3, 0.05)
-		TileEffectType.WALL:
-			return Color(0.42, 0.36, 0.3)
-		TileEffectType.HEALING:
-			return Color(0.25, 0.6, 0.2)
-		_:
-			return Color(0.6, 0.35, 0.85)
+	var icon_size: float = RULE_ICON_SIZE * rule_scale
+	var font_size: int = maxi(7, roundi(RULE_FONT_SIZE * rule_scale))
+	for rule in items:
+		var item := HBoxContainer.new()
+		item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		item.add_theme_constant_override("separation", int(RULE_ICON_GAP))
+		if rule.glyph >= 0 or rule.badge >= 0:
+			var icon := ColorRect.new()
+			icon.custom_minimum_size = Vector2(icon_size, icon_size)
+			icon.size = Vector2(icon_size, icon_size)
+			icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			if rule.glyph >= 0:
+				var mat := ShaderMaterial.new()
+				mat.shader = VfxAssets.get_shader("keyword_icon")
+				mat.set_shader_parameter("shape", rule.glyph)
+				mat.set_shader_parameter("fg_color", rule.fg)
+				mat.set_shader_parameter("bg_color", rule.bg)
+				icon.material = mat
+			else:
+				_create_badge_material(icon, rule.badge, rule.fg)
+			if rule.overlay.length() > 0:
+				var lv := Label.new()
+				lv.text = rule.overlay
+				lv.position = Vector2(icon_size * 0.5, icon_size * 0.42)
+				lv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				lv.add_theme_font_override("font", VfxAssets.get_card_text_bold_font())
+				lv.add_theme_font_size_override("font_size", 10)
+				lv.add_theme_color_override("font_color", Color(0.75, 1.0, 0.9))
+				lv.add_theme_color_override("font_outline_color", Color(0.03, 0.08, 0.07))
+				lv.add_theme_constant_override("outline_size", 4)
+				icon.add_child(lv)
+			item.add_child(icon)
+		if rule.label.length() > 0:
+			var text := Label.new()
+			text.text = rule.label
+			text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			text.add_theme_font_override("font", VfxAssets.get_card_text_bold_font())
+			text.add_theme_font_size_override("font_size", font_size)
+			text.add_theme_color_override("font_color", RULES_INK)
+			text.add_theme_constant_override("outline_size", 0)
+			item.add_child(text)
+		_rules_flow.add_child(item)
+	return items.size()
 
 
 static func _area_name(shape: int) -> String:
@@ -499,16 +697,16 @@ func _update_raise() -> void:
 	if _body == null or _revealing:
 		return
 	var target_y: float = 0.0
-	var target_scale: float = 1.0
+	var s: float = 1.0
 	if not managed_layout:
 		target_y = -SELECTED_RAISE if _selected else (-HOVER_RAISE if _hovered else 0.0)
-		target_scale = 1.06 if _selected else (1.05 if _hovered else 1.0)
+		s = 1.06 if _selected else (1.05 if _hovered else 1.0)
 	if _raise_tween != null:
 		_raise_tween.kill()
 	_raise_tween = create_tween()
 	_raise_tween.set_parallel(true)
 	_raise_tween.tween_property(_body, "position:y", target_y, TWEEN_TIME)
-	_raise_tween.tween_property(_body, "scale", Vector2(target_scale, target_scale), TWEEN_TIME)
+	_raise_tween.tween_property(_body, "scale", Vector2(s, s), TWEEN_TIME)
 
 
 static func _create_badge_material(rect: ColorRect, shape: int, fill: Color) -> ShaderMaterial:
@@ -531,35 +729,9 @@ static func _role_emblem(role: int) -> int:
 			return 2
 
 
-static func _spell_is_positive(p_card: CardData) -> bool:
-	return p_card.attack_delta + p_card.hp_delta + p_card.shield_delta + p_card.movement_delta + p_card.range_delta >= 0
-
-
-static func _build_spell_stats(p_card: CardData) -> String:
-	var parts: Array[String] = []
-	if p_card.targets_tile:
-		parts.append(_area_name(p_card.area_shape))
-		if p_card.spell_damage > 0:
-			parts.append("%d dmg" % p_card.spell_damage)
-		if p_card.spell_heal > 0:
-			parts.append("+%d HP" % p_card.spell_heal)
-		if p_card.tile_effect != TileEffectType.NONE:
-			parts.append("%s %dT" % [KeywordInfo.get_tile_effect_name(p_card.tile_effect), p_card.tile_effect_duration])
-		return " · ".join(parts)
-	if p_card.grant_status != StatusEffectType.NONE:
-		parts.append(KeywordInfo.get_status_name(p_card.grant_status))
-	_add_delta(parts, p_card.attack_delta, "Atk")
-	_add_delta(parts, p_card.hp_delta, "HP")
-	_add_delta(parts, p_card.shield_delta, "Shield")
-	_add_delta(parts, p_card.movement_delta, "Move")
-	_add_delta(parts, p_card.range_delta, "Range")
-	return "  ".join(parts) if parts.size() > 0 else "No stat change"
-
-
-static func _add_delta(parts: Array[String], value: int, label: String) -> void:
-	if value != 0:
-		parts.append("%s %s" % [_format_delta(value), label])
+static func _spell_is_positive(c: CardData) -> bool:
+	return c.attack_delta + c.hp_delta + c.shield_delta + c.movement_delta + c.range_delta >= 0
 
 
 static func _format_delta(value: int) -> String:
-	return ("+%d" % value) if value > 0 else str(value)
+	return "+%d" % value if value > 0 else str(value)

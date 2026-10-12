@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcFireLeader.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/Phoenix.tres" id="r_Phoenix"]
+
+[resource]
+script = ExtResource("1_npc")
+id = "fire_leader"
+name = "Varkas"
+title = "Ember Legion · Clan Leader"
+clan = 1
+deck = ExtResource("3_deck")
+house = 1
+position = Vector2(480, 215)
+greeting = "I am Varkas, Pyrelord of the Ember Legion. Few leave my table unburnt. Do you dare?"
+rematch_line = "The flames remember you. Shall we dance again?"
+defeat_line = "Impressive... The Phoenix chooses its own master. Today it chose you."
+victory_line = "Ashes. As expected. Train harder, little spark."
+reward_gold = 150
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Phoenix")])
+bonus_ap_per_turn = 1
+requires_defeated = Array[String](["fire_initiate", "fire_adept", "fire_champion"])
+locked_line = "Prove yourself against the three duelists of this hall first - then I will face you."

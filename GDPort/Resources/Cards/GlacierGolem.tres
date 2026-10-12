@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Glacier Golem"
+description = "When it shatters, walls of ice remain."
+card_type = 0
+role = 0
+movement = 3
+attack = 2
+hp = 4
+range = 1
+shield = 0
+ap_bonus = 0
+clan = 3
+class_ = 8
+rarity = 1
+ap_cost = 4
+keywords = 4
+deathrattle = 5
+deathrattle_amount = 1
+tint = Color(0.7, 0.9, 1, 1)

@@ -15,6 +15,9 @@ signal draw_pressed()
 ## The player clicked a VP-to-AP conversion slot (spend 1 VP for 1 AP).
 signal convert_vp_pressed()
 
+## Internal: a turn banner finished (replaces the C# shared banner Task).
+signal _banner_finished()
+
 const HUMAN_PLAYER := 0
 const AI_PLAYER := 1
 const HINT_SIDE_MARGIN := 236.0
@@ -63,6 +66,10 @@ var _last_player: int = -1
 var _turn_max_ap: Array[int] = [0, 0]
 var _last_vp: Array[int] = [-1, -1]
 var _last_banner_key: String = ""
+## Serial of the last started banner and of the last finished one (C# _bannerTask).
+var _banner_serial: int = 0
+var _banner_done_serial: int = 0
+var _enemy_hand: EnemyHandView
 var _board_info: InfoPanel
 var _card_info: InfoPanel
 var _card_info_owner: CardView
@@ -72,6 +79,9 @@ var hand: HandView
 
 ## The draft popup (Root/DraftPopup).
 var draft: DraftPopup
+
+## Ability buttons floating above the selected unit (created in code).
+var action_bar: UnitActionBar
 
 ## The deck selection screen (created in code on top of the HUD).
 var deck_select: DeckSelectScreen
@@ -100,8 +110,8 @@ func _ready() -> void:
 	_ai_mana = get_node("Root/AiPanel/VBox/Mana") as ManaCrystalBar
 	_player_coins = get_node("Root/PlayerPanel/VBox/Coins") as VictoryCoinStack
 	_player_vp_label = get_node("Root/PlayerPanel/VBox/Header/VpLabel") as Label
-	_player_mana = get_node("Root/ManaPanel/HBox/ManaBar") as ManaCrystalBar
-	_vp_convert = get_node("Root/ManaPanel/HBox/VpConvert") as VpConvertButton
+	_player_mana = get_node("Root/PlayerPanel/VBox/ManaRow/ManaBar") as ManaCrystalBar
+	_vp_convert = get_node("Root/PlayerPanel/VBox/ManaRow/VpConvert") as VpConvertButton
 	_deck_pile = get_node("Root/DeckPile") as DeckPile
 	_end_turn_button = get_node("Root/EndTurnButton") as EndTurnButton
 	_cancel_button = get_node("Root/CancelButton") as Button
@@ -142,17 +152,32 @@ func _ready() -> void:
 		convert_vp_pressed.emit()
 	)
 
+	# The enemy window holds its points, AP and its face-down hand.
+	_enemy_hand = EnemyHandView.new()
+	_enemy_hand.name = "EnemyHand"
+	_enemy_hand.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_enemy_hand.custom_minimum_size = Vector2(220, 74)
+	(get_node("Root/AiPanel/VBox") as VBoxContainer).add_child(_enemy_hand)
+	# The combat log hangs right below the opponent window (left column); the window sizes to its content.
+	var ai_panel := get_node("Root/AiPanel") as Control
+	ai_panel.resized.connect(func() -> void: _place_log_below(ai_panel))
+	_place_log_below(ai_panel)
+	action_bar = UnitActionBar.new()
+	action_bar.name = "UnitActionBar"
+	_root.add_child(action_bar)
+	_root.move_child(action_bar, hand.get_index())
+
 	deck_select = DeckSelectScreen.new()
 	deck_select.name = "DeckSelect"
 	deck_select.card_scene = hand.card_scene
 	_root.add_child(deck_select)
 	_board_info = InfoPanel.new()
 	_board_info.name = "BoardInfo"
-	_board_info.text_width = 250.0
+	_board_info.text_width = 240.0
 	_root.add_child(_board_info)
 	_card_info = InfoPanel.new()
 	_card_info.name = "CardInfo"
-	_card_info.text_width = 240.0
+	_card_info.text_width = 230.0
 	_root.add_child(_card_info)
 	hand.card_hover_changed.connect(_on_card_hover_changed)
 	draft.card_hover_changed.connect(_on_card_hover_changed)
@@ -181,12 +206,12 @@ func _process(_delta: float) -> void:
 		_board_info.hide_panel()
 
 
-## Shows the board hover info (BBCode, see InfoText) next to the mouse; empty text hides it.
-func show_board_info(bbcode: String) -> void:
-	if bbcode.is_empty() or (_card_info != null and _card_info.visible) or get_viewport().gui_get_hovered_control() != null:
+## Shows the board hover info (see InfoText) next to the mouse; an empty sheet hides it.
+func show_board_info(sheet: InfoSheet) -> void:
+	if sheet == null or sheet.is_empty or (_card_info != null and _card_info.visible) or get_viewport().gui_get_hovered_control() != null:
 		_board_info.hide_panel()
 		return
-	_board_info.show_at_cursor(bbcode)
+	_board_info.show_at_cursor(sheet)
 
 
 ## Hides the board hover info.
@@ -241,6 +266,7 @@ func update_state(state: GameState) -> void:
 		human_main and human.victory_points > 0 and human.vp_converted_this_turn < max_convert)
 
 	_deck_pile.set_deck(human.deck.size(), state.config.draw_ap_cost)
+	_enemy_hand.set_count(ai.hand.size() + ai.draft_offer.size())
 	_end_turn_button.set_player_turn(current == HUMAN_PLAYER)
 	_end_turn_button.set_nothing_left(human_main and human.action_points <= 0)
 	_turn_indicator.set_turn(state.turn_number, current, _phase_caption(state))
@@ -279,18 +305,23 @@ func set_deck_count(count: int, draw_cost: int) -> void:
 func show_turn_banner(player: int, turn_number: int) -> void:
 	var key: String = "%d:%d" % [player, turn_number]
 	if key == _last_banner_key:
-		await _turn_banner.wait_current()
+		var waiting_for: int = _banner_serial
+		while _banner_done_serial < waiting_for:
+			await _banner_finished
 		return
 	_last_banner_key = key
 	var human: bool = player == HUMAN_PLAYER
 	Sfx.play(SfxId.TURN_START if human else SfxId.TURN_ENEMY)
-	_turn_banner.play("YOUR TURN" if human else "ENEMY TURN", "Turn %d" % turn_number, HudStyle.accent(player))
-	await _turn_banner.wait_current()
+	_banner_serial += 1
+	var serial: int = _banner_serial
+	await _turn_banner.play("YOUR TURN" if human else "ENEMY TURN", "Turn %d" % turn_number, HudStyle.accent(player))
+	_banner_done_serial = maxi(_banner_done_serial, serial)
+	_banner_finished.emit()
 
 
 ## Shows the small resolution ticker, e.g. "Order 2/4: Swordsman attacks". index is 1-based;
 ## total <= 0 omits the count. Hides itself a few seconds after the last step.
-## (The C# overload show_resolution_step(index, text) is show_resolution_step(index, 0, text) here.)
+## (The C# overload ShowResolutionStep(index, text) is show_resolution_step(index, 0, text) here.)
 func show_resolution_step(index: int, total: int, text: String = "") -> void:
 	var head: String = ("Order %d/%d" % [index, total]) if total > 0 else ("Step %d" % index)
 	_ticker_label.text = head if text.is_empty() else "%s  -  %s" % [head, text]
@@ -379,18 +410,21 @@ func clear_log() -> void:
 	_log.clear()
 
 
-## Shows the victory/defeat screen for the given player index (0 = you, 1 = AI).
-func show_win_screen(winner: int) -> void:
+## Victory/defeat screen for the given player index (0 = you, 1 = AI) with an optional custom subtitle
+## (e.g. rewards) and button caption ("" = default; merges both C# overloads).
+func show_win_screen(winner: int, subtitle_override: String = "", button_text: String = "") -> void:
 	draft.hide_popup()
 	var victory: bool = winner == HUMAN_PLAYER
 	Sfx.play(SfxId.VICTORY if victory else SfxId.DEFEAT)
-	var subtitle: String
-	if winner == HUMAN_PLAYER:
-		subtitle = "You reached the victory points target!"
-	elif winner == AI_PLAYER:
-		subtitle = "The AI reached the victory points target."
-	else:
-		subtitle = "Game over"
+	var subtitle: String = subtitle_override
+	if subtitle.is_empty():
+		if winner == HUMAN_PLAYER:
+			subtitle = "You reached the victory points target!"
+		elif winner == AI_PLAYER:
+			subtitle = "The AI reached the victory points target."
+		else:
+			subtitle = "Game over"
+	_restart_button.text = "Play again" if button_text.is_empty() else button_text
 	_victory_banner.present(victory, "VICTORY" if victory else "DEFEAT", subtitle)
 	_win_screen.visible = true
 	if _win_tween != null:
@@ -401,11 +435,20 @@ func show_win_screen(winner: int) -> void:
 	_win_dim.color = Color(0.05, 0.03, 0.0, 0.7) if victory else Color(0.0, 0.0, 0.0, 0.78)
 
 
+## Sets the name shown on the opponent's plaque (e.g. the town NPC).
+func set_opponent_name(opponent_name: String) -> void:
+	(get_node("Root/AiPanel/VBox/Header/NameLabel") as Label).text = "OPPONENT" if opponent_name.is_empty() else opponent_name.to_upper()
+
+
 ## Hides the win overlay (e.g. after a restart).
 func hide_win_screen() -> void:
 	if _win_tween != null:
 		_win_tween.kill()
 	_win_screen.visible = false
+
+
+func _place_log_below(panel: Control) -> void:
+	_log.position = Vector2(_log.position.x, panel.position.y + panel.size.y + 8.0)
 
 
 func _update_vp(player: int, vp: int, target: int, animate: bool) -> void:
@@ -429,7 +472,7 @@ static func _phase_caption(state: GameState) -> String:
 		GamePhase.MAIN:
 			return "Your move" if human else "AI is planning"
 		GamePhase.RESOLVING:
-			return "Resolving orders"
+			return "Ending turn"
 		GamePhase.GAME_OVER:
 			return "Game over"
 		_:
@@ -480,7 +523,6 @@ func _apply_styles() -> void:
 
 	(get_node("Root/AiPanel") as PanelContainer).add_theme_stylebox_override("panel", HudStyle.wood_panel(HudStyle.ENEMY_RED, 8))
 	(get_node("Root/PlayerPanel") as PanelContainer).add_theme_stylebox_override("panel", HudStyle.wood_panel(HudStyle.PLAYER_BLUE, 8))
-	(get_node("Root/ManaPanel") as PanelContainer).add_theme_stylebox_override("panel", HudStyle.wood_panel(HudStyle.MANA_BLUE, 6))
 	_style_header(get_node("Root/AiPanel/VBox/Header/NameLabel") as Label, HudStyle.ENEMY_RED)
 	_style_header(get_node("Root/PlayerPanel/VBox/Header/NameLabel") as Label, HudStyle.PLAYER_BLUE)
 	_style_vp(_ai_vp_label)

@@ -48,8 +48,10 @@ func _process(delta: float) -> void:
 
 
 func _rebuild() -> void:
-	var vp: Viewport = get_viewport()
-	var camera: Camera3D = vp.get_camera_3d() if vp != null else null
+	var camera: Camera3D = null
+	var viewport: Viewport = get_viewport()
+	if viewport != null:
+		camera = viewport.get_camera_3d()
 	var view_dir: Vector3 = camera.global_transform.basis.z.normalized() if camera != null else Vector3.UP
 	_mesh.clear_surfaces()
 	_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -59,16 +61,16 @@ func _rebuild() -> void:
 
 
 func _build_points(jitter: float) -> Array[Vector3]:
-	var segments: int = 14
+	const SEGMENTS := 14
 	var points: Array[Vector3] = []
 	var dir: Vector3 = _to - _from
 	var length: float = dir.length()
 	var side: Vector3 = dir.cross(Vector3.UP)
 	side = side.normalized() if side.length_squared() > 0.0001 else Vector3.RIGHT
-	for i in range(segments + 1):
-		var t: float = float(i) / segments
+	for i in range(SEGMENTS + 1):
+		var t: float = float(i) / SEGMENTS
 		var p: Vector3 = _from.lerp(_to, t) + Vector3.UP * sin(t * PI) * 0.12 * length
-		if i > 0 and i < segments:
+		if i > 0 and i < SEGMENTS:
 			p += side * _rng.randf_range(-jitter, jitter) + Vector3.UP * _rng.randf_range(-jitter, jitter) * 0.6
 		points.append(to_local(p))
 	return points

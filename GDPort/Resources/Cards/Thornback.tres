@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Thornback"
+description = "A spiked shield wall that punishes the first blow."
+card_type = 0
+rarity = 1
+role = 1
+class_ = 3
+ap_cost = 3
+movement = 3
+attack = 1
+hp = 3
+range = 1
+shield = 1
+ap_bonus = 0
+keywords = 4
+clan = 5
+on_first_hit = 1
+on_first_hit_amount = 2
+tint = Color(0.45, 0.6, 0.35, 1)

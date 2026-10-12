@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcHealingAdept.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/Cleric.tres" id="r_Cleric"]
+
+[resource]
+script = ExtResource("1_npc")
+id = "healing_adept"
+name = "Elowen"
+title = "Dawn Covenant · Light Adept"
+clan = 2
+house = 2
+deck = ExtResource("3_deck")
+position = Vector2(720, 470)
+greeting = "Mercy is strength. Let me show you how it endures."
+rematch_line = "Again? My vigil never ends."
+defeat_line = "Your light burns brighter than mine today."
+victory_line = "Endurance wins. Always."
+reward_gold = 75
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Cleric")])

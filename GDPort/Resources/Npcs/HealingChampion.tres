@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcHealingChampion.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/Zealot.tres" id="r_Zealot"]
+
+[resource]
+script = ExtResource("1_npc")
+id = "healing_champion"
+name = "Castor"
+title = "Dawn Covenant · Sun Champion"
+clan = 2
+house = 2
+deck = ExtResource("3_deck")
+position = Vector2(760, 250)
+greeting = "Seraphine sees only those who pass my trial of the sun."
+rematch_line = "The sun rises again - and so do I."
+defeat_line = "Radiant. Go - the High Priestess awaits."
+victory_line = "The dawn was not yours today."
+reward_gold = 100
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Zealot")])

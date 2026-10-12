@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="DeckData" load_steps=17 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/DeckData.gd" id="1_deck"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormRunner.tres" id="c_StormRunner"]
+[ext_resource type="Resource" path="res://Resources/Cards/Bellringer.tres" id="c_Bellringer"]
+[ext_resource type="Resource" path="res://Resources/Cards/SparkTotem.tres" id="c_SparkTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormHerald.tres" id="c_StormHerald"]
+[ext_resource type="Resource" path="res://Resources/Cards/Swordsman.tres" id="c_Swordsman"]
+[ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="c_Lancer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
+[ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
+[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/LightningBolt.tres" id="c_LightningBolt"]
+[ext_resource type="Resource" path="res://Resources/Cards/Overcharge.tres" id="c_Overcharge"]
+[ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archer.tres" id="c_Archer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Weaken.tres" id="c_Weaken"]
+
+[resource]
+script = ExtResource("1_deck")
+name = "Kaida's Thunder"
+cards = Array[ExtResource("2_card")]([ExtResource("c_StormRunner"), ExtResource("c_StormRunner"), ExtResource("c_Bellringer"), ExtResource("c_Bellringer"), ExtResource("c_Bellringer"), ExtResource("c_SparkTotem"), ExtResource("c_SparkTotem"), ExtResource("c_SparkTotem"), ExtResource("c_StormHerald"), ExtResource("c_StormHerald"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_LightningBolt"), ExtResource("c_LightningBolt"), ExtResource("c_LightningBolt"), ExtResource("c_Overcharge"), ExtResource("c_Overcharge"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Weaken"), ExtResource("c_Weaken")])
+description = "A seasoned duelist's deck of the Storm Circuit."
+accent_color = Color(0.62, 0.52, 1, 1)
+showcase = ExtResource("c_Bellringer")

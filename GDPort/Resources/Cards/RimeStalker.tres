@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Rime Stalker"
+description = "Hides frost runes under the snow."
+card_type = 0
+role = 1
+class_ = 4
+ap_cost = 1
+movement = 6
+attack = 1
+hp = 2
+range = 1
+shield = 0
+ap_bonus = 0
+clan = 3
+rarity = 0
+keywords = 4096
+tint = Color(0.6, 0.85, 1, 1)

@@ -1,16 +1,19 @@
 class_name VictoryCoinStack
 extends Control
-## Victory points as stacking gold coins: the target is split into columns (e.g. 20 = 4 stacks of 5),
+## Victory points as stacking gold coins in stacks of coins_per_stack (e.g. 25 = 5 stacks of 5),
 ## faint slots show the remaining progress. Gained coins drop in with a bounce and a glint,
 ## spent coins float up and fade.
 
 @export var coin_radius: float = 15.0
 @export var coin_thickness: float = 5.0
 @export var column_gap: float = 7.0
-@export var max_columns: int = 5
+## Coins per stack; a higher target adds stacks instead of making them taller.
+@export var coins_per_stack: int = 5
 @export var accent: Color = HudStyle.PLAYER_BLUE
 
 const DROP_HEIGHT := 70.0
+## Room under the stacks for the felt pad, so neighbours below (the mana row) never overlap it.
+const PAD_BELOW := 8.0
 const DROP_TIME := 0.42
 const DROP_STAGGER := 0.09
 const LEAVE_TIME := 0.45
@@ -21,8 +24,8 @@ var _target: int = 20
 var _points: int = 0
 var _drop: Array[float] = []
 var _flash: Array[float] = []
-## Leaving coins as [index: int, t: float] pairs.
-var _leaving: Array[Array] = []
+## Leaving coins as {"index": int, "t": float}.
+var _leaving: Array[Dictionary] = []
 var _time: float = 0.0
 
 ## Victory points needed to win.
@@ -61,9 +64,9 @@ func set_points(p_points: int, animate: bool = true) -> void:
 		return
 	for i in range(old, p_points):
 		# Negative = waiting (stagger), 0..1 = falling.
-		_drop[i] = -(i - old) * DROP_STAGGER / DROP_TIME
+		_drop[i] = -float(i - old) * DROP_STAGGER / DROP_TIME
 	for i in range(p_points, old):
-		_leaving.append([i, 0.0])
+		_leaving.append({"index": i, "t": 0.0})
 	queue_redraw()
 
 
@@ -72,7 +75,7 @@ func _get_minimum_size() -> Vector2:
 	var cols: int = layout.x
 	var per_stack: int = layout.y
 	var w: float = cols * coin_radius * 2.0 + (cols - 1) * column_gap + 4.0
-	var h: float = per_stack * coin_thickness + coin_radius * 0.84 + coin_thickness + 6.0
+	var h: float = per_stack * coin_thickness + coin_radius * 0.84 + coin_thickness + 6.0 + PAD_BELOW
 	return Vector2(w, h)
 
 
@@ -91,13 +94,13 @@ func _process(delta: float) -> void:
 			_flash[i] = maxf(0.0, _flash[i] - dt * 2.5)
 			busy = true
 	for i in range(_leaving.size() - 1, -1, -1):
-		var index: int = _leaving[i][0]
-		var t: float = _leaving[i][1]
+		var index: int = _leaving[i]["index"]
+		var t: float = _leaving[i]["t"]
 		t += dt / LEAVE_TIME
 		if t >= 1.0:
 			_leaving.remove_at(i)
 		else:
-			_leaving[i] = [index, t]
+			_leaving[i] = {"index": index, "t": t}
 		busy = true
 	if busy:
 		queue_redraw()
@@ -112,7 +115,8 @@ func _draw() -> void:
 	var col_w: float = r * 2.0
 	var total_w: float = cols * col_w + (cols - 1) * column_gap
 	var x0: float = (size.x - total_w) * 0.5 + r
-	var base_y: float = size.y - r * 0.42 - t - 3.0
+	# Lifted by PAD_BELOW so the felt pad (which reaches below the lowest coin) stays inside the control.
+	var base_y: float = size.y - r * 0.42 - t - 3.0 - PAD_BELOW
 
 	# Accent felt pad under the stacks.
 	var pad := Rect2(x0 - r - 2.0, base_y - r * 0.1, total_w + 4.0, r * 0.84 + t + 4.0)
@@ -148,9 +152,9 @@ func _draw() -> void:
 				Color(1.0, 0.95, 0.7, 0.25 + 0.25 * pulse), 12)
 
 	for entry in _leaving:
-		var index: int = entry[0]
-		var lt: float = entry[1]
-		var c: int = index / per_stack
+		var index: int = entry["index"]
+		var lt: float = entry["t"]
+		var c: int = floori(index / float(per_stack))
 		var k: int = index % per_stack
 		var cx: float = x0 + c * (col_w + column_gap)
 		var pos := Vector2(cx, base_y - k * t - lt * 40.0)
@@ -159,16 +163,15 @@ func _draw() -> void:
 
 func _is_leaving(index: int) -> bool:
 	for entry in _leaving:
-		if entry[0] == index:
+		if entry["index"] == index:
 			return true
 	return false
 
 
 ## Returns Vector2i(cols, per_stack) (C# out parameters).
 func _get_layout() -> Vector2i:
-	var max_cols: int = maxi(1, max_columns)
-	var cols: int = clampi(ceili(_target / 5.0), 1, max_cols)
-	var per_stack: int = ceili(_target / float(cols))
+	var per_stack: int = clampi(coins_per_stack, 1, _target)
+	var cols: int = ceili(_target / float(per_stack))
 	return Vector2i(cols, per_stack)
 
 

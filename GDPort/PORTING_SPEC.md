@@ -116,3 +116,44 @@ Examples: `ApCost`→`ap_cost`, `MaxHp`→`max_hp`, `GetPieceAt`→`get_piece_at
 - Do not create .tscn/.tres/.uid files. Do not touch anything outside your assigned output files.
 - At the end report: files written, any deviations from the naming rules (public names you had to change), and anything
   other files' porters must know.
+
+## Addendum (re-port of 2026-10-12: overworld, halls, buildings, legends, traps)
+These rules close gaps that cross file boundaries. Apply them mechanically.
+- **`out` parameters in public/internal methods** (e.g. `BattleSession.IsUnlocked(npc, out int beaten, out int needed)`,
+  `PlayerProfile.TryAddToDeck(card, out string error)`): the GDScript func takes only the non-out params and returns a
+  `Dictionary` with key `"result"` = the C# return value (omitted for `void`) plus one key per out param, named
+  `snake(paramName)`: `is_unlocked(npc) -> Dictionary` returns `{"result": bool, "beaten": int, "needed": int}`.
+  Callers: `var r := BattleSession.is_unlocked(npc)`, `if r.result: ...`, `r.beaten`. `TryGetValue` stays `has/get`.
+- **Instance C# events** (`public event Action<int> TurnStarted`) → `signal turn_started(value)`; `+=` → `.connect`,
+  invoke → `.emit`.
+- **Static events on static classes** (`public static event Action Changed` in `PlayerProfile`) → GDScript has no
+  static signals: `static var changed_listeners: Array[Callable] = []`. `PlayerProfile.Changed += F` →
+  `PlayerProfile.changed_listeners.append(f)`, `-=` → `.erase(f)`, `Changed?.Invoke()` →
+  `for cb in changed_listeners: if cb.is_valid(): cb.call()`.
+- **Tuples crossing files** (return types, params, public fields, e.g. `KeywordVisuals.IconsFor` returns
+  `List<(FxIconShape Shape, Color Fg, Color Bg)>`, `DialogueBox.Open(..., IReadOnlyList<(string Label, Action Action)>)`):
+  each tuple → `Dictionary` with keys `snake(elementName)` (`{"shape": .., "fg": .., "bg": ..}`, `{"label": .., "action": Callable}`);
+  unnamed elements → `"item1"`, `"item2"`, ... File-local tuples: same rule recommended.
+- **`record struct` / `record class` / small private structs**: RefCounted inner class (or file) with the same fields;
+  public nested ones (e.g. `TownMap.House`, `InfoSheet.Row`) become inner classes `class House:` with `_init(...)` taking the
+  positional record parameters in order, so callers write `TownMap.House.new(body, clan)`. Where C# relies on value
+  equality (`==`, dict keys, `Contains`), compare fields explicitly.
+- **Static classes with state** (`PlayerProfile`, `BattleSession`, caches): `static var`; static properties with logic
+  → `static func` getters are NOT property syntax in GDScript, so a C# static property `X` with a getter body becomes
+  `static func get_x()`; C# static auto-properties (`{ get; set; }`) become `static var x`. Callers follow that rule.
+- **Nested enums / constants** referenced from other files keep `Outer.INNER_NAME`.
+- **`nameof`, `GetType().Name`** → string literals.
+- `System.Text.Json` → `JSON.stringify(dict, "\t")` / `JSON.parse_string(text)` (numbers come back as float → cast to int).
+- `Godot.Collections.Array<string>` (e.g. `NpcData.RequiresDefeated`) → `Array[String]`; `.Contains(x)` → `.has(x)`.
+- `string.Contains(s)` → `s in text`; `string.IsNullOrEmpty(s)` → `s.is_empty()` (strings are never null in the port;
+  use `""` instead of null for strings).
+- `Callable.From(() => ...)` → lambda; `Tween.TweenCallback(Callable.From(F))` → `tween_callback(f)`.
+- `(int)someEnumValue` and `(SomeEnum)intValue` → just the int.
+- When a C# property/method name collides with an inherited Godot member after snaking (e.g. a Node2D field
+  `Position`, `Scale`, `Name`, `Visible`, `Owner`, `Theme`, a Control `Size`), and the C# code means the inherited member
+  anyway (no `new` keyword), just use the inherited one. If it is a genuinely new member that would shadow, append `_`
+  and report it.
+- **Static funcs must not reuse built-in method names**: a static `get_name(x)` on a script class is shadowed by
+  `Resource.get_name()` when called as `ClanInfo.get_name(x)`. The `*Info.GetName(x)` helpers are therefore ported as
+  `display_name(x)` (`ClanInfo.display_name`, `KeywordInfo.display_name`, `TriggerInfo.display_name` (deathrattle) /
+  `get_first_hit_name`, ...).

@@ -5,13 +5,15 @@
 [resource]
 script = ExtResource("1")
 name = "Fireball"
-description = "2 damage to an enemy on the tile, then Lava for 2 turns."
+description = "2 damage to an enemy on the tile, then Lava for 4 turns."
 card_type = 1
+rarity = 1
 role = 0
-ap_cost = 2
+ap_cost = 3
 spell_target = 1
 area_shape = 0
 tile_effect = 1
-tile_effect_duration = 2
+tile_effect_duration = 4
 spell_damage = 2
+clan = 1
 tint = Color(1, 0.42, 0.08, 1)

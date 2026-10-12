@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcFrostLeader.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostWyrm.tres" id="r_FrostWyrm"]
+
+[resource]
+script = ExtResource("1_npc")
+id = "frost_leader"
+name = "Isolde"
+title = "Frostbound · Clan Leader"
+clan = 3
+deck = ExtResource("3_deck")
+house = 3
+position = Vector2(480, 215)
+greeting = "I am Isolde, Winter Queen of the Frostbound. Patience wins every war. Shall I teach you?"
+rematch_line = "Winter returns. It always does."
+defeat_line = "You melted my winter. The Frost Wyrm will answer your call."
+victory_line = "Stillness... and then defeat. That is the way of ice."
+reward_gold = 150
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_FrostWyrm")])
+bonus_ap_per_turn = 1
+requires_defeated = Array[String](["frost_initiate", "frost_adept", "frost_champion"])
+locked_line = "Prove yourself against the three duelists of this hall first - then I will face you."

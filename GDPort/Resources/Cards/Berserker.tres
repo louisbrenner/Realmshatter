@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Berserker"
+description = "Pain only makes it stronger."
+card_type = 0
+rarity = 1
+role = 0
+class_ = 1
+ap_cost = 3
+movement = 5
+attack = 2
+hp = 3
+range = 1
+shield = 0
+ap_bonus = 0
+keywords = 4
+clan = 1
+on_first_hit = 4
+on_first_hit_amount = 2
+tint = Color(0.85, 0.25, 0.2, 1)

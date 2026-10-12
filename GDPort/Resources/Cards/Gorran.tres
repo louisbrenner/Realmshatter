@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Gorran"
+description = "The Living Mountain. Mountains do not fall. They wait."
+card_type = 0
+role = 0
+class_ = 8
+ap_cost = 4
+movement = 3
+attack = 4
+hp = 8
+range = 1
+shield = 0
+ap_bonus = 0
+clan = 5
+rarity = 3
+keywords = 4
+legend = 5
+tint = Color(0.72, 0.64, 0.5, 1)

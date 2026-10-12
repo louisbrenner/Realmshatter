@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="VendorData" load_steps=26 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/VendorData.gd" id="1_vendor"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="s_Lancer"]
+[ext_resource type="Resource" path="res://Resources/Cards/BatteringRam.tres" id="s_BatteringRam"]
+[ext_resource type="Resource" path="res://Resources/Cards/Bellringer.tres" id="s_Bellringer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Berserker.tres" id="s_Berserker"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="s_FlameArcher"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostArcher.tres" id="s_FrostArcher"]
+[ext_resource type="Resource" path="res://Resources/Cards/IceSentinel.tres" id="s_IceSentinel"]
+[ext_resource type="Resource" path="res://Resources/Cards/PowderKeg.tres" id="s_PowderKeg"]
+[ext_resource type="Resource" path="res://Resources/Cards/RockSlinger.tres" id="s_RockSlinger"]
+[ext_resource type="Resource" path="res://Resources/Cards/StoneGolem.tres" id="s_StoneGolem"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormCaller.tres" id="s_StormCaller"]
+[ext_resource type="Resource" path="res://Resources/Cards/Templar.tres" id="s_Templar"]
+[ext_resource type="Resource" path="res://Resources/Cards/Thornback.tres" id="s_Thornback"]
+[ext_resource type="Resource" path="res://Resources/Cards/CinderWraith.tres" id="s_CinderWraith"]
+[ext_resource type="Resource" path="res://Resources/Cards/Zealot.tres" id="s_Zealot"]
+[ext_resource type="Resource" path="res://Resources/Cards/GlacierGolem.tres" id="s_GlacierGolem"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormHerald.tres" id="s_StormHerald"]
+[ext_resource type="Resource" path="res://Resources/Cards/QuarryHauler.tres" id="s_QuarryHauler"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberStalker.tres" id="s_EmberStalker"]
+[ext_resource type="Resource" path="res://Resources/Cards/DawnRanger.tres" id="s_DawnRanger"]
+[ext_resource type="Resource" path="res://Resources/Cards/RimeStalker.tres" id="s_RimeStalker"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormRunner.tres" id="s_StormRunner"]
+[ext_resource type="Resource" path="res://Resources/Cards/StonePathfinder.tres" id="s_StonePathfinder"]
+
+[resource]
+script = ExtResource("1_vendor")
+id = "trader"
+name = "Silas"
+title = "Wandering Trader"
+greeting = "Rare fighters from every clan - for the right price, friend."
+position = Vector2(700, 1040)
+color = Color(0.25, 0.55, 0.4, 1)
+stock = Array[ExtResource("2_card")]([ExtResource("s_Lancer"), ExtResource("s_BatteringRam"), ExtResource("s_Bellringer"), ExtResource("s_Berserker"), ExtResource("s_FlameArcher"), ExtResource("s_FrostArcher"), ExtResource("s_IceSentinel"), ExtResource("s_PowderKeg"), ExtResource("s_RockSlinger"), ExtResource("s_StoneGolem"), ExtResource("s_StormCaller"), ExtResource("s_Templar"), ExtResource("s_Thornback"), ExtResource("s_CinderWraith"), ExtResource("s_Zealot"), ExtResource("s_GlacierGolem"), ExtResource("s_StormHerald"), ExtResource("s_QuarryHauler"), ExtResource("s_EmberStalker"), ExtResource("s_DawnRanger"), ExtResource("s_RimeStalker"), ExtResource("s_StormRunner"), ExtResource("s_StonePathfinder")])

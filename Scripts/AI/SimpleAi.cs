@@ -193,6 +193,14 @@ public sealed class SimpleAi
 		}
 		bool early = State.TurnNumber <= 8;
 		bool haveUnits = myPieces.Count + handUnits > 0;
+		// Units above the AP income are dead weight until Mana Wells / VP conversions pay for them; while no unit in
+		// hand is affordable at all, a cheap unit beats a strong one.
+		int income = State.Config.BaseAp + me.BonusApPerTurn;
+		bool affordableInHand = false;
+		foreach (CardData c in me.Hand)
+		{
+			affordableInHand |= c != null && c.CardType == CardType.Unit && _controller.GetCardCost(c) <= income;
+		}
 
 		int best = -1;
 		double bestScore = double.MinValue;
@@ -210,6 +218,15 @@ public sealed class SimpleAi
 				if (card.Role == UnitRole.Resource && early && resourceCount < 2)
 				{
 					score += 10;
+				}
+				int over = _controller.GetCardCost(card) - income;
+				if (over > 0)
+				{
+					score -= 4 * over;
+				}
+				else if (!affordableInHand)
+				{
+					score += 6;
 				}
 			}
 			else
@@ -236,13 +253,28 @@ public sealed class SimpleAi
 	/// <summary>Pays for a Draw and picks the best offered card. False if drawing is not possible.</summary>
 	private bool TryDraw(List<AiAction> actions)
 	{
-		// Do not hoard: with a full hand the AP is better spent on the board.
-		if (State.Players[PlayerIndex].Hand.Count >= MaxHandToDraw || !_controller.CanDraw() || !_controller.Draw())
+		// Do not hoard: with a full hand the AP is better spent on the board - unless no unit in hand is affordable
+		// (a hand of spells and expensive units cannot reach the board and would stall the AI forever).
+		if ((State.Players[PlayerIndex].Hand.Count >= MaxHandToDraw && HasAffordableUnit()) || !_controller.CanDraw() || !_controller.Draw())
 		{
 			return false;
 		}
 		DoDraft(actions, true);
 		return true;
+	}
+
+	/// <summary>True if a unit card in hand costs no more than the AP left.</summary>
+	private bool HasAffordableUnit()
+	{
+		PlayerState me = State.Players[PlayerIndex];
+		foreach (CardData card in me.Hand)
+		{
+			if (card.CardType == CardType.Unit && _controller.GetCardCost(card) <= me.ActionPoints)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private void DoDraft(List<AiAction> actions, bool paid)
