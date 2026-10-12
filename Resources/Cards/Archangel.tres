@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Archangel"
+Description = "Wings of dawn shield the faithful."
+CardType = 0
+Rarity = 2
+Role = 1
+Class = 7
+ApCost = 5
+Movement = 5
+Attack = 2
+Hp = 4
+Range = 2
+Shield = 0
+ApBonus = 0
+Keywords = 528
+Clan = 2
+Deathrattle = 4
+DeathrattleAmount = 3
+OnFirstHit = 3
+OnFirstHitAmount = 2
+Tint = Color(1, 0.92, 0.6, 1)

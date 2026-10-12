@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcHealingInitiate.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/Acolyte.tres" id="r_Acolyte"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "healing_initiate"
+Name = "Wren"
+Title = "Dawn Covenant · Dawn Initiate"
+Clan = 2
+House = 2
+Deck = ExtResource("3_deck")
+Position = Vector2(240, 470)
+Greeting = "Welcome, traveller! May I test you? Gently, of course."
+RematchLine = "The light welcomes you back."
+DefeatLine = "You fought with grace. Bless you."
+VictoryLine = "Oh! I am sorry - shall I heal your pride?"
+RewardGold = 50
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_Acolyte")])

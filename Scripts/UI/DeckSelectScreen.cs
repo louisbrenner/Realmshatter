@@ -14,8 +14,8 @@ public partial class DeckSelectScreen : Control
 
 	/// <summary>Card scene used for the signature cards (Scenes/UI/Card.tscn).</summary>
 	[Export] public PackedScene CardScene { get; set; }
-	[Export] public float PlaqueWidth { get; set; } = 214f;
-	[Export] public float CardScale { get; set; } = 0.86f;
+	[Export] public float PlaqueWidth { get; set; } = 198f;
+	[Export] public float CardScale { get; set; } = 0.78f;
 
 	private ColorRect _dim;
 	private VBoxContainer _content;
@@ -48,6 +48,7 @@ public partial class DeckSelectScreen : Control
 			BuildPlaque(i, _decks[i]);
 		}
 
+		SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 		Visible = true;
 		Modulate = new Color(1f, 1f, 1f, 0f);
 		Tween fade = CreateTween();
@@ -151,7 +152,7 @@ public partial class DeckSelectScreen : Control
 			MouseFilter = MouseFilterEnum.Ignore,
 		};
 		description.AddThemeFontOverride("font", VfxAssets.CardTextFont);
-		description.AddThemeFontSizeOverride("font_size", 14);
+		description.AddThemeFontSizeOverride("font_size", 13);
 		description.AddThemeColorOverride("font_color", HudStyle.TextLight);
 		description.AddThemeConstantOverride("outline_size", 0);
 		box.AddChild(description);
@@ -265,7 +266,7 @@ public partial class DeckSelectScreen : Control
 		{
 			return;
 		}
-		SetAnchorsPreset(LayoutPreset.FullRect);
+		SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 		MouseFilter = MouseFilterEnum.Stop;
 		Visible = false;
 
@@ -275,15 +276,15 @@ public partial class DeckSelectScreen : Control
 			Color = new Color(0.03f, 0.02f, 0.01f, 0.84f),
 			MouseFilter = MouseFilterEnum.Stop,
 		};
-		_dim.SetAnchorsPreset(LayoutPreset.FullRect);
+		_dim.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 		AddChild(_dim);
 
 		var center = new CenterContainer { Name = "Center", MouseFilter = MouseFilterEnum.Ignore };
-		center.SetAnchorsPreset(LayoutPreset.FullRect);
+		center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 		AddChild(center);
 
 		_content = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-		_content.AddThemeConstantOverride("separation", 10);
+		_content.AddThemeConstantOverride("separation", 6);
 		center.AddChild(_content);
 
 		var gameTitle = new Label
@@ -293,7 +294,7 @@ public partial class DeckSelectScreen : Control
 			MouseFilter = MouseFilterEnum.Ignore,
 		};
 		gameTitle.AddThemeFontOverride("font", new FontVariation { BaseFont = VfxAssets.CardTextBoldFont, SpacingGlyph = 6 });
-		gameTitle.AddThemeFontSizeOverride("font_size", 58);
+		gameTitle.AddThemeFontSizeOverride("font_size", 46);
 		gameTitle.AddThemeColorOverride("font_color", HudStyle.Gold);
 		gameTitle.AddThemeColorOverride("font_shadow_color", new Color(1f, 0.45f, 0.1f, 0.55f));
 		gameTitle.AddThemeConstantOverride("shadow_outline_size", 8);
@@ -308,7 +309,7 @@ public partial class DeckSelectScreen : Control
 			MouseFilter = MouseFilterEnum.Ignore,
 		};
 		_title.AddThemeFontOverride("font", VfxAssets.CardTextBoldFont);
-		_title.AddThemeFontSizeOverride("font_size", 28);
+		_title.AddThemeFontSizeOverride("font_size", 24);
 		_title.AddThemeColorOverride("font_color", new Color(1f, 0.86f, 0.5f));
 		_title.AddThemeColorOverride("font_outline_color", new Color(0.12f, 0.06f, 0.02f));
 		_title.AddThemeConstantOverride("outline_size", 8);
@@ -321,7 +322,7 @@ public partial class DeckSelectScreen : Control
 			MouseFilter = MouseFilterEnum.Ignore,
 		};
 		_subtitle.AddThemeFontOverride("font", VfxAssets.CardTextFont);
-		_subtitle.AddThemeFontSizeOverride("font_size", 15);
+		_subtitle.AddThemeFontSizeOverride("font_size", 14);
 		_subtitle.AddThemeColorOverride("font_color", HudStyle.TextLight);
 		_subtitle.AddThemeConstantOverride("outline_size", 0);
 		_content.AddChild(_subtitle);
@@ -330,7 +331,7 @@ public partial class DeckSelectScreen : Control
 		_content.AddChild(spacer);
 
 		_row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
-		_row.AddThemeConstantOverride("separation", 18);
+		_row.AddThemeConstantOverride("separation", 14);
 		_content.AddChild(_row);
 
 		_info = new InfoPanel { Name = "DeckInfo", TextWidth = 230f, FontSize = 13 };

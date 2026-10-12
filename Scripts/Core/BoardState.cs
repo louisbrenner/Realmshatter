@@ -13,17 +13,30 @@ public sealed class BoardState
 {
 	private readonly Dictionary<GridPos, Piece> _occupancy = new Dictionary<GridPos, Piece>();
 	private readonly Dictionary<GridPos, TileEffect> _tileEffects = new Dictionary<GridPos, TileEffect>();
+	private readonly Dictionary<GridPos, TerrainType> _terrain = new Dictionary<GridPos, TerrainType>();
+	private readonly Dictionary<GridPos, int> _terrainHp = new Dictionary<GridPos, int>();
+	private readonly Dictionary<GridPos, TerrainType> _decor = new Dictionary<GridPos, TerrainType>();
+	private readonly Dictionary<GridPos, Trap> _traps = new Dictionary<GridPos, Trap>();
+	private int _trapSerial;
 
 	public int Width { get; }
 	public int Height { get; }
 	public Rect2I ScoringZone { get; }
+	/// <summary>The crown field inside the scoring zone (worth HotZonePoints per piece).</summary>
+	public Rect2I HotZone { get; }
+	public int HotZonePoints { get; }
 	public int DeployRows { get; }
+	/// <summary>Movement spent to enter a Water tile.</summary>
+	public int WaterMoveCost { get; }
 
 	public BoardState(GameConfig config)
 	{
+		WaterMoveCost = System.Math.Max(1, config.WaterMoveCost);
 		Width = config.BoardWidth;
 		Height = config.BoardHeight;
 		ScoringZone = config.ScoringZone;
+		HotZone = config.HotZone;
+		HotZonePoints = config.HotZonePoints;
 		DeployRows = config.DeployRows;
 	}
 
@@ -33,11 +46,31 @@ public sealed class BoardState
 		Width = other.Width;
 		Height = other.Height;
 		ScoringZone = other.ScoringZone;
+		HotZone = other.HotZone;
+		HotZonePoints = other.HotZonePoints;
 		DeployRows = other.DeployRows;
+		WaterMoveCost = other.WaterMoveCost;
 		foreach (KeyValuePair<GridPos, TileEffect> kv in other._tileEffects)
 		{
 			_tileEffects[kv.Key] = kv.Value;
 		}
+		foreach (KeyValuePair<GridPos, TerrainType> kv in other._terrain)
+		{
+			_terrain[kv.Key] = kv.Value;
+		}
+		foreach (KeyValuePair<GridPos, int> kv in other._terrainHp)
+		{
+			_terrainHp[kv.Key] = kv.Value;
+		}
+		foreach (KeyValuePair<GridPos, TerrainType> kv in other._decor)
+		{
+			_decor[kv.Key] = kv.Value;
+		}
+		foreach (KeyValuePair<GridPos, Trap> kv in other._traps)
+		{
+			_traps[kv.Key] = kv.Value;
+		}
+		_trapSerial = other._trapSerial;
 	}
 
 	/// <summary>Tiles of an area shape anchored at 'anchor', clipped to the board.</summary>
@@ -80,6 +113,15 @@ public sealed class BoardState
 		pos.X >= ScoringZone.Position.X && pos.X < ScoringZone.End.X &&
 		pos.Y >= ScoringZone.Position.Y && pos.Y < ScoringZone.End.Y;
 
+	/// <summary>True if the tile is on the crown field (inside the scoring zone, worth more VP).</summary>
+	public bool IsInHotZone(GridPos pos) =>
+		HotZone.Size.X > 0 && HotZone.Size.Y > 0 && IsInScoringZone(pos) &&
+		pos.X >= HotZone.Position.X && pos.X < HotZone.End.X &&
+		pos.Y >= HotZone.Position.Y && pos.Y < HotZone.End.Y;
+
+	/// <summary>VP a piece on this tile scores at its owner's turn start: HotZonePoints on the crown field, 1 in the zone, else 0.</summary>
+	public int ScoreValue(GridPos pos) => IsInHotZone(pos) ? HotZonePoints : (IsInScoringZone(pos) ? 1 : 0);
+
 	/// <summary>True if the tile is in the given player's deploy rows (player 0 bottom, player 1 top).</summary>
 	public bool IsInDeployZone(int playerIndex, GridPos pos)
 	{
@@ -110,8 +152,8 @@ public sealed class BoardState
 	/// <summary>Type of the tile effect on pos (None if there is none).</summary>
 	public TileEffectType GetTileEffectType(GridPos pos) => _tileEffects.TryGetValue(pos, out TileEffect e) ? e.Type : TileEffectType.None;
 
-	/// <summary>True if the tile carries a Wall (impassable, unoccupiable).</summary>
-	public bool IsWall(GridPos pos) => GetTileEffectType(pos) == TileEffectType.Wall;
+	/// <summary>True if the tile carries a Wall or Rubble, or is a Rock (impassable, unoccupiable).</summary>
+	public bool IsWall(GridPos pos) => GetTileEffectType(pos) is TileEffectType.Wall or TileEffectType.Rubble || GetTerrain(pos) == TerrainType.Rock;
 
 	/// <summary>True if the tile is on the board and not a wall (pieces may stand on / walk over it).</summary>
 	public bool IsPassable(GridPos pos) => IsInside(pos) && !IsWall(pos);
@@ -120,40 +162,127 @@ public sealed class BoardState
 
 	internal void RemoveTileEffect(GridPos pos) => _tileEffects.Remove(pos);
 
+	// ------------------------------------------------------------------ terrain
+
+	/// <summary>All terrain tiles (water, bridges, rocks) by position.</summary>
+	public IReadOnlyDictionary<GridPos, TerrainType> Terrain => _terrain;
+
+	/// <summary>Terrain of the tile (None = plain ground).</summary>
+	public TerrainType GetTerrain(GridPos pos) => _terrain.TryGetValue(pos, out TerrainType t) ? t : TerrainType.None;
+
+	/// <summary>
+	/// Purely visual terrain (no rules): where a river or a ruined wall runs through the crown field it is shown as
+	/// a shallow ford / low rubble there, but the tiles play as plain ground.
+	/// </summary>
+	public IReadOnlyDictionary<GridPos, TerrainType> Decor => _decor;
+
+	internal void SetDecor(GridPos pos, TerrainType type)
+	{
+		if (type == TerrainType.None)
+		{
+			_decor.Remove(pos);
+		}
+		else
+		{
+			_decor[pos] = type;
+		}
+	}
+
+	/// <summary>All hidden traps by tile (the view shows only the viewer's own ones).</summary>
+	public IReadOnlyDictionary<GridPos, Trap> Traps => _traps;
+
+	/// <summary>The trap on the tile, or null.</summary>
+	public Trap GetTrap(GridPos pos) => _traps.TryGetValue(pos, out Trap t) ? t : null;
+
+	internal Trap AddTrap(GridPos pos, int owner, TrapType type, int sourcePieceId)
+	{
+		var trap = new Trap(pos, owner, type, sourcePieceId, ++_trapSerial);
+		_traps[pos] = trap;
+		return trap;
+	}
+
+	internal void RemoveTrap(GridPos pos) => _traps.Remove(pos);
+
+	/// <summary>Remaining hit points of a Rock (0 for other tiles).</summary>
+	public int GetTerrainHp(GridPos pos) => _terrainHp.TryGetValue(pos, out int hp) ? hp : 0;
+
+	/// <summary>Movement needed to step onto the tile (Water costs WaterMoveCost, everything else 1).</summary>
+	public int MoveCost(GridPos pos) =>
+		GetTerrain(pos) == TerrainType.Water ? WaterMoveCost : (GetTileEffectType(pos) == TileEffectType.Mud ? 2 : 1);
+
+	internal void SetTerrain(GridPos pos, TerrainType type, int hp = 0)
+	{
+		if (type == TerrainType.None)
+		{
+			_terrain.Remove(pos);
+			_terrainHp.Remove(pos);
+			return;
+		}
+		_terrain[pos] = type;
+		if (hp > 0)
+		{
+			_terrainHp[pos] = hp;
+		}
+		else
+		{
+			_terrainHp.Remove(pos);
+		}
+	}
+
+	/// <summary>Damages a Rock; at 0 HP it crumbles to plain ground. Returns the remaining HP (-1 if no rock).</summary>
+	internal int DamageRock(GridPos pos, int amount)
+	{
+		if (GetTerrain(pos) != TerrainType.Rock)
+		{
+			return -1;
+		}
+		int hp = System.Math.Max(0, GetTerrainHp(pos) - System.Math.Max(0, amount));
+		if (hp <= 0)
+		{
+			SetTerrain(pos, TerrainType.None);
+		}
+		else
+		{
+			_terrainHp[pos] = hp;
+		}
+		return hp;
+	}
+
+	/// <summary>Removes all terrain and permanent map effects (the map generator starts from a clean board).</summary>
+	internal void ClearMap()
+	{
+		_terrain.Clear();
+		_terrainHp.Clear();
+		_decor.Clear();
+		var permanent = new List<GridPos>();
+		foreach (KeyValuePair<GridPos, TileEffect> kv in _tileEffects)
+		{
+			if (kv.Value.IsPermanent)
+			{
+				permanent.Add(kv.Key);
+			}
+		}
+		foreach (GridPos pos in permanent)
+		{
+			_tileEffects.Remove(pos);
+		}
+	}
+
 	// ------------------------------------------------------------------ movement
 
 	/// <summary>
-	/// Tiles reachable from 'from' with at most 'movement' orthogonal steps, paths blocked by
-	/// occupied tiles and walls. Excludes the start tile. Result is sorted by distance (BFS order).
+	/// Tiles reachable from 'from' with at most 'movement' movement (Water costs WaterMoveCost per tile), paths
+	/// blocked by occupied tiles and walls. Excludes the start tile.
 	/// (Strict variant without friendly pass-through; the move rules use the overload with moverOwner.)
 	/// </summary>
 	public List<GridPos> GetReachableTiles(GridPos from, int movement)
 	{
 		var result = new List<GridPos>();
-		if (movement <= 0)
+		foreach (GridPos pos in BuildPathTree(from, movement, -2).Keys)
 		{
-			return result;
-		}
-		var dist = new Dictionary<GridPos, int> { [from] = 0 };
-		var queue = new Queue<GridPos>();
-		queue.Enqueue(from);
-		while (queue.Count > 0)
-		{
-			GridPos cur = queue.Dequeue();
-			int d = dist[cur];
-			if (d >= movement)
+			if (pos != from)
 			{
-				continue;
-			}
-			foreach (GridPos next in cur.Neighbors())
-			{
-				if (!IsPassable(next) || IsOccupied(next) || dist.ContainsKey(next))
-				{
-					continue;
-				}
-				dist[next] = d + 1;
-				result.Add(next);
-				queue.Enqueue(next);
+				result.Add(pos);
 			}
 		}
 		return result;
@@ -208,7 +337,11 @@ public sealed class BoardState
 		return path;
 	}
 
-	/// <summary>BFS parent map (start maps to itself). Friendlies passable, enemies / walls block.</summary>
+	/// <summary>
+	/// Cheapest-path parent map (start maps to itself; Dijkstra, entering Water costs WaterMoveCost). Friendlies
+	/// of 'moverOwner' are passable, enemies / buildings / walls block (moverOwner -2: every piece blocks).
+	/// Deterministic: ties keep the first found path (neighbor order right, left, down, up).
+	/// </summary>
 	private Dictionary<GridPos, GridPos> BuildPathTree(GridPos from, int movement, int moverOwner)
 	{
 		var parents = new Dictionary<GridPos, GridPos> { [from] = from };
@@ -217,30 +350,43 @@ public sealed class BoardState
 			return parents;
 		}
 		var dist = new Dictionary<GridPos, int> { [from] = 0 };
-		var queue = new Queue<GridPos>();
-		queue.Enqueue(from);
-		while (queue.Count > 0)
+		var open = new List<GridPos> { from };
+		var done = new HashSet<GridPos>();
+		while (open.Count > 0)
 		{
-			GridPos cur = queue.Dequeue();
-			int d = dist[cur];
-			if (d >= movement)
+			int best = 0;
+			for (int i = 1; i < open.Count; i++)
+			{
+				if (dist[open[i]] < dist[open[best]])
+				{
+					best = i;
+				}
+			}
+			GridPos cur = open[best];
+			open.RemoveAt(best);
+			if (!done.Add(cur))
 			{
 				continue;
 			}
 			foreach (GridPos next in cur.Neighbors())
 			{
-				if (!IsPassable(next) || dist.ContainsKey(next))
+				if (!IsPassable(next) || done.Contains(next))
 				{
 					continue;
 				}
 				Piece occupant = GetPieceAt(next);
-				if (occupant != null && occupant.OwnerIndex != moverOwner)
+				if (occupant != null && (moverOwner == -2 || occupant.OwnerIndex != moverOwner || occupant.IsBuilding))
 				{
 					continue;
 				}
-				dist[next] = d + 1;
+				int nd = dist[cur] + MoveCost(next);
+				if (nd > movement || (dist.TryGetValue(next, out int old) && old <= nd))
+				{
+					continue;
+				}
+				dist[next] = nd;
 				parents[next] = cur;
-				queue.Enqueue(next);
+				open.Add(next);
 			}
 		}
 		return parents;

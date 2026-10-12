@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="DeckData" load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/DeckData.cs" id="1_deck"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/Cleric.tres" id="c_Cleric"]
+[ext_resource type="Resource" path="res://Resources/Cards/Templar.tres" id="c_Templar"]
+[ext_resource type="Resource" path="res://Resources/Cards/Zealot.tres" id="c_Zealot"]
+[ext_resource type="Resource" path="res://Resources/Cards/Acolyte.tres" id="c_Acolyte"]
+[ext_resource type="Resource" path="res://Resources/Cards/DawnRanger.tres" id="c_DawnRanger"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archangel.tres" id="c_Archangel"]
+[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
+[ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="c_Lancer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Raider.tres" id="c_Raider"]
+[ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
+[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/Blessing.tres" id="c_Blessing"]
+[ext_resource type="Resource" path="res://Resources/Cards/Sanctuary.tres" id="c_Sanctuary"]
+[ext_resource type="Resource" path="res://Resources/Cards/MendingRain.tres" id="c_MendingRain"]
+[ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
+
+[resource]
+script = ExtResource("1_deck")
+Name = "Castor's Radiance"
+Cards = Array[ExtResource("2_card")]([ExtResource("c_Cleric"), ExtResource("c_Cleric"), ExtResource("c_Cleric"), ExtResource("c_Templar"), ExtResource("c_Templar"), ExtResource("c_Zealot"), ExtResource("c_Zealot"), ExtResource("c_Zealot"), ExtResource("c_Acolyte"), ExtResource("c_Acolyte"), ExtResource("c_DawnRanger"), ExtResource("c_Archangel"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Raider"), ExtResource("c_Raider"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Blessing"), ExtResource("c_Blessing"), ExtResource("c_Sanctuary"), ExtResource("c_Sanctuary"), ExtResource("c_MendingRain"), ExtResource("c_MendingRain"), ExtResource("c_MendingRain"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry")])
+Description = "A champion's deck of the Dawn Covenant."
+AccentColor = Color(1, 0.85, 0.4, 1)
+Showcase = ExtResource("c_Templar")

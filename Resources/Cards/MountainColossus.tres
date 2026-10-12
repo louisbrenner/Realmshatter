@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Mountain Colossus"
+Description = "A walking cliff - and a ruin when it falls."
+CardType = 0
+Rarity = 2
+Role = 1
+Class = 3
+ApCost = 5
+Movement = 3
+Attack = 2
+Hp = 6
+Range = 1
+Shield = 2
+ApBonus = 0
+Keywords = 4
+Clan = 5
+Deathrattle = 5
+DeathrattleAmount = 1
+OnFirstHit = 2
+OnFirstHitAmount = 1
+Tint = Color(0.7, 0.62, 0.5, 1)

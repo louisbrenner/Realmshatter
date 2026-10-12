@@ -409,7 +409,7 @@ public static class Vfx
 		fade.Chain().TweenCallback(Callable.From(root.QueueFree));
 	}
 
-	/// <summary>Popping, rising text (info, "+1", "Chain!", ...).</summary>
+	/// <summary>Popping, rising text (info, "+1", "Arc!", ...).</summary>
 	public static void PopupText(Node3D parent, Vector3 pos, string text, Color color, int fontSize = 64, float lift = 1.2f)
 	{
 		if (parent == null)

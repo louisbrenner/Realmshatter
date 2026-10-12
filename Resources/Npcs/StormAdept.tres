@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcStormAdept.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/Bellringer.tres" id="r_Bellringer"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "storm_adept"
+Name = "Kaida"
+Title = "Storm Circuit · Thunder Adept"
+Clan = 4
+House = 4
+Deck = ExtResource("3_deck")
+Position = Vector2(720, 470)
+Greeting = "Every bell I ring echoes twice. Can you keep up?"
+RematchLine = "The bells ring again."
+DefeatLine = "You silenced my bells. Impressive."
+VictoryLine = "The echo always wins."
+RewardGold = 75
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_Bellringer")])

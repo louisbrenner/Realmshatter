@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="DeckData" load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/DeckData.cs" id="1_deck"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/Gorran.tres" id="c_Gorran"]
+[ext_resource type="Resource" path="res://Resources/Cards/MountainColossus.tres" id="c_MountainColossus"]
+[ext_resource type="Resource" path="res://Resources/Cards/StoneGolem.tres" id="c_StoneGolem"]
+[ext_resource type="Resource" path="res://Resources/Cards/BatteringRam.tres" id="c_BatteringRam"]
+[ext_resource type="Resource" path="res://Resources/Cards/Thornback.tres" id="c_Thornback"]
+[ext_resource type="Resource" path="res://Resources/Cards/RockSlinger.tres" id="c_RockSlinger"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaTotem.tres" id="c_ManaTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/Raider.tres" id="c_Raider"]
+[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
+[ext_resource type="Resource" path="res://Resources/Cards/Rockslide.tres" id="c_Rockslide"]
+[ext_resource type="Resource" path="res://Resources/Cards/Stoneskin.tres" id="c_Stoneskin"]
+[ext_resource type="Resource" path="res://Resources/Cards/Gale.tres" id="c_Gale"]
+[ext_resource type="Resource" path="res://Resources/Cards/StoneWall.tres" id="c_StoneWall"]
+
+[resource]
+script = ExtResource("1_deck")
+Name = "Dur's Bulwark"
+Cards = Array[ExtResource("2_card")]([ExtResource("c_Gorran"), ExtResource("c_MountainColossus"), ExtResource("c_MountainColossus"), ExtResource("c_MountainColossus"), ExtResource("c_StoneGolem"), ExtResource("c_StoneGolem"), ExtResource("c_StoneGolem"), ExtResource("c_BatteringRam"), ExtResource("c_BatteringRam"), ExtResource("c_BatteringRam"), ExtResource("c_Thornback"), ExtResource("c_Thornback"), ExtResource("c_Thornback"), ExtResource("c_RockSlinger"), ExtResource("c_RockSlinger"), ExtResource("c_RockSlinger"), ExtResource("c_ManaTotem"), ExtResource("c_ManaTotem"), ExtResource("c_Raider"), ExtResource("c_Raider"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Rockslide"), ExtResource("c_Rockslide"), ExtResource("c_Rockslide"), ExtResource("c_Stoneskin"), ExtResource("c_Stoneskin"), ExtResource("c_Gale"), ExtResource("c_StoneWall"), ExtResource("c_StoneWall")])
+Description = "An unbreakable wall of living stone."
+AccentColor = Color(0.66, 0.6, 0.5, 1)
+Showcase = ExtResource("c_MountainColossus")

@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="VendorData" load_steps=26 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/VendorData.cs" id="1_vendor"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/Swordsman.tres" id="s_Swordsman"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archer.tres" id="s_Archer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="s_Guardian"]
+[ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="s_Scout"]
+[ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="s_Miner"]
+[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="s_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/BoneKnight.tres" id="s_BoneKnight"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberImp.tres" id="s_EmberImp"]
+[ext_resource type="Resource" path="res://Resources/Cards/Acolyte.tres" id="s_Acolyte"]
+[ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="s_BattleCry"]
+[ext_resource type="Resource" path="res://Resources/Cards/Weaken.tres" id="s_Weaken"]
+[ext_resource type="Resource" path="res://Resources/Cards/Blessing.tres" id="s_Blessing"]
+[ext_resource type="Resource" path="res://Resources/Cards/Stoneskin.tres" id="s_Stoneskin"]
+[ext_resource type="Resource" path="res://Resources/Cards/Gale.tres" id="s_Gale"]
+[ext_resource type="Resource" path="res://Resources/Cards/Frostbite.tres" id="s_Frostbite"]
+[ext_resource type="Resource" path="res://Resources/Cards/LightningBolt.tres" id="s_LightningBolt"]
+[ext_resource type="Resource" path="res://Resources/Cards/Overcharge.tres" id="s_Overcharge"]
+[ext_resource type="Resource" path="res://Resources/Cards/StoneWall.tres" id="s_StoneWall"]
+[ext_resource type="Resource" path="res://Resources/Cards/ArcaneApprentice.tres" id="s_ArcaneApprentice"]
+[ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="s_Lancer"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaSurge.tres" id="s_ManaSurge"]
+[ext_resource type="Resource" path="res://Resources/Cards/Raider.tres" id="s_Raider"]
+[ext_resource type="Resource" path="res://Resources/Cards/Pilgrim.tres" id="s_Pilgrim"]
+
+[resource]
+script = ExtResource("1_vendor")
+Id = "market"
+Name = "Greta"
+Title = "Market Stall"
+Greeting = "Fresh recruits and handy tricks, cheap as bread! Have a look."
+Position = Vector2(700, 820)
+Color = Color(0.85, 0.3, 0.25, 1)
+Stock = Array[ExtResource("2_card")]([ExtResource("s_Swordsman"), ExtResource("s_Archer"), ExtResource("s_Guardian"), ExtResource("s_Scout"), ExtResource("s_Miner"), ExtResource("s_Merchant"), ExtResource("s_BoneKnight"), ExtResource("s_EmberImp"), ExtResource("s_Acolyte"), ExtResource("s_BattleCry"), ExtResource("s_Weaken"), ExtResource("s_Blessing"), ExtResource("s_Stoneskin"), ExtResource("s_Gale"), ExtResource("s_Frostbite"), ExtResource("s_LightningBolt"), ExtResource("s_Overcharge"), ExtResource("s_StoneWall"), ExtResource("s_ArcaneApprentice"), ExtResource("s_Lancer"), ExtResource("s_ManaSurge"), ExtResource("s_Raider"), ExtResource("s_Pilgrim")])

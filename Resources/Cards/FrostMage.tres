@@ -5,15 +5,20 @@
 [resource]
 script = ExtResource("1")
 Name = "Frost Mage"
-Description = "Frost. Enemies it hits can't move next turn."
+Description = "Enemies it hits cannot move next turn."
 CardType = 0
+Rarity = 1
 Role = 1
-ApCost = 2
-Movement = 1
+Class = 6
+ApCost = 3
+Movement = 3
 Attack = 1
 Hp = 2
 Range = 2
 Shield = 0
 ApBonus = 0
 Keywords = 2
+Clan = 3
+OnFirstHit = 2
+OnFirstHitAmount = 1
 Tint = Color(0.55, 0.85, 1, 1)

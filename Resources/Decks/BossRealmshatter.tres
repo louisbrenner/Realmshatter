@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="DeckData" load_steps=21 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/DeckData.cs" id="1_deck"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/Ignis.tres" id="c_Ignis"]
+[ext_resource type="Resource" path="res://Resources/Cards/Solenne.tres" id="c_Solenne"]
+[ext_resource type="Resource" path="res://Resources/Cards/Hrimgar.tres" id="c_Hrimgar"]
+[ext_resource type="Resource" path="res://Resources/Cards/Voltaris.tres" id="c_Voltaris"]
+[ext_resource type="Resource" path="res://Resources/Cards/Gorran.tres" id="c_Gorran"]
+[ext_resource type="Resource" path="res://Resources/Cards/Phoenix.tres" id="c_Phoenix"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archangel.tres" id="c_Archangel"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostWyrm.tres" id="c_FrostWyrm"]
+[ext_resource type="Resource" path="res://Resources/Cards/ThunderTitan.tres" id="c_ThunderTitan"]
+[ext_resource type="Resource" path="res://Resources/Cards/MountainColossus.tres" id="c_MountainColossus"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaTotem.tres" id="c_ManaTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/Pyromancer.tres" id="c_Pyromancer"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormCaller.tres" id="c_StormCaller"]
+[ext_resource type="Resource" path="res://Resources/Cards/IceSentinel.tres" id="c_IceSentinel"]
+[ext_resource type="Resource" path="res://Resources/Cards/Templar.tres" id="c_Templar"]
+[ext_resource type="Resource" path="res://Resources/Cards/Meteor.tres" id="c_Meteor"]
+[ext_resource type="Resource" path="res://Resources/Cards/Hailstorm.tres" id="c_Hailstorm"]
+[ext_resource type="Resource" path="res://Resources/Cards/StaticCharge.tres" id="c_StaticCharge"]
+
+[resource]
+script = ExtResource("1_deck")
+Name = "The Shattered Court"
+Cards = Array[ExtResource("2_card")]([ExtResource("c_Ignis"), ExtResource("c_Solenne"), ExtResource("c_Hrimgar"), ExtResource("c_Voltaris"), ExtResource("c_Gorran"), ExtResource("c_Phoenix"), ExtResource("c_Phoenix"), ExtResource("c_Archangel"), ExtResource("c_Archangel"), ExtResource("c_FrostWyrm"), ExtResource("c_FrostWyrm"), ExtResource("c_ThunderTitan"), ExtResource("c_ThunderTitan"), ExtResource("c_MountainColossus"), ExtResource("c_MountainColossus"), ExtResource("c_ManaTotem"), ExtResource("c_ManaTotem"), ExtResource("c_Pyromancer"), ExtResource("c_Pyromancer"), ExtResource("c_StormCaller"), ExtResource("c_StormCaller"), ExtResource("c_IceSentinel"), ExtResource("c_IceSentinel"), ExtResource("c_Templar"), ExtResource("c_Templar"), ExtResource("c_Meteor"), ExtResource("c_Meteor"), ExtResource("c_Hailstorm"), ExtResource("c_StaticCharge"), ExtResource("c_StaticCharge")])
+Description = "Every clan's legend, bound to one throne."
+AccentColor = Color(0.7, 0.3, 0.95, 1)
+Showcase = ExtResource("c_Ignis")

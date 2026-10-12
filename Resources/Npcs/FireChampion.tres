@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcFireChampion.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/Berserker.tres" id="r_Berserker"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "fire_champion"
+Name = "Brakk"
+Title = "Ember Legion · Pyre Champion"
+Clan = 1
+House = 1
+Deck = ExtResource("3_deck")
+Position = Vector2(760, 250)
+Greeting = "Nobody reaches Varkas without passing my pyre first."
+RematchLine = "You again. Good. I need the warm-up."
+DefeatLine = "Ha! Go on then - the Pyrelord awaits."
+VictoryLine = "Ash and cinders. Come back stronger."
+RewardGold = 100
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_Berserker")])

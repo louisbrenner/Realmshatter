@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcHealingLeader.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archangel.tres" id="r_Archangel"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "healing_leader"
+Name = "Seraphine"
+Title = "Dawn Covenant · Clan Leader"
+Clan = 2
+Deck = ExtResource("3_deck")
+House = 2
+Position = Vector2(480, 215)
+Greeting = "I am Seraphine, High Priestess of the Dawn Covenant. My pieces simply refuse to fall. Will you test them?"
+RematchLine = "The dawn rises again. Shall we?"
+DefeatLine = "Light shines through you. The Archangel will walk at your side now."
+VictoryLine = "Rest, child. Even the sun must set before it rises."
+RewardGold = 150
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_Archangel")])
+BonusApPerTurn = 1
+RequiresDefeated = Array[String](["healing_initiate", "healing_adept", "healing_champion"])
+LockedLine = "Prove yourself against the three duelists of this hall first - then I will face you."

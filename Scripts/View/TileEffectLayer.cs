@@ -198,7 +198,8 @@ public partial class TileEffectLayer : Node3D
 		}
 	}
 
-	private int Remaining(int expiryTurn) => expiryTurn < 0 ? 0 : Mathf.Max(0, expiryTurn - CurrentTurn + 1);
+	private int Remaining(int expiryTurn) =>
+		expiryTurn < 0 || expiryTurn >= TileEffect.Permanent ? 0 : Mathf.Max(0, expiryTurn - CurrentTurn + 1);
 
 	private void UpdateBadge(GridPos pos, TileEffectVisual v)
 	{

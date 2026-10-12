@@ -6,9 +6,9 @@ namespace Realmshatter;
 
 /// <summary>
 /// Draws order indicators on the board: a move arrow along the orthogonal path, a curved attack
-/// arrow (red, or gold for a friendly chain trigger) with a target reticle, and a numbered badge
+/// arrow (red, or gold when it would hit an own piece) with a target reticle, and a numbered badge
 /// (resolution order) over the piece. One extra, brighter "preview" set shows the order being planned.
-/// Also draws predicted attack consequences (ShowAttackPreview: chain shots, damage numbers, kills,
+/// Also draws predicted attack consequences (ShowAttackPreview: Arc / Pierce / Echo hits, damage numbers incl. friendly fire, kills,
 /// pushes, pierce lines, new tile effects) and tile-spell area ghosts (ShowSpellAreaPreview).
 /// Place it anywhere at the world origin (e.g. as a child of Main or the BoardView).
 /// </summary>
@@ -36,7 +36,7 @@ public partial class OrderOverlay : Node3D
 	[Export] public float BadgeSize { get; set; } = 0.34f;
 	/// <summary>Height of predicted damage numbers above the victim's tile.</summary>
 	[Export] public float PreviewNumberHeight { get; set; } = 0.95f;
-	/// <summary>Extra height of predicted chain / pierce shot lines so they pass over the tokens.</summary>
+	/// <summary>Extra height of predicted secondary / pierce shot lines so they pass over the tokens.</summary>
 	[Export] public float ShotLineHeight { get; set; } = 0.2f;
 
 	private Node3D _ordersRoot;
@@ -53,7 +53,7 @@ public partial class OrderOverlay : Node3D
 		EnsureRoots();
 	}
 
-	/// <summary>Remembers the game state used for path finding and chain detection in previews.</summary>
+	/// <summary>Remembers the game state used for path finding and friendly-fire detection in previews.</summary>
 	public void SetState(GameState state)
 	{
 		_state = state;
@@ -81,20 +81,7 @@ public partial class OrderOverlay : Node3D
 		{
 			return;
 		}
-		foreach (Piece piece in state.GetPiecesOf(state.CurrentPlayerIndex))
-		{
-			if (piece.Order == null || !piece.IsAlive)
-			{
-				continue;
-			}
-			IReadOnlyList<GridPos> path = piece.Order.MoveTarget.HasValue && pathProvider != null
-				? pathProvider(piece, piece.Order.MoveTarget.Value)
-				: null;
-			Node3D group = BuildGroup(_ordersRoot, piece, piece.Order.MoveTarget, piece.Order.AttackTarget,
-				board, state.Board, false, piece.Order.OrderIndex + 1, path);
-			group.Visible = piece.Id != _previewPieceId;
-			_orderGroups[piece.Id] = group;
-		}
+		// Actions resolve immediately, so there are no committed orders left to draw.
 	}
 
 	/// <summary>
@@ -155,9 +142,9 @@ public partial class OrderOverlay : Node3D
 	// ------------------------------------------------------------------ attack consequences preview
 
 	/// <summary>
-	/// Draws the predicted consequences of one attack (TurnController.PredictAttack): friendlies that get
-	/// chain-triggered glow gold, chain shots are dashed lightning arrows (gold = hits a friendly and chains on,
-	/// red = damages an enemy), predicted damage numbers float above victims (skull if lethal), heals (+N),
+	/// Draws the predicted consequences of one attack (TurnController.PredictAttack): Arc zaps / Echo strikes are
+	/// dashed lightning arrows (gold = hits an own piece, red = an enemy), predicted damage numbers float above
+	/// victims (friendly fire included, skull if lethal), heals (+N),
 	/// Frost (snowflake), push arrows / blocked pushes, Pierce lines and ghost tiles for new tile effects.
 	/// The direct attack arc itself is drawn by ShowPreview. Replaces the previous attack preview.
 	/// </summary>
@@ -173,8 +160,6 @@ public partial class OrderOverlay : Node3D
 		var lift = new Vector3(0f, ArrowHeight + 0.02f, 0f);
 		var victims = new Dictionary<int, (GridPos Tile, int Hp, int Shield, int Heal, bool Frozen, bool Friendly)>();
 		var victimOrder = new List<int>();
-		var triggered = new HashSet<int>(preview.TriggeredPieceIds);
-		var glowDone = new HashSet<int>();
 
 		foreach (PredictedHit hit in preview.Hits)
 		{
@@ -186,21 +171,17 @@ public partial class OrderOverlay : Node3D
 			{
 				AddPierceLine(a, b, hasTarget);
 			}
-			else if (hit.IsChain && hasTarget)
+			else if (hit.IsSecondary && hasTarget)
 			{
 				AddLightningArrow(a, b, color);
 			}
-			if (hasTarget && (hit.IsChain || hit.IsPierce))
+			if (hasTarget && (hit.IsSecondary || hit.IsPierce))
 			{
 				AddMarker(_attackRoot, b + new Vector3(0, -0.035f, 0), color, 0, true);
 			}
 			if (!hasTarget)
 			{
 				continue;
-			}
-			if (hit.IsFriendly && triggered.Contains(hit.TargetPieceId) && glowDone.Add(hit.TargetPieceId))
-			{
-				AddTriggerGlow(Local(board.GridToWorld(hit.Tile)));
 			}
 			if (!victims.TryGetValue(hit.TargetPieceId, out var v))
 			{
@@ -285,6 +266,10 @@ public partial class OrderOverlay : Node3D
 		TileEffectType t = type ?? TileEffectType.None;
 		foreach (GridPos pos in tiles)
 		{
+			if (t != TileEffectType.None && occupancy != null && occupancy.IsInHotZone(pos))
+			{
+				continue; // tile effects never land on the crown field
+			}
 			if (t == TileEffectType.Wall && occupancy != null && occupancy.IsOccupied(pos))
 			{
 				AddIcon(Local(board.GridToWorld(pos)) + new Vector3(0, 0.6f, 0), FxIconShape.Cross, new Color(1f, 0.4f, 0.3f), new Color(0.15f, 0.05f, 0.04f, 0.85f), 0.3f, _spellRoot);
@@ -303,26 +288,7 @@ public partial class OrderOverlay : Node3D
 
 	// ------------------------------------------------------------------ order groups
 
-	private int PreviewNumber(Piece piece)
-	{
-		if (piece.Order != null)
-		{
-			return piece.Order.OrderIndex + 1;
-		}
-		if (_state == null)
-		{
-			return 0;
-		}
-		int count = 0;
-		foreach (Piece p in _state.GetPiecesOf(piece.OwnerIndex))
-		{
-			if (p.Order != null)
-			{
-				count++;
-			}
-		}
-		return count + 1;
-	}
+	private static int PreviewNumber(Piece piece) => 0;
 
 	private Node3D BuildGroup(Node3D parent, Piece piece, GridPos? move, GridPos? attack, BoardView board,
 		BoardState occupancy, bool preview, int number, IReadOnlyList<GridPos> rulesPath = null)

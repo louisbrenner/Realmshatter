@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Powder Keg"
+Description = "Sits still, goes boom. Keep your own pieces clear!"
+CardType = 0
+Rarity = 1
+Role = 1
+Class = 9
+ApCost = 2
+Movement = 0
+Attack = 0
+Hp = 2
+Range = 1
+Shield = 0
+ApBonus = 0
+Keywords = 1024
+Clan = 1
+Deathrattle = 1
+DeathrattleAmount = 2
+Tint = Color(0.75, 0.45, 0.2, 1)

@@ -6,13 +6,16 @@ namespace Realmshatter;
 /// <summary>
 /// Heuristic AI opponent. Uses only the public TurnController command API.
 /// AP is budgeted greedily in priority order, re-evaluated after every action:
-/// 1. finish a pending draft (free), 2. high-value orders (attacks, entering the scoring zone),
-/// 3. units while the own board is weak, 4. draw if the hand has nothing useful,
-/// 5. low-value orders (advance toward the zone), 6. remaining cards (spells incl. tile spells, units up to a cap),
-/// 7. draw with leftover AP, 8. convert VP into AP for a very valuable order (kills) when the VP lead is safe
+/// 1. finish a pending draft (free), 2. high-value actions (attacks, entering the scoring zone),
+/// 3. one reinforcement per turn while the own army is critically small, 4. draw if the hand has nothing useful,
+/// 5. advance toward the scoring zone (before any further deploys, so the army never camps in its base),
+/// 6. buildings, 7. remaining cards (spells incl. tile spells, units up to a cap),
+/// 8. draw with leftover AP, 9. convert VP into AP for a very valuable action (kills) when the VP lead is safe
 /// or the opponent is about to win.
-/// Orders: move toward a free scoring-zone tile (avoiding lava, friendlies may be passed), attack the target
-/// whose TurnController.PredictAttack outcome is best (direct hits, chains through friendlies, keyword effects).
+/// Actions resolve immediately (TurnController.Act), so every decision sees the real board. A piece moves toward
+/// a free scoring-zone tile (avoiding lava, friendlies may be passed) and attacks the target whose
+/// TurnController.PredictAttack outcome is best: enemy damage and kills minus friendly fire (Pierce / Arc can
+/// hit own pieces), keyword effects and Mending heals.
 /// It never calls EndTurn; the caller does that after presenting the actions.
 /// </summary>
 public sealed class SimpleAi
@@ -22,16 +25,16 @@ public sealed class SimpleAi
 	private const int MaxDesiredPieces = 6;
 	private const int VpOrderValue = 6;
 	private const int LavaPenalty = 25;
+	private const int MaxHandToDraw = 6;
 
 	private readonly TurnController _controller;
 
-	/// <summary>Simulated resolution-time knowledge for the orders already queued this turn.</summary>
+	/// <summary>Board knowledge of the current turn (actions resolve immediately, so it mirrors the real board).</summary>
 	private sealed class PlanContext
 	{
 		public HashSet<GridPos> SimOccupied;
+		/// <summary>Always empty now (no queued damage); kept so the scoring helpers stay uniform.</summary>
 		public readonly Dictionary<int, int> PlannedDamage = new Dictionary<int, int>();
-		public readonly HashSet<int> Planned = new HashSet<int>();
-		public readonly HashSet<int> ChainFired = new HashSet<int>();
 	}
 
 	private struct OrderCandidate
@@ -45,10 +48,7 @@ public sealed class SimpleAi
 	private struct AttackPlan
 	{
 		public GridPos Tile;
-		public int ChainPieceId;
 		public int Value;
-		public List<(int PieceId, int Damage)> Hits;
-		public List<int> Triggered;
 	}
 
 	/// <summary>The player this AI controls.</summary>
@@ -93,6 +93,7 @@ public sealed class SimpleAi
 		}
 
 		var ctx = new PlanContext { SimOccupied = new HashSet<GridPos>(Board.Occupancy.Keys) };
+		bool reinforced = false;
 		for (int step = 0; step < MaxSteps; step++)
 		{
 			if (State.Phase != GamePhase.Main || State.CurrentPlayerIndex != PlayerIndex)
@@ -103,8 +104,9 @@ public sealed class SimpleAi
 			{
 				continue;
 			}
-			if (IsBoardWeak() && TryPlayBestCard(actions, ctx, unitsOnly: true))
+			if (!reinforced && IsArmyCritical() && TryPlayBestCard(actions, ctx, unitsOnly: true))
 			{
+				reinforced = true;
 				continue;
 			}
 			if (ShouldDrawEarly() && TryDraw(actions))
@@ -112,6 +114,14 @@ public sealed class SimpleAi
 				continue;
 			}
 			if (TryCommand(actions, ctx, 1, false))
+			{
+				continue;
+			}
+			if (TryTrap(actions))
+			{
+				continue;
+			}
+			if (TryBuild(actions))
 			{
 				continue;
 			}
@@ -226,7 +236,8 @@ public sealed class SimpleAi
 	/// <summary>Pays for a Draw and picks the best offered card. False if drawing is not possible.</summary>
 	private bool TryDraw(List<AiAction> actions)
 	{
-		if (!_controller.CanDraw() || !_controller.Draw())
+		// Do not hoard: with a full hand the AP is better spent on the board.
+		if (State.Players[PlayerIndex].Hand.Count >= MaxHandToDraw || !_controller.CanDraw() || !_controller.Draw())
 		{
 			return false;
 		}
@@ -263,11 +274,23 @@ public sealed class SimpleAi
 	}
 
 	/// <summary>Few own pieces, or fewer than the opponent.</summary>
+	/// <summary>Fewer than 3 own units, or fewer units than the opponent (buildings do not count).</summary>
 	private bool IsBoardWeak()
 	{
-		int mine = State.GetPiecesOf(PlayerIndex).Count;
-		int theirs = State.GetPiecesOf(1 - PlayerIndex).Count;
+		int mine = State.GetPiecesOf(PlayerIndex).FindAll(p => !p.IsBuilding).Count;
+		int theirs = State.GetPiecesOf(1 - PlayerIndex).FindAll(p => !p.IsBuilding).Count;
 		return mine < 3 || mine < theirs;
+	}
+
+	/// <summary>
+	/// Reinforcing BEFORE moving is only worth it with almost no army (fewer than 2 units, or 2+ units behind the
+	/// opponent); otherwise the existing units advance first and new units are deployed with the remaining AP.
+	/// </summary>
+	private bool IsArmyCritical()
+	{
+		int mine = State.GetPiecesOf(PlayerIndex).FindAll(p => !p.IsBuilding).Count;
+		int theirs = State.GetPiecesOf(1 - PlayerIndex).FindAll(p => !p.IsBuilding).Count;
+		return mine < 2 || mine + 2 <= theirs;
 	}
 
 	/// <summary>Draw before spending AP elsewhere if the hand is empty, or the board is weak and no unit is in hand.</summary>
@@ -332,7 +355,7 @@ public sealed class SimpleAi
 	private bool TryPlayBestCard(List<AiAction> actions, PlanContext ctx, bool unitsOnly)
 	{
 		PlayerState me = State.Players[PlayerIndex];
-		bool unitsAllowed = unitsOnly || State.GetPiecesOf(PlayerIndex).Count < MaxDesiredPieces;
+		bool unitsAllowed = unitsOnly || State.GetPiecesOf(PlayerIndex).FindAll(p => !p.IsBuilding).Count < MaxDesiredPieces;
 		CardData bestCard = null;
 		GridPos bestTile = default;
 		Piece bestTarget = null;
@@ -426,7 +449,7 @@ public sealed class SimpleAi
 				return false;
 			}
 			// Kills from the spell free tiles; walls are respected by SimulatedReachable via the board.
-			ctx.SimOccupied.RemoveWhere(p => !Board.IsOccupied(p) && !IsPlannedDestination(ctx, p));
+			ctx.SimOccupied.RemoveWhere(p => !Board.IsOccupied(p));
 			actions.Add(new AiAction
 			{
 				Kind = AiActionKind.PlaySpell,
@@ -457,30 +480,23 @@ public sealed class SimpleAi
 		return true;
 	}
 
-	private bool IsPlannedDestination(PlanContext ctx, GridPos pos)
-	{
-		foreach (Piece p in State.GetPiecesOf(PlayerIndex))
-		{
-			if (ctx.Planned.Contains(p.Id) && p.Order?.MoveTarget == pos)
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/// <summary>Free own deploy tile closest to the scoring zone (ties: free tile ahead, then center column). Avoids lava.</summary>
+	/// <summary>
+	/// Free own deploy tile closest to the scoring zone (ties: free tile ahead, then center column). Avoids lava.
+	/// Planted units may go forward (near own units): they are placed where they threaten the most enemies, close to the
+	/// scoring zone, but not right next to an enemy that would kill them at once.
+	/// </summary>
 	private GridPos? FindDeployTile(CardData card)
 	{
 		GridPos? best = null;
 		int bestScore = int.MaxValue;
 		int forward = BoardState.ForwardDirection(PlayerIndex);
+		bool planted = card.HasKeyword(Keyword.Planted);
 		for (int y = 0; y < Board.Height; y++)
 		{
 			for (int x = 0; x < Board.Width; x++)
 			{
 				var pos = new GridPos(x, y);
-				if (!Board.IsInDeployZone(PlayerIndex, pos) || Board.IsOccupied(pos))
+				if ((!planted && !Board.IsInDeployZone(PlayerIndex, pos)) || Board.IsOccupied(pos))
 				{
 					continue;
 				}
@@ -488,11 +504,24 @@ public sealed class SimpleAi
 				{
 					continue;
 				}
-				var ahead = new GridPos(x, y + forward);
-				int score = DistanceToZoneRect(pos) * 20
-					+ (Board.IsInside(ahead) && (Board.IsOccupied(ahead) || Board.IsWall(ahead)) ? 10 : 0)
-					+ (Board.GetTileEffectType(pos) == TileEffectType.Lava ? 50 : 0)
-					+ Math.Abs(2 * x - (Board.Width - 1));
+				int score;
+				if (planted)
+				{
+					int enemyDist = NearestEnemyDistance(pos);
+					int reach = Math.Max(1, card.Range);
+					score = DistanceToZoneRect(pos) * 6
+						+ (enemyDist <= reach ? 0 : (enemyDist - reach) * 8)
+						+ (enemyDist <= 1 ? 25 : 0)
+						+ (Board.GetTileEffectType(pos) == TileEffectType.Lava ? 50 : 0);
+				}
+				else
+				{
+					var ahead = new GridPos(x, y + forward);
+					score = DistanceToZoneRect(pos) * 20
+						+ (Board.IsInside(ahead) && (Board.IsOccupied(ahead) || Board.IsWall(ahead)) ? 10 : 0)
+						+ (Board.GetTileEffectType(pos) == TileEffectType.Lava ? 50 : 0)
+						+ Math.Abs(2 * x - (Board.Width - 1));
+				}
 				if (score < bestScore)
 				{
 					bestScore = score;
@@ -505,7 +534,7 @@ public sealed class SimpleAi
 
 	/// <summary>
 	/// Buff (net positive deltas): own piece nearest the zone / most threatened. Debuff: strongest enemy.
-	/// Overcharge-like status spells: own piece whose chain would hit the most enemies.
+	/// Overcharge-like status spells: own piece that can still act and has an enemy within striking distance.
 	/// </summary>
 	private Piece FindSpellTarget(CardData card)
 	{
@@ -558,44 +587,34 @@ public sealed class SimpleAi
 		return best;
 	}
 
-	/// <summary>Own piece (not yet Overcharged) whose chain directions hold enemies and that a friendly can trigger.</summary>
+	/// <summary>Own piece (not yet Overcharged) that can still act this turn and reach an enemy with its attack.</summary>
 	private Piece FindOverchargeTarget(CardData card)
 	{
 		Piece best = null;
-		int bestValue = 1;
+		int bestValue = 0;
 		foreach (Piece p in State.GetPiecesOf(PlayerIndex))
 		{
-			if (p.HasStatus(StatusEffectType.Overcharged) || p.EffectiveAttack <= 0 || !_controller.CanPlaySpellCard(card, p))
+			if (p.HasStatus(StatusEffectType.Overcharged) || p.EffectiveAttack <= 0 || p.HasActed(State.TurnNumber)
+				|| p.IsSummoningSick(State.TurnNumber) || !_controller.CanPlaySpellCard(card, p))
 			{
 				continue;
 			}
-			int enemies = ChainHits(p).Count;
-			if (enemies == 0 || !CanBeTriggered(p))
+			int reach = p.EffectiveMovement + p.EffectiveRange;
+			foreach (Piece e in State.Pieces)
 			{
-				continue;
-			}
-			int value = enemies * 2 + p.EffectiveAttack;
-			if (value > bestValue)
-			{
-				bestValue = value;
-				best = p;
+				if (e.OwnerIndex == PlayerIndex || e.Position.ManhattanDistance(p.Position) > reach)
+				{
+					continue;
+				}
+				int value = p.EffectiveAttack * 2 + (e.CurrentHp + e.TotalShield <= p.EffectiveAttack * 2 ? 4 : 1);
+				if (value > bestValue)
+				{
+					bestValue = value;
+					best = p;
+				}
 			}
 		}
 		return best;
-	}
-
-	/// <summary>True if another own commandable piece has this piece within attack range (from its current tile).</summary>
-	private bool CanBeTriggered(Piece target)
-	{
-		foreach (Piece p in State.GetPiecesOf(PlayerIndex))
-		{
-			if (p != target && p.Order == null && !p.IsSummoningSick(State.TurnNumber)
-				&& Board.IsInAttackRange(p.Position, target.Position, p.EffectiveRange))
-			{
-				return true;
-			}
-		}
-		return false;
 	}
 
 	/// <summary>
@@ -639,16 +658,16 @@ public sealed class SimpleAi
 			if (enemy && card.SpellDamage > 0)
 			{
 				bool kills = p.CurrentHp + p.TotalShield <= card.SpellDamage;
-				if (kills && ctx.PlannedDamage.ContainsKey(p.Id))
-				{
-					// A queued attack targets this tile: killing it now would make that order hit an empty tile.
-					return int.MinValue;
-				}
 				value += kills ? 6 : 2;
 			}
 			if (mine && card.SpellHeal > 0)
 			{
 				value += Math.Min(card.SpellHeal, p.MaxHp - p.CurrentHp);
+			}
+			if (card.SpellPush && p != null)
+			{
+				int spot = (Board.IsInScoringZone(t) ? 2 : 0) + (Board.IsInHotZone(t) ? 2 : 0);
+				value += enemy ? 1 + spot : -(1 + spot);
 			}
 			switch (card.TileEffect)
 			{
@@ -700,9 +719,9 @@ public sealed class SimpleAi
 	// ---------------------------------------------------------------- orders
 
 	/// <summary>
-	/// Evaluates every commandable own piece without an order and queues the best order whose value is at
-	/// least minValue. If AP is missing and allowVp is set, converts 1 VP into AP first (ShouldSpendVp).
-	/// False if none qualifies.
+	/// Evaluates every own piece that can still act and executes the best action (TurnController.Act, resolves
+	/// immediately) whose value is at least minValue. If AP is missing and allowVp is set, converts 1 VP into AP
+	/// first (ShouldSpendVp). False if none qualifies.
 	/// </summary>
 	private bool TryCommand(List<AiAction> actions, PlanContext ctx, int minValue, bool allowVp)
 	{
@@ -716,10 +735,11 @@ public sealed class SimpleAi
 			return false;
 		}
 
+		ctx.SimOccupied = new HashSet<GridPos>(Board.Occupancy.Keys);
 		OrderCandidate? best = null;
 		foreach (Piece piece in State.GetPiecesOf(PlayerIndex))
 		{
-			if (piece.Order != null || ctx.Planned.Contains(piece.Id) || !_controller.CanCommand(piece))
+			if (!_controller.CanCommand(piece))
 			{
 				continue;
 			}
@@ -743,45 +763,28 @@ public sealed class SimpleAi
 		GridPos? attackTile = pick.Attack?.Tile;
 		while (State.Config.OrderApCost > State.Players[PlayerIndex].ActionPoints)
 		{
-			if (!TryConvertVp(actions, $"for {CardName(p.Source)}'s order"))
+			if (!TryConvertVp(actions, $"for {CardName(p.Source)}'s action"))
 			{
 				return false;
 			}
 		}
-		if (!_controller.SetOrder(p, pick.Move, attackTile))
+		string description = DescribeOrder(p, pick.Move, pick.Attack);
+		if (_controller.Act(p, pick.Move, attackTile) == null)
 		{
 			return false;
 		}
-
-		ctx.Planned.Add(p.Id);
-		if (pick.Move.HasValue)
-		{
-			ctx.SimOccupied.Remove(p.Position);
-			ctx.SimOccupied.Add(pick.Move.Value);
-		}
-		if (pick.Attack.HasValue)
-		{
-			foreach ((int id, int dmg) in pick.Attack.Value.Hits)
-			{
-				ctx.PlannedDamage.TryGetValue(id, out int prev);
-				ctx.PlannedDamage[id] = prev + dmg;
-			}
-			foreach (int id in pick.Attack.Value.Triggered)
-			{
-				ctx.ChainFired.Add(id);
-			}
-		}
+		ctx.SimOccupied = new HashSet<GridPos>(Board.Occupancy.Keys);
 
 		actions.Add(new AiAction
 		{
-			Kind = AiActionKind.SetOrder,
+			Kind = AiActionKind.Command,
 			PlayerIndex = PlayerIndex,
 			Card = p.Source,
 			PieceId = p.Id,
 			MoveTarget = pick.Move,
 			AttackTarget = attackTile,
 			Target = attackTile ?? pick.Move,
-			Description = DescribeOrder(p, pick.Move, pick.Attack) + $" ({State.Config.OrderApCost} AP)",
+			Description = description + $" ({State.Config.OrderApCost} AP)",
 		});
 		return true;
 	}
@@ -805,13 +808,13 @@ public sealed class SimpleAi
 	private OrderCandidate? EvaluateOrder(Piece piece, PlanContext ctx)
 	{
 		GridPos dest = ChooseMove(piece, ctx.SimOccupied, ctx.PlannedDamage);
-		AttackPlan? attack = ctx.ChainFired.Contains(piece.Id) ? null : ChooseAttack(piece, dest, ctx);
+		AttackPlan? attack = ChooseAttack(piece, dest, ctx);
 		GridPos? move = dest != piece.Position ? dest : null;
 
 		if (move.HasValue && !_controller.GetValidMoveTargets(piece).Contains(move.Value))
 		{
 			move = null;
-			attack = ctx.ChainFired.Contains(piece.Id) ? null : ChooseAttack(piece, piece.Position, ctx);
+			attack = ChooseAttack(piece, piece.Position, ctx);
 		}
 		if (attack.HasValue && !Board.IsInAttackRange(move ?? piece.Position, attack.Value.Tile, piece.EffectiveRange))
 		{
@@ -826,7 +829,11 @@ public sealed class SimpleAi
 		if (move.HasValue)
 		{
 			bool wasInZone = Board.IsInScoringZone(piece.Position);
-			if (!wasInZone && Board.IsInScoringZone(move.Value))
+			if (!Board.IsInHotZone(piece.Position) && Board.IsInHotZone(move.Value))
+			{
+				value += wasInZone ? 3 : 6;
+			}
+			else if (!wasInZone && Board.IsInScoringZone(move.Value))
 			{
 				value += 4;
 			}
@@ -836,6 +843,11 @@ public sealed class SimpleAi
 				if (progress > 0)
 				{
 					value += progress >= 2 ? 2 : 1;
+					// Getting units out of the home rows matters most: an army parked at home never scores.
+					if (Board.IsInDeployZone(PlayerIndex, piece.Position) && !Board.IsInDeployZone(PlayerIndex, move.Value))
+					{
+						value += 1;
+					}
 				}
 			}
 			if (Board.GetTileEffectType(piece.Position) == TileEffectType.Lava
@@ -909,7 +921,11 @@ public sealed class SimpleAi
 				dist = DistanceToZoneRect(c);
 			}
 			int score = dist * 10 - AttackOpportunity(piece, c, plannedDamage) * 2 + start.ManhattanDistance(c);
-			if (Board.GetTileEffectType(c) == TileEffectType.Lava)
+			if (Board.IsInHotZone(c))
+			{
+				score -= 12;
+			}
+			if (Board.GetTileEffectType(c) is TileEffectType.Lava or TileEffectType.Storm)
 			{
 				score += piece.CurrentHp <= State.Config.LavaDamage ? LavaPenalty * 3 : LavaPenalty;
 			}
@@ -957,14 +973,12 @@ public sealed class SimpleAi
 	}
 
 	/// <summary>
-	/// Attack from 'from': every occupied tile in range is evaluated with TurnController.PredictAttack (direct
-	/// enemy hits as well as chains through unplanned friendlies) and scored by ScorePreview. Ties prefer direct
-	/// hits. Null if nothing has a positive value.
+	/// Attack from 'from': every occupied tile in range is evaluated with TurnController.PredictAttack (enemy
+	/// damage, friendly fire, Mending heals) and scored by ScorePreview. Null if nothing has a positive value.
 	/// </summary>
 	private AttackPlan? ChooseAttack(Piece piece, GridPos from, PlanContext ctx)
 	{
 		AttackPlan? best = null;
-		bool bestDirect = false;
 		foreach (GridPos tile in _controller.GetValidAttackTargets(piece, from))
 		{
 			Piece target = Board.GetPieceAt(tile);
@@ -973,11 +987,7 @@ public sealed class SimpleAi
 				continue;
 			}
 			bool friendly = target.OwnerIndex == PlayerIndex;
-			if (friendly && (ctx.Planned.Contains(target.Id) || ctx.ChainFired.Contains(target.Id)))
-			{
-				continue;
-			}
-			if (!friendly && RemainingEhp(target, ctx.PlannedDamage) <= 0)
+			if (friendly && !(piece.HasKeyword(Keyword.Mending) && target.CurrentHp < target.MaxHp))
 			{
 				continue;
 			}
@@ -986,30 +996,31 @@ public sealed class SimpleAi
 			{
 				continue;
 			}
-			var plan = ScorePreview(preview, ctx, tile, friendly ? target.Id : -1);
-			if (plan.Value <= 0)
-			{
-				continue;
-			}
-			bool direct = !friendly;
-			if (!best.HasValue || plan.Value > best.Value.Value || (plan.Value == best.Value.Value && direct && !bestDirect))
+			AttackPlan plan = ScorePreview(preview, ctx, tile);
+			if (plan.Value > 0 && (!best.HasValue || plan.Value > best.Value.Value))
 			{
 				best = plan;
-				bestDirect = direct;
 			}
 		}
 		return best;
 	}
 
-	/// <summary>Scores a preview: per enemy hit 3 (6 if it kills given planned damage), +1 per keyword effect, + heals.</summary>
-	private AttackPlan ScorePreview(ChainPreview preview, PlanContext ctx, GridPos tile, int chainPieceId)
+	/// <summary>
+	/// Scores a preview: per enemy hit 3 (6 if it kills), +1 per keyword effect, + heals; friendly fire costs
+	/// 3 per damaged own piece (8 if it dies).
+	/// </summary>
+	private AttackPlan ScorePreview(ChainPreview preview, PlanContext ctx, GridPos tile)
 	{
-		var hits = new List<(int, int)>();
 		var local = new Dictionary<int, int>();
 		int value = 0;
+		int hitEnemyHp = 0;
 		foreach (PredictedHit hit in preview.Hits)
 		{
-			if (hit.TargetPieceId < 0 || hit.IsFriendly)
+			if (hit.TargetPieceId < 0)
+			{
+				continue;
+			}
+			if (hit.IsFriendly)
 			{
 				continue;
 			}
@@ -1028,7 +1039,7 @@ public sealed class SimpleAi
 			{
 				value += ehp <= hit.Damage ? 6 : 3;
 				local[enemy.Id] = already + hit.Damage;
-				hits.Add((enemy.Id, hit.Damage));
+				hitEnemyHp += hit.HpLost;
 			}
 			if ((hit.Effects & HitEffect.Frozen) != 0) value += 1;
 			if ((hit.Effects & HitEffect.Lava) != 0) value += 1;
@@ -1038,84 +1049,150 @@ public sealed class SimpleAi
 			}
 		}
 		value += preview.FriendlyHealed;
-		return new AttackPlan
-		{
-			Tile = tile,
-			ChainPieceId = chainPieceId,
-			Value = value,
-			Hits = hits,
-			Triggered = new List<int>(preview.TriggeredPieceIds),
-		};
+		// Everything that is not a direct hit: deathrattles, thorns, Arc / Pierce on own pieces.
+		value += Math.Max(0, preview.EnemyHpLost - hitEnemyHp) * 2;
+		value -= preview.FriendlyHpLost * 2 + preview.FriendlyKills * 6;
+		return new AttackPlan { Tile = tile, Value = value };
 	}
 
-	/// <summary>Enemies the friendly's chain fire would hit directly (nearest piece per chain direction, walls stop).</summary>
-	private List<int> ChainHits(Piece shooter)
+	/// <summary>
+	/// Lets an idle Builder start its building when AP allows (keeping 1 AP spare) and the player has fewer than
+	/// two buildings of that kind. Turrets / Barricades go toward the scoring zone, the rest away from enemies.
+	/// </summary>
+	private bool TryBuild(List<AiAction> actions)
 	{
-		var hits = new List<int>();
-		int left = BoardState.LeftDirection(shooter.OwnerIndex);
-		int fwd = BoardState.ForwardDirection(shooter.OwnerIndex);
-		var dirs = new List<GridPos> { new GridPos(left, 0), new GridPos(-left, 0) };
-		if (shooter.HasKeyword(Keyword.Conduit))
+		int ap = State.Players[PlayerIndex].ActionPoints;
+		foreach (Piece piece in State.GetPiecesOf(PlayerIndex))
 		{
-			dirs.Add(new GridPos(0, fwd));
-			dirs.Add(new GridPos(0, -fwd));
-		}
-		foreach (GridPos dir in dirs)
-		{
-			for (int d = 1; d <= shooter.EffectiveRange; d++)
-			{
-				var tile = new GridPos(shooter.Position.X + dir.X * d, shooter.Position.Y + dir.Y * d);
-				if (!Board.IsPassable(tile))
-				{
-					break;
-				}
-				Piece p = Board.GetPieceAt(tile);
-				if (p == null)
-				{
-					continue;
-				}
-				if (p.OwnerIndex != PlayerIndex)
-				{
-					hits.Add(p.Id);
-				}
-				break;
-			}
-		}
-		return hits;
-	}
-
-	/// <summary>Tiles reachable with the v3 move rules where the piece may END (not sim-occupied). Own pieces are passable.</summary>
-	private HashSet<GridPos> SimulatedReachable(GridPos from, int movement, HashSet<GridPos> occupied)
-	{
-		var dist = new Dictionary<GridPos, int> { [from] = 0 };
-		var queue = new Queue<GridPos>();
-		var result = new HashSet<GridPos>();
-		queue.Enqueue(from);
-		while (queue.Count > 0)
-		{
-			GridPos cur = queue.Dequeue();
-			int d = dist[cur];
-			if (d >= movement)
+			BuildingType type = _controller.GetBuildType(piece);
+			// A builder in the scoring zone would stop scoring while it builds: keep it scoring instead.
+			if (type == BuildingType.None || piece.ConstructingId >= 0 || !_controller.CanCommand(piece)
+				|| BuildingInfo.GetCost(type) + 1 > ap || Board.IsInScoringZone(piece.Position))
 			{
 				continue;
 			}
-			foreach (GridPos next in cur.Neighbors())
+			int same = 0;
+			foreach (Piece p in State.GetPiecesOf(PlayerIndex))
 			{
-				if (!Board.IsPassable(next) || dist.ContainsKey(next))
+				same += p.Building == type ? 1 : 0;
+			}
+			if (same >= 2)
+			{
+				continue;
+			}
+			// Best tiles first (Barricades: the two best).
+			bool forward = type == BuildingType.Turret || type == BuildingType.Barricade;
+			var scored = new List<(GridPos Tile, int Score)>();
+			foreach (GridPos tile in _controller.GetValidBuildTiles(piece))
+			{
+				int score = forward ? DistanceToZoneRect(tile) * 10 : -NearestEnemyDistance(tile) * 3;
+				if (Board.GetTileEffectType(tile) == TileEffectType.Lava || Board.IsInScoringZone(tile) && !forward)
 				{
-					continue;
+					score += 30;
 				}
-				Piece occupant = Board.GetPieceAt(next);
-				if (occupant != null && occupant.OwnerIndex != PlayerIndex)
+				scored.Add((tile, score));
+			}
+			if (scored.Count == 0)
+			{
+				continue;
+			}
+			scored.Sort((a, b) => a.Score.CompareTo(b.Score));
+			var tiles = new List<GridPos>();
+			for (int i = 0; i < scored.Count && tiles.Count < BuildingInfo.GetBuildCount(type); i++)
+			{
+				tiles.Add(scored[i].Tile);
+			}
+			if (_controller.Build(piece, tiles, null) == null)
+			{
+				continue;
+			}
+			actions.Add(new AiAction
+			{
+				Kind = AiActionKind.Build,
+				PlayerIndex = PlayerIndex,
+				Card = piece.Source,
+				PieceId = piece.Id,
+				Target = tiles[0],
+				Description = $"#{piece.Id} {CardName(piece.Source)} builds {(tiles.Count > 1 ? $"{tiles.Count} {BuildingInfo.GetName(type)}s" : $"a {BuildingInfo.GetName(type)}")} " +
+					$"at {string.Join(" and ", tiles)} ({BuildingInfo.GetCost(type)} AP)",
+			});
+			return true;
+		}
+		return false;
+	}
+
+	/// <summary>
+	/// A Trapper with nothing better to do (no worthwhile move or attack this turn) hides a trap next to it when
+	/// enemies are near: on the free neighbour tile closest to them, preferably inside the scoring zone.
+	/// The AI knows nothing about the opponent's traps.
+	/// </summary>
+	private bool TryTrap(List<AiAction> actions)
+	{
+		if (State.Config.TrapApCost > State.Players[PlayerIndex].ActionPoints)
+		{
+			return false;
+		}
+		foreach (Piece piece in State.GetPiecesOf(PlayerIndex))
+		{
+			if (!_controller.GetTrapType(piece).HasValue || !_controller.CanCommand(piece) || NearestEnemyDistance(piece.Position) > 7)
+			{
+				continue;
+			}
+			GridPos? best = null;
+			int bestScore = int.MaxValue;
+			foreach (GridPos tile in _controller.GetValidTrapTiles(piece))
+			{
+				int score = NearestEnemyDistance(tile) * 3 + DistanceToZoneRect(tile) * 2
+					+ (Board.GetTileEffectType(tile) == TileEffectType.Lava ? 10 : 0);
+				if (score < bestScore)
 				{
-					continue;
+					bestScore = score;
+					best = tile;
 				}
-				dist[next] = d + 1;
-				if (!occupied.Contains(next))
-				{
-					result.Add(next);
-				}
-				queue.Enqueue(next);
+			}
+			if (!best.HasValue || _controller.SetTrap(piece, best.Value, null) == null)
+			{
+				continue;
+			}
+			actions.Add(new AiAction
+			{
+				Kind = AiActionKind.Trap,
+				PlayerIndex = PlayerIndex,
+				Card = piece.Source,
+				PieceId = piece.Id,
+				Target = best.Value,
+				Description = $"#{piece.Id} {CardName(piece.Source)} hides a trap ({State.Config.TrapApCost} AP)",
+			});
+			return true;
+		}
+		return false;
+	}
+
+	private int NearestEnemyDistance(GridPos tile)
+	{
+		int best = 99;
+		foreach (Piece p in State.Pieces)
+		{
+			if (p.OwnerIndex != PlayerIndex)
+			{
+				best = Math.Min(best, p.Position.ManhattanDistance(tile));
+			}
+		}
+		return best;
+	}
+
+	/// <summary>
+	/// Tiles reachable with the move rules (water costs extra movement, own pieces are passable) where the piece may
+	/// END (not sim-occupied).
+	/// </summary>
+	private HashSet<GridPos> SimulatedReachable(GridPos from, int movement, HashSet<GridPos> occupied)
+	{
+		var result = new HashSet<GridPos>();
+		foreach (GridPos tile in Board.GetReachableTiles(from, movement, PlayerIndex))
+		{
+			if (!occupied.Contains(tile))
+			{
+				result.Add(tile);
 			}
 		}
 		return result;
@@ -1183,9 +1260,7 @@ public sealed class SimpleAi
 		{
 			Piece target = Board.GetPieceAt(attack.Value.Tile);
 			string targetName = target != null ? $"#{target.Id} {CardName(target.Source)}" : "tile";
-			text += attack.Value.ChainPieceId >= 0
-				? $", triggers chain via {targetName} at {attack.Value.Tile}"
-				: $", attacks {targetName} at {attack.Value.Tile}";
+			text += $", attacks {targetName} at {attack.Value.Tile}";
 		}
 		return text;
 	}

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcFrostChampion.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostMage.tres" id="r_FrostMage"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "frost_champion"
+Name = "Torvald"
+Title = "Frostbound · Glacier Champion"
+Clan = 3
+House = 3
+Deck = ExtResource("3_deck")
+Position = Vector2(760, 250)
+Greeting = "Isolde rests behind the glacier. I AM the glacier."
+RematchLine = "The glacier does not tire."
+DefeatLine = "Cracked... Go. Isolde will not be so kind."
+VictoryLine = "Crushed beneath the ice, as all are."
+RewardGold = 100
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_FrostMage")])

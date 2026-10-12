@@ -13,7 +13,7 @@ public partial class CameraRig : Node3D
 	/// <summary>Emitted when the view mode changes (value = (int)ViewMode).</summary>
 	[Signal] public delegate void ViewModeChangedEventHandler(int mode);
 
-	[Export] public ViewMode InitialMode { get; set; } = ViewMode.TwoD;
+	[Export] public ViewMode InitialMode { get; set; } = ViewMode.ThreeD;
 	/// <summary>Board extent to fit in world units (X = width, Y = depth along Z).</summary>
 	[Export] public Vector2 BoardFitSize { get; set; } = new Vector2(10, 8);
 	/// <summary>Extra space around the board in world units.</summary>
@@ -32,7 +32,7 @@ public partial class CameraRig : Node3D
 	/// <summary>Right column (deck, End Turn).</summary>
 	[Export] public float InsetRight { get; set; } = 176f;
 	/// <summary>Resting hand cards.</summary>
-	[Export] public float InsetBottom { get; set; } = 88f;
+	[Export] public float InsetBottom { get; set; } = 104f;
 	/// <summary>Lower bound of the HUD scale (must match Hud.MinScale).</summary>
 	[Export] public float InsetMinScale { get; set; } = 0.7f;
 
@@ -44,7 +44,7 @@ public partial class CameraRig : Node3D
 	[Export] public float IsoYawDegrees { get; set; } = 20f;
 
 	[ExportGroup("3D")]
-	[Export] public float PerspectivePitchDegrees { get; set; } = -55f;
+	[Export] public float PerspectivePitchDegrees { get; set; } = -66f;
 	[Export] public float PerspectiveYawDegrees { get; set; } = 0f;
 	[Export] public float PerspectiveFov { get; set; } = 50f;
 

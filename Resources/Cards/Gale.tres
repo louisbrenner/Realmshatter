@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Gale"
+Description = "A howling gust blows every piece in a cross 1 tile outward."
+CardType = 1
+Role = 0
+ApCost = 1
+SpellTarget = 2
+AreaShape = 1
+SpellPush = true
+Clan = 5
+Rarity = 0
+Tint = Color(0.75, 0.9, 0.95, 1)

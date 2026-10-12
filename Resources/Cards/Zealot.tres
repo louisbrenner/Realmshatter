@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Zealot"
+Description = "Faith hardens its skin instead of its rage."
+CardType = 0
+Role = 0
+Movement = 5
+Attack = 1
+Hp = 3
+Range = 1
+Shield = 0
+ApBonus = 0
+Clan = 2
+Class = 1
+Rarity = 1
+ApCost = 3
+Keywords = 0
+Deathrattle = 4
+DeathrattleAmount = 2
+OnFirstHit = 3
+OnFirstHitAmount = 2
+Tint = Color(1, 0.9, 0.6, 1)

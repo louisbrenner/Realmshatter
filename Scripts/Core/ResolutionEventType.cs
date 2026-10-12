@@ -1,7 +1,7 @@
 namespace Realmshatter;
 
 /// <summary>
-/// Kind of a resolution event emitted by OrderResolver / TurnController (EndTurn, turn-start ticks, tile spells).
+/// Kind of a resolution event emitted by OrderResolver / TurnController (actions, EndTurn expiries, turn-start ticks, spells).
 /// Views must ignore types they do not know.
 /// </summary>
 public enum ResolutionEventType
@@ -10,16 +10,14 @@ public enum ResolutionEventType
 	Moved,
 	/// <summary>PieceId could not move From -> To (enemy / wall blocks at resolution time, or it is Frozen).</summary>
 	MoveBlocked,
-	/// <summary>PieceId attacked tile To from From. OtherPieceId = piece on that tile or -1. IsChain = chain shot, IsPierce = pierce hit.</summary>
+	/// <summary>PieceId attacked tile To from From. OtherPieceId = piece on that tile or -1. IsSecondary = Arc zap / Echo strike, IsPierce = pierce hit.</summary>
 	Attacked,
 	/// <summary>Attack of PieceId at tile To was cancelled (out of range after a blocked/shortened move).</summary>
 	AttackCancelled,
 	/// <summary>PieceId took damage from OtherPieceId (-1 = tile/spell): Amount incoming, ShieldAbsorbed, HpLost, RemainingHp, RemainingShield.</summary>
 	Damaged,
-	/// <summary>PieceId died at From. Already removed from the board (a ReturnedToDeck event follows).</summary>
+	/// <summary>PieceId died at From. Already removed from the board (Undying: a ReturnedToDeck event follows).</summary>
 	Died,
-	/// <summary>Friendly OtherPieceId hit PieceId, which now fires (sideways, or in 4 directions with Conduit).</summary>
-	ChainTriggered,
 	/// <summary>A spell (SpellName) on PieceId expired.</summary>
 	SpellExpired,
 
@@ -29,7 +27,7 @@ public enum ResolutionEventType
 	PushBlocked,
 	/// <summary>PieceId was healed by OtherPieceId (-1 = spell): Amount healed, RemainingHp.</summary>
 	Healed,
-	/// <summary>The card of dead PieceId returned to PlayerIndex's deck: CardName, Amount = Undying level (0 = unchanged card).</summary>
+	/// <summary>The card of dead Undying PieceId returned to PlayerIndex's deck: CardName, Amount = new Undying level.</summary>
 	ReturnedToDeck,
 	/// <summary>TileEffect placed on tile To: Amount = duration, ExpiryTurn, CardName = source, OtherPieceId = source piece or -1.</summary>
 	TileEffectApplied,
@@ -41,8 +39,29 @@ public enum ResolutionEventType
 	TileHeal,
 	/// <summary>Status was applied to PieceId by OtherPieceId (-1 = spell). ExpiryTurn.</summary>
 	StatusApplied,
-	/// <summary>Status on PieceId expired or was consumed (IsChain = consumed by a chain trigger).</summary>
+	/// <summary>Status on PieceId expired or was consumed (IsSecondary = consumed by an attack).</summary>
 	StatusExpired,
 	/// <summary>PlayerIndex cast tile/area spell CardName on anchor tile To (first event of LastSpellEvents).</summary>
 	SpellCast,
+	/// <summary>Dead PieceId (owner PlayerIndex) triggers its deathrattle at From: SpellName = effect, Amount, CardName.</summary>
+	Deathrattle,
+	/// <summary>PieceId was hit for the first time by OtherPieceId (-1 = spell/tile): SpellName = effect, Amount, RemainingShield.</summary>
+	FirstHitTriggered,
+	/// <summary>Builder PieceId started building OtherPieceId (SpellName = building) on tile To.</summary>
+	BuildingStarted,
+	/// <summary>Building PieceId at To is finished (SpellName = building).</summary>
+	BuildingCompleted,
+	/// <summary>Aura of PieceId pulses at its turn start (SpellName = aura name, PlayerIndex = owner).</summary>
+	AuraPulse,
+	/// <summary>
+	/// PlayerIndex gained Amount AP from a card (PieceId = source piece or -1, CardName = source, From = where).
+	/// IsSecondary = the AP arrives at the start of that player's next turn.
+	/// </summary>
+	ApGained,
+	/// <summary>The Rock on tile To took Amount damage; RemainingHp 0 = it crumbled to plain ground.</summary>
+	TerrainDamaged,
+	/// <summary>Piece PieceId (owner PlayerIndex) hid a trap on tile To: CardName = trap name, SpellName = TrapType.</summary>
+	TrapSet,
+	/// <summary>Enemy PieceId stepped on a trap of PlayerIndex at To and was stopped: CardName = trap name, SpellName = TrapType.</summary>
+	TrapTriggered,
 }

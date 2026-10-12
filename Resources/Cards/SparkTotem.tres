@@ -5,15 +5,20 @@
 [resource]
 script = ExtResource("1")
 Name = "Spark Totem"
-Description = "Conduit. Immobile relay that chain-fires in all 4 directions."
+Description = "Immobile turret: its bolts jump to everything next to the target."
 CardType = 0
+Rarity = 1
 Role = 1
-ApCost = 1
+Class = 9
+ApCost = 2
 Movement = 0
 Attack = 1
 Hp = 3
 Range = 2
 Shield = 0
 ApBonus = 0
-Keywords = 32
+Keywords = 1056
+Clan = 4
+Deathrattle = 1
+DeathrattleAmount = 1
 Tint = Color(1, 0.95, 0.35, 1)

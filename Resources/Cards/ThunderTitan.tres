@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Thunder Titan"
+Description = "When it falls, the storm breaks loose."
+CardType = 0
+Rarity = 2
+Role = 0
+Class = 8
+ApCost = 5
+Movement = 3
+Attack = 2
+Hp = 5
+Range = 2
+Shield = 0
+ApBonus = 0
+Keywords = 96
+Clan = 4
+Deathrattle = 1
+DeathrattleAmount = 2
+OnFirstHit = 5
+OnFirstHitAmount = 1
+Tint = Color(0.6, 0.55, 1, 1)

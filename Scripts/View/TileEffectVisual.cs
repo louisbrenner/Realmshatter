@@ -6,7 +6,8 @@ namespace Realmshatter;
 
 /// <summary>
 /// Visual of one tile effect: molten lava (embers, bubbles, heat shimmer, glow), a raised stone wall
-/// with rubble, or a glowing healing rune circle with rising sparkles; plus a small duration badge.
+/// with rubble, a heap of broken stones and charred beams (Rubble of a destroyed building), a glowing healing
+/// rune circle with rising sparkles or a ground sheet (ice, storm, mud); plus a small duration badge.
 /// Ghost mode is a translucent preview without particles/lights/badge (spell and attack previews).
 /// Created by TileEffectLayer and OrderOverlay; the node origin is the tile's top center.
 /// </summary>
@@ -69,6 +70,18 @@ public partial class TileEffectVisual : Node3D
 			case TileEffectType.Healing:
 				BuildHealing();
 				break;
+			case TileEffectType.Ice:
+				BuildGround(0);
+				break;
+			case TileEffectType.Storm:
+				BuildGround(1);
+				break;
+			case TileEffectType.Mud:
+				BuildGround(2);
+				break;
+			case TileEffectType.Rubble:
+				BuildRubble();
+				break;
 			default:
 				BuildGeneric();
 				break;
@@ -108,7 +121,8 @@ public partial class TileEffectVisual : Node3D
 		SetAppear(0f);
 		Node3D parent = GetParent() as Node3D;
 		Vector3 pos = GlobalPosition;
-		float duration = Type == TileEffectType.Wall ? 0.32f : 0.38f;
+		bool stone = Type is TileEffectType.Wall or TileEffectType.Rubble;
+		float duration = stone ? 0.32f : 0.38f;
 		if (!IsGhost && parent != null)
 		{
 			switch (Type)
@@ -118,6 +132,7 @@ public partial class TileEffectVisual : Node3D
 					Vfx.Shockwave(parent, pos + new Vector3(0, 0.04f, 0), RuleVfx.FireColor, 1.1f, 0.35f, 0.14f);
 					break;
 				case TileEffectType.Wall:
+				case TileEffectType.Rubble:
 					Vfx.DustRing(parent, pos, new Color(0.62f, 0.55f, 0.46f), 0.5f, 16);
 					break;
 				case TileEffectType.Healing:
@@ -127,9 +142,9 @@ public partial class TileEffectVisual : Node3D
 			}
 		}
 		_tween = CreateTween();
-		Tween.TransitionType trans = Type == TileEffectType.Wall ? Tween.TransitionType.Back : Tween.TransitionType.Cubic;
+		Tween.TransitionType trans = stone ? Tween.TransitionType.Back : Tween.TransitionType.Cubic;
 		_tween.TweenMethod(Callable.From<float>(SetAppear), 0f, 1f, duration).SetTrans(trans).SetEase(Tween.EaseType.Out);
-		if (Type == TileEffectType.Wall && !IsGhost)
+		if (stone && !IsGhost)
 		{
 			_tween.TweenCallback(Callable.From(() =>
 			{
@@ -169,7 +184,8 @@ public partial class TileEffectVisual : Node3D
 					Vfx.SmokePuff(parent, pos + new Vector3(0, 0.1f, 0), new Color(0.3f, 0.27f, 0.25f), 10, 0.7f);
 					break;
 				case TileEffectType.Wall:
-					RuleVfx.RubbleBurst(parent, pos, 1.1f);
+				case TileEffectType.Rubble:
+					RuleVfx.RubbleBurst(parent, pos, Type == TileEffectType.Wall ? 1.1f : 0.8f);
 					break;
 				case TileEffectType.Healing:
 					Vfx.Sparkle(parent, pos + new Vector3(0, 0.2f, 0), RuleVfx.HealColor, 10, 0.7f, 0.4f);
@@ -221,9 +237,10 @@ public partial class TileEffectVisual : Node3D
 				_surfaceMat?.SetShaderParameter("appear", t);
 				break;
 			case TileEffectType.Wall:
+			case TileEffectType.Rubble:
 				if (_wallRoot != null)
 				{
-					float h = 0.62f;
+					float h = Type == TileEffectType.Wall ? 0.62f : 0.35f;
 					_wallRoot.Position = new Vector3(0f, -h * (1f - t), 0f);
 					_wallRoot.Scale = new Vector3(1f, Mathf.Max(0.05f, t), 1f);
 				}
@@ -262,6 +279,7 @@ public partial class TileEffectVisual : Node3D
 				_surfaceMat?.SetShaderParameter("appear", 1f + t * 0.3f);
 				break;
 			case TileEffectType.Wall:
+			case TileEffectType.Rubble:
 				foreach (ShaderMaterial m in _wallMats)
 				{
 					m.SetShaderParameter("crumble", t);
@@ -448,6 +466,83 @@ public partial class TileEffectVisual : Node3D
 		}
 	}
 
+	/// <summary>
+	/// Rubble of a destroyed building: a low heap of broken stone blocks (bigger ones in the middle), a couple of
+	/// charred beams sticking out and a dusty footprint. Impassable, so it reads as an obstacle like a Wall.
+	/// </summary>
+	private void BuildRubble()
+	{
+		_wallRoot = new Node3D { Name = "Heap" };
+		AddChild(_wallRoot);
+		float ts = _tileSize;
+		if (IsGhost)
+		{
+			_ghostMat = VfxAssets.CreateMaterial("ghost_preview", 6);
+			_ghostMat.SetShaderParameter("half_size", new Vector3(0.4f * ts, 0.15f, 0.4f * ts));
+			_wallRoot.AddChild(new MeshInstance3D
+			{
+				Mesh = new BoxMesh { Size = new Vector3(0.8f * ts, 0.3f, 0.8f * ts) },
+				MaterialOverride = _ghostMat,
+				Position = new Vector3(0, 0.15f, 0),
+				CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+			});
+			return;
+		}
+
+		_wallRoot.AddChild(new MeshInstance3D
+		{
+			Name = "Dust",
+			Mesh = new PlaneMesh { Size = new Vector2(0.92f * ts, 0.92f * ts) },
+			MaterialOverride = new StandardMaterial3D
+			{
+				AlbedoColor = new Color(0.28f, 0.25f, 0.22f, 0.6f),
+				Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+				Roughness = 1f,
+			},
+			Position = new Vector3(0, 0.008f, 0),
+			CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+		});
+
+		ShaderMaterial[] stones = { CreateWallMaterial(0.9f), CreateWallMaterial(2.3f), CreateWallMaterial(4.1f) };
+		var rng = new RandomNumberGenerator { Seed = (ulong)(Mathf.Abs(_seed) * 1000f) + 31ul };
+		// Inner ring of large slabs piled on each other, outer ring of smaller chunks.
+		for (int i = 0; i < 12; i++)
+		{
+			bool inner = i < 4;
+			float ang = Mathf.Tau * i / (inner ? 4f : 8f) + rng.RandfRange(-0.35f, 0.35f);
+			float dist = (inner ? rng.RandfRange(0.04f, 0.14f) : rng.RandfRange(0.24f, 0.36f)) * ts;
+			float size = inner ? rng.RandfRange(0.2f, 0.28f) : rng.RandfRange(0.09f, 0.16f);
+			float lift = inner ? 0.06f + (i % 2) * 0.1f : 0f;
+			_wallRoot.AddChild(new MeshInstance3D
+			{
+				Mesh = new BoxMesh { Size = new Vector3(size * 1.25f, size * 0.6f, size) * ts },
+				MaterialOverride = stones[i % stones.Length],
+				Position = new Vector3(Mathf.Cos(ang) * dist, size * 0.3f * ts + lift, Mathf.Sin(ang) * dist),
+				Rotation = new Vector3(rng.RandfRange(-0.5f, 0.5f), rng.RandfRange(0f, Mathf.Tau), rng.RandfRange(-0.5f, 0.5f)),
+			});
+		}
+		// Charred beams of the collapsed building.
+		var wood = new StandardMaterial3D { AlbedoColor = new Color(0.2f, 0.13f, 0.08f), Roughness = 0.95f };
+		for (int i = 0; i < 2; i++)
+		{
+			float yaw = rng.RandfRange(0f, Mathf.Tau);
+			_wallRoot.AddChild(new MeshInstance3D
+			{
+				Mesh = new BoxMesh { Size = new Vector3(0.62f * ts, 0.055f, 0.06f) },
+				MaterialOverride = wood,
+				Position = new Vector3(rng.RandfRange(-0.08f, 0.08f) * ts, 0.2f + i * 0.06f, rng.RandfRange(-0.08f, 0.08f) * ts),
+				Rotation = new Vector3(0f, yaw, rng.RandfRange(0.25f, 0.45f) * (i == 0 ? 1f : -1f)),
+			});
+		}
+		foreach (Node child in _wallRoot.GetChildren())
+		{
+			if (child is MeshInstance3D mi && mi.Mesh is BoxMesh box && mi.MaterialOverride is ShaderMaterial)
+			{
+				mi.SetInstanceShaderParameter("top_size", new Vector2(box.Size.X, box.Size.Z));
+			}
+		}
+	}
+
 	private ShaderMaterial CreateWallMaterial(float seedOffset)
 	{
 		ShaderMaterial m = VfxAssets.CreateMaterial("stone_wall");
@@ -514,6 +609,53 @@ public partial class TileEffectVisual : Node3D
 		AddChild(_light);
 	}
 
+	/// <summary>Ice (0), Storm cell (1) or Mud (2): one flat sheet (tile_ground.gdshader); storm cells add sparks.</summary>
+	private void BuildGround(int kind)
+	{
+		float s = _tileSize * 0.97f;
+		_surfaceMat = VfxAssets.CreateMaterial("tile_ground", IsGhost ? 6 : 1);
+		_surfaceMat.SetShaderParameter("kind", kind);
+		_surfaceMat.SetShaderParameter("seed", _seed);
+		if (IsGhost)
+		{
+			_surfaceMat.SetShaderParameter("opacity", 0.75f);
+			_surfaceMat.SetShaderParameter("hatch", 1f);
+		}
+		AddChild(new MeshInstance3D
+		{
+			Name = "Ground",
+			Mesh = new PlaneMesh { Size = new Vector2(s, s) },
+			MaterialOverride = _surfaceMat,
+			Position = new Vector3(0, IsGhost ? 0.03f : 0.011f, 0),
+			CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+		});
+		if (IsGhost || kind != 1)
+		{
+			return;
+		}
+		AddEmitter(new CpuParticles3D
+		{
+			Name = "Sparks",
+			Mesh = VfxAssets.SparkleQuad,
+			Amount = 5,
+			Lifetime = 0.5f,
+			LocalCoords = false,
+			Randomness = 0.8f,
+			EmissionShape = CpuParticles3D.EmissionShapeEnum.Box,
+			EmissionBoxExtents = new Vector3(s * 0.4f, 0.02f, s * 0.4f),
+			Direction = Vector3.Up,
+			Spread = 40f,
+			InitialVelocityMin = 0.3f,
+			InitialVelocityMax = 0.8f,
+			ScaleAmountMin = 0.05f,
+			ScaleAmountMax = 0.11f,
+			ScaleAmountCurve = Vfx.LinearCurve(1f, 0f, 1f),
+			ColorRamp = Vfx.Ramp(new Color(1f, 1f, 1f, 1f), new Color(0.8f, 0.65f, 1f), new Color(0.5f, 0.3f, 1f, 0f)),
+			CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+			Position = new Vector3(0, 0.04f, 0),
+		});
+	}
+
 	private void BuildGeneric()
 	{
 		float s = _tileSize * 0.97f;
@@ -536,11 +678,18 @@ public partial class TileEffectVisual : Node3D
 			TileEffectType.Lava => LavaTimerColor,
 			TileEffectType.Wall => WallTimerColor,
 			TileEffectType.Healing => HealTimerColor,
+			TileEffectType.Ice => new Color(0.7f, 0.9f, 1f),
+			TileEffectType.Storm => new Color(0.8f, 0.65f, 1f),
+			TileEffectType.Mud => new Color(0.75f, 0.58f, 0.38f),
+			TileEffectType.Rubble => WallTimerColor,
 			_ => Colors.White,
 		};
-		Vector3 pos = Type == TileEffectType.Wall
-			? new Vector3(0.28f * _tileSize, 0.8f, 0.28f * _tileSize)
-			: new Vector3(0.37f * _tileSize, 0.1f, -0.37f * _tileSize);
+		Vector3 pos = Type switch
+		{
+			TileEffectType.Wall => new Vector3(0.28f * _tileSize, 0.8f, 0.28f * _tileSize),
+			TileEffectType.Rubble => new Vector3(0.32f * _tileSize, 0.5f, 0.32f * _tileSize),
+			_ => new Vector3(0.37f * _tileSize, 0.1f, -0.37f * _tileSize),
+		};
 		_timer = new Node3D { Name = "Timer", Position = pos };
 		AddChild(_timer);
 		_timerMat = VfxAssets.CreateMaterial("tile_timer", 24);

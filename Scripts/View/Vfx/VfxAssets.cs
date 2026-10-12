@@ -51,6 +51,70 @@ public static class VfxAssets
 
 	private static Font _textFont;
 	private static Font _textBoldFont;
+	private static Font _numberFont;
+
+	/// <summary>
+	/// Bold serif for the numbers on badges (MSDF, lining figures): every digit has the same height and sits on
+	/// the baseline, so numbers stay centred in their badge (Georgia's old-style 3, 4, 5, 7, 9 hang below it).
+	/// </summary>
+	public static Font NumberFont => _numberFont ??= new FontVariation
+	{
+		BaseFont = new SystemFont
+		{
+			FontNames = new[] { "Palatino Linotype", "Book Antiqua", "Times New Roman", "Serif" },
+			FontWeight = 700,
+			MultichannelSignedDistanceField = true,
+			MsdfPixelRange = 16,
+			MsdfSize = 48,
+			GenerateMipmaps = true,
+		},
+		OpentypeFeatures = new Godot.Collections.Dictionary
+		{
+			{ TextServerManager.GetPrimaryInterface().NameToTag("lnum"), 1 },
+		},
+	};
+
+	private static readonly Dictionary<int, float> DigitDrops = new Dictionary<int, float>();
+
+	/// <summary>
+	/// How far (font pixels, positive = lower) the visual centre of NumberFont's digits sits below the centre of
+	/// a vertically centred text line. A centred Label / Label3D centres ascent + descent, but digits have no
+	/// descender, so they look low; shift the text up by this value to centre the ink inside a badge.
+	/// Measured from the real glyph boxes, so it also holds for whatever fallback font the platform picks.
+	/// </summary>
+	public static float DigitDrop(int fontSize)
+	{
+		if (DigitDrops.TryGetValue(fontSize, out float drop))
+		{
+			return drop;
+		}
+		Font font = NumberFont;
+		TextServer ts = TextServerManager.GetPrimaryInterface();
+		Rid shaped = ts.CreateShapedText();
+		float sum = 0f;
+		int count = 0;
+		ts.ShapedTextAddString(shaped, "0123456789", font.GetRids(), fontSize, font.GetOpentypeFeatures());
+		foreach (Godot.Collections.Dictionary glyph in ts.ShapedTextGetGlyphs(shaped))
+		{
+			Rid rid = glyph["font_rid"].AsRid();
+			long index = glyph["index"].AsInt64();
+			var size = new Vector2I(fontSize, 0);
+			Vector2 box = ts.FontGetGlyphSize(rid, size, index);
+			if (!rid.IsValid || box.Y <= 0f)
+			{
+				continue;
+			}
+			// Glyph boxes are padded evenly on both sides, so their middle is the ink middle (relative to the baseline).
+			sum += ts.FontGetGlyphOffset(rid, size, index).Y + box.Y * 0.5f;
+			count++;
+		}
+		ts.FreeRid(shaped);
+		float ascent = font.GetAscent(fontSize);
+		float descent = font.GetDescent(fontSize);
+		drop = count > 0 ? (ascent - descent) * 0.5f + sum / count : 0f;
+		DigitDrops[fontSize] = drop;
+		return drop;
+	}
 
 	private static SystemFont CreateSharpFont(int weight)
 	{

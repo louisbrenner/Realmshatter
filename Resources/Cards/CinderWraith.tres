@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Cinder Wraith"
+Description = "A ghost of embers that bursts when it fades."
+CardType = 0
+Role = 0
+Movement = 3
+Attack = 1
+Hp = 1
+Range = 2
+Shield = 0
+ApBonus = 0
+Clan = 1
+Class = 6
+Rarity = 1
+ApCost = 3
+Keywords = 1
+Deathrattle = 1
+DeathrattleAmount = 2
+Tint = Color(1, 0.4, 0.2, 1)

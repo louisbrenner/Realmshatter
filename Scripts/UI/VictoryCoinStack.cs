@@ -4,7 +4,7 @@ using Godot;
 namespace Realmshatter;
 
 /// <summary>
-/// Victory points as stacking gold coins: the target is split into columns (e.g. 20 = 4 stacks of 5),
+/// Victory points as stacking gold coins in stacks of CoinsPerStack (e.g. 25 = 5 stacks of 5),
 /// faint slots show the remaining progress. Gained coins drop in with a bounce and a glint,
 /// spent coins float up and fade.
 /// </summary>
@@ -13,10 +13,13 @@ public partial class VictoryCoinStack : Control
 	[Export] public float CoinRadius { get; set; } = 15f;
 	[Export] public float CoinThickness { get; set; } = 5f;
 	[Export] public float ColumnGap { get; set; } = 7f;
-	[Export] public int MaxColumns { get; set; } = 5;
+	/// <summary>Coins per stack; a higher target adds stacks instead of making them taller.</summary>
+	[Export] public int CoinsPerStack { get; set; } = 5;
 	[Export] public Color Accent { get; set; } = HudStyle.PlayerBlue;
 
 	private const float DropHeight = 70f;
+	/// <summary>Room under the stacks for the felt pad, so neighbours below (the mana row) never overlap it.</summary>
+	private const float PadBelow = 8f;
 	private const float DropTime = 0.42f;
 	private const float DropStagger = 0.09f;
 	private const float LeaveTime = 0.45f;
@@ -86,7 +89,7 @@ public partial class VictoryCoinStack : Control
 	{
 		GetLayout(out int cols, out int perStack);
 		float w = cols * CoinRadius * 2f + (cols - 1) * ColumnGap + 4f;
-		float h = perStack * CoinThickness + CoinRadius * 0.84f + CoinThickness + 6f;
+		float h = perStack * CoinThickness + CoinRadius * 0.84f + CoinThickness + 6f + PadBelow;
 		return new Vector2(w, h);
 	}
 
@@ -141,7 +144,8 @@ public partial class VictoryCoinStack : Control
 		float colW = r * 2f;
 		float totalW = cols * colW + (cols - 1) * ColumnGap;
 		float x0 = (Size.X - totalW) * 0.5f + r;
-		float baseY = Size.Y - r * 0.42f - t - 3f;
+		// Lifted by PadBelow so the felt pad (which reaches below the lowest coin) stays inside the control.
+		float baseY = Size.Y - r * 0.42f - t - 3f - PadBelow;
 
 		// Accent felt pad under the stacks.
 		var pad = new Rect2(x0 - r - 2f, baseY - r * 0.1f, totalW + 4f, r * 0.84f + t + 4f);
@@ -216,9 +220,8 @@ public partial class VictoryCoinStack : Control
 
 	private void GetLayout(out int cols, out int perStack)
 	{
-		int maxCols = Mathf.Max(1, MaxColumns);
-		cols = Mathf.Clamp(Mathf.CeilToInt(_target / 5f), 1, maxCols);
-		perStack = Mathf.CeilToInt(_target / (float)cols);
+		perStack = Mathf.Clamp(CoinsPerStack, 1, _target);
+		cols = Mathf.CeilToInt(_target / (float)perStack);
 	}
 
 	private void SyncLists(int count)

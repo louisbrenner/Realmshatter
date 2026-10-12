@@ -5,15 +5,20 @@
 [resource]
 script = ExtResource("1")
 Name = "Pyromancer"
-Description = "Burning. Conduit. When chained, its fire spreads in all 4 directions."
+Description = "The air around it burns."
 CardType = 0
+Rarity = 1
 Role = 1
-ApCost = 2
-Movement = 1
+Class = 6
+ApCost = 4
+Movement = 3
 Attack = 1
 Hp = 3
 Range = 2
 Shield = 0
 ApBonus = 0
-Keywords = 33
+Keywords = 513
+Clan = 1
+Deathrattle = 3
+DeathrattleAmount = 1
 Tint = Color(0.95, 0.3, 0.2, 1)

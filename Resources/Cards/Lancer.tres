@@ -5,15 +5,18 @@
 [resource]
 script = ExtResource("1")
 Name = "Lancer"
-Description = "Pierce. Also hits the piece behind its target."
+Description = "Its thrust skewers two in a row."
 CardType = 0
+Rarity = 0
 Role = 0
+Class = 5
 ApCost = 2
-Movement = 2
+Movement = 5
 Attack = 2
 Hp = 3
 Range = 1
 Shield = 0
 ApBonus = 0
 Keywords = 8
+Clan = 0
 Tint = Color(0.75, 0.75, 0.85, 1)

@@ -1,6 +1,6 @@
 namespace Realmshatter;
 
-/// <summary>One shot inside a ChainPreview (direct attack, chain shot or pierce hit).</summary>
+/// <summary>One hit inside a ChainPreview (main attack, pierce hit, Arc zap or Echo strike).</summary>
 public sealed class PredictedHit
 {
 	/// <summary>Piece that fired this shot.</summary>
@@ -12,10 +12,11 @@ public sealed class PredictedHit
 	public int TargetPieceId { get; init; } = -1;
 	/// <summary>True if the target belongs to the attacker's owner.</summary>
 	public bool IsFriendly { get; init; }
-	public bool IsChain { get; init; }
+	/// <summary>Arc zap or Echo strike.</summary>
+	public bool IsSecondary { get; init; }
 	public bool IsPierce { get; init; }
 
-	/// <summary>Incoming damage (before shields). 0 for friendly hits.</summary>
+	/// <summary>Incoming damage (before shields). 0 for Mending heals.</summary>
 	public int Damage { get; internal set; }
 	public int ShieldAbsorbed { get; internal set; }
 	public int HpLost { get; internal set; }
@@ -26,6 +27,6 @@ public sealed class PredictedHit
 	public HitEffect Effects { get; internal set; }
 
 	public override string ToString() =>
-		$"#{AttackerId} -> {Tile} (#{TargetPieceId}{(IsFriendly ? " friendly" : "")}{(IsChain ? ", chain" : "")}{(IsPierce ? ", pierce" : "")}): " +
+		$"#{AttackerId} -> {Tile} (#{TargetPieceId}{(IsFriendly ? " friendly" : "")}{(IsSecondary ? ", secondary" : "")}{(IsPierce ? ", pierce" : "")}): " +
 		$"dmg {Damage}, hp -{HpLost}{(Kills ? ", kill" : "")}{(Healed > 0 ? $", heal {Healed}" : "")}, {Effects}";
 }

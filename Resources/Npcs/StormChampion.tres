@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcStormChampion.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormHerald.tres" id="r_StormHerald"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "storm_champion"
+Name = "Volk"
+Title = "Storm Circuit · Tempest Champion"
+Clan = 4
+House = 4
+Deck = ExtResource("3_deck")
+Position = Vector2(760, 250)
+Greeting = "Raijin only fights those who survive my tempest."
+RematchLine = "Another storm, then."
+DefeatLine = "You rode out the storm. Raijin awaits."
+VictoryLine = "Swept away. Like leaves."
+RewardGold = 100
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_StormHerald")])

@@ -5,15 +5,20 @@
 [resource]
 script = ExtResource("1")
 Name = "Templar"
-Description = "Mending. Holy warrior: strikes foes, heals the allies it hits."
+Description = "Holy warrior whose presence mends its allies."
 CardType = 0
+Rarity = 1
 Role = 0
-ApCost = 2
-Movement = 1
+Class = 3
+ApCost = 4
+Movement = 3
 Attack = 2
 Hp = 4
 Range = 1
 Shield = 1
 ApBonus = 0
-Keywords = 16
+Keywords = 528
+Clan = 2
+OnFirstHit = 3
+OnFirstHitAmount = 1
 Tint = Color(0.95, 0.85, 0.55, 1)

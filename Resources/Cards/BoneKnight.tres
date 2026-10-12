@@ -5,15 +5,18 @@
 [resource]
 script = ExtResource("1")
 Name = "Bone Knight"
-Description = "Undying. Comes back to your deck stronger when it dies."
+Description = "Comes back to your deck stronger when it dies."
 CardType = 0
 Role = 0
-ApCost = 1
-Movement = 2
+Class = 1
+ApCost = 2
+Movement = 5
 Attack = 1
 Hp = 2
 Range = 1
 Shield = 0
 ApBonus = 0
 Keywords = 128
+Clan = 0
+Rarity = 0
 Tint = Color(0.88, 0.86, 0.75, 1)

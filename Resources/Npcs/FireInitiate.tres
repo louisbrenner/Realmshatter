@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcFireInitiate.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberImp.tres" id="r_EmberImp"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "fire_initiate"
+Name = "Pip"
+Title = "Ember Legion · Ember Initiate"
+Clan = 1
+House = 1
+Deck = ExtResource("3_deck")
+Position = Vector2(240, 470)
+Greeting = "Oh! A challenger! I only just got my first ember... go easy on me?"
+RematchLine = "Again? I have been practising!"
+DefeatLine = "Ouch, singed my eyebrows. Fair win!"
+VictoryLine = "I won?! Wait till Varkas hears this!"
+RewardGold = 50
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_EmberImp")])

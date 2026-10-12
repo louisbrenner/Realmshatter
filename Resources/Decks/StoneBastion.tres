@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="DeckData" load_steps=20 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/DeckData.cs" id="1_deck"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
+[ext_resource type="Resource" path="res://Resources/Cards/BatteringRam.tres" id="c_BatteringRam"]
+[ext_resource type="Resource" path="res://Resources/Cards/StoneGolem.tres" id="c_StoneGolem"]
+[ext_resource type="Resource" path="res://Resources/Cards/RockSlinger.tres" id="c_RockSlinger"]
+[ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="c_Lancer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Thornback.tres" id="c_Thornback"]
+[ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
+[ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
+[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/StoneWall.tres" id="c_StoneWall"]
+[ext_resource type="Resource" path="res://Resources/Cards/Gale.tres" id="c_Gale"]
+[ext_resource type="Resource" path="res://Resources/Cards/Stoneskin.tres" id="c_Stoneskin"]
+[ext_resource type="Resource" path="res://Resources/Cards/Rockslide.tres" id="c_Rockslide"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostMage.tres" id="c_FrostMage"]
+[ext_resource type="Resource" path="res://Resources/Cards/Cleric.tres" id="c_Cleric"]
+[ext_resource type="Resource" path="res://Resources/Cards/BoneKnight.tres" id="c_BoneKnight"]
+[ext_resource type="Resource" path="res://Resources/Cards/StonePathfinder.tres" id="c_StonePathfinder"]
+
+[resource]
+script = ExtResource("1_deck")
+Name = "Stone Bastion"
+Cards = Array[ExtResource("2_card")]([ExtResource("c_Guardian"), ExtResource("c_StonePathfinder"), ExtResource("c_BatteringRam"), ExtResource("c_BatteringRam"), ExtResource("c_StoneGolem"), ExtResource("c_StoneGolem"), ExtResource("c_RockSlinger"), ExtResource("c_RockSlinger"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Thornback"), ExtResource("c_Thornback"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_StoneWall"), ExtResource("c_StoneWall"), ExtResource("c_Gale"), ExtResource("c_Gale"), ExtResource("c_Stoneskin"), ExtResource("c_Stoneskin"), ExtResource("c_Rockslide"), ExtResource("c_Rockslide"), ExtResource("c_FrostMage"), ExtResource("c_FrostMage"), ExtResource("c_Cleric"), ExtResource("c_Cleric"), ExtResource("c_BoneKnight"), ExtResource("c_BoneKnight")])
+Description = "Hold the line. Shields, walls and heavy brutes shove enemies off the zone and onto your terms. Splash: frost and healing."
+AccentColor = Color(0.72, 0.64, 0.5, 1)
+Showcase = ExtResource("c_StoneGolem")

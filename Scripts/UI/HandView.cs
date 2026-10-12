@@ -17,16 +17,23 @@ public partial class HandView : HBoxContainer
 	[Signal] public delegate void CardHoverChangedEventHandler(CardView card, bool hovered);
 
 	[Export] public PackedScene CardScene { get; set; }
-	[Export] public float CardSpacing { get; set; } = 100f;
+	[Export] public float CardSpacing { get; set; } = 92f;
 	[Export] public float FanAngleDegrees { get; set; } = 4f;
 	[Export] public float ArcDrop { get; set; } = 5f;
-	[Export] public float HoverScale { get; set; } = 1.45f;
+	[Export] public float HoverScale { get; set; } = 1.3f;
 	/// <summary>Scale of resting (not hovered) cards; small so the board's bottom rows stay visible.</summary>
-	[Export] public float RestScale { get; set; } = 0.8f;
-	[Export] public float SelectedRise { get; set; } = 40f;
+	[Export] public float RestScale { get; set; } = 0.7f;
+	[Export] public float SelectedRise { get; set; } = 30f;
+	/// <summary>While a card is selected (targeting the board) the whole hand sinks this much further.</summary>
+	[Export] public float SelectedSink { get; set; } = 0f;
+	/// <summary>How far the whole hand rises (less sunk) while one of its cards is hovered.</summary>
+	[Export] public float HoverLift { get; set; } = 62f;
+	/// <summary>Where the selected card waits while it is being played: centre in HUD-root units (x, y as a fraction of the height).</summary>
+	[Export] public Vector2 SelectedParkPosition { get; set; } = new Vector2(310f, 0.46f);
 	/// <summary>How far resting cards sink below the hand area (Hearthstone-style peek); hovered cards rise fully.</summary>
-	[Export] public float RestSink { get; set; } = 62f;
-	[Export] public float PushAside { get; set; } = 60f;
+	[Export] public float RestSink { get; set; } = 80f;
+	/// <summary>How far the neighbours of a hovered card stay tucked under its edges (no gap between them).</summary>
+	[Export] public float HoverOverlap { get; set; } = 26f;
 	[Export] public float LayoutTweenTime { get; set; } = 0.14f;
 
 	private readonly List<CardView> _cards = new List<CardView>();
@@ -34,6 +41,7 @@ public partial class HandView : HBoxContainer
 	private Control _fan;
 	private int _selectedIndex = -1;
 	private int _hoveredIndex = -1;
+	private CardView _suppressHover;
 	private bool _orderQueued;
 
 	/// <summary>Number of cards currently displayed.</summary>
@@ -108,7 +116,7 @@ public partial class HandView : HBoxContainer
 			dealt++;
 		}
 
-		_hoveredIndex = _cards.FindIndex(v => v.IsHovered);
+		_hoveredIndex = _cards.FindIndex(v => v.IsHovered && v != _suppressHover);
 		_selectedIndex = -1;
 		for (int i = 0; i < _cards.Count; i++)
 		{
@@ -125,6 +133,21 @@ public partial class HandView : HBoxContainer
 		for (int i = 0; i < _cards.Count; i++)
 		{
 			_cards[i].SetSelected(i == _selectedIndex);
+		}
+		if (_selectedIndex >= 0)
+		{
+			// The mouse is still on the clicked card: drop it out of the way until the pointer leaves it.
+			CardView selected = _cards[_selectedIndex];
+			_suppressHover = selected;
+			if (_hoveredIndex >= 0)
+			{
+				EmitSignal(SignalName.CardHoverChanged, _cards[_hoveredIndex], false);
+			}
+			_hoveredIndex = -1;
+		}
+		else
+		{
+			_suppressHover = null;
 		}
 		Relayout(true);
 	}
@@ -162,7 +185,10 @@ public partial class HandView : HBoxContainer
 		float spacing = n > 1 ? Mathf.Min(CardSpacing, (width - cardSize.X * RestScale) / (n - 1)) : 0f;
 		float center = _fan.Size.X * 0.5f;
 		float hoverY = _fan.Size.Y - cardSize.Y;
-		float baseY = hoverY + RestSink;
+		bool handHovered = _hoveredIndex >= 0 && _selectedIndex < 0;
+		float baseY = hoverY + RestSink + (_selectedIndex >= 0 ? SelectedSink : 0f) - (handHovered ? HoverLift : 0f);
+		// The hovered card is enlarged and drawn on top: its neighbours move aside just far enough to sit under its edges.
+		float push = Mathf.Max(0f, cardSize.X * (HoverScale + RestScale) * 0.5f - HoverOverlap - spacing);
 
 		for (int i = 0; i < n; i++)
 		{
@@ -176,7 +202,7 @@ public partial class HandView : HBoxContainer
 			if (_hoveredIndex >= 0 && i != _hoveredIndex)
 			{
 				int d = i - _hoveredIndex;
-				x += Mathf.Sign(d) * PushAside / Mathf.Abs(d);
+				x += Mathf.Sign(d) * push;
 			}
 			if (i == _hoveredIndex)
 			{
@@ -186,9 +212,12 @@ public partial class HandView : HBoxContainer
 			}
 			else if (i == _selectedIndex)
 			{
-				y -= SelectedRise;
-				scale = RestScale * 1.06f;
-				angle *= 0.5f;
+				// The card being played waits left of the board so the whole board (and the deploy rows) stays visible.
+				Vector2 park = ParkPositionInFan(cardSize);
+				x = park.X;
+				y = park.Y;
+				scale = 1f;
+				angle = 0f;
 			}
 			var pos = new Vector2(x - cardSize.X * 0.5f, y);
 			if (_tweens.TryGetValue(card, out Tween old) && old.IsValid())
@@ -210,6 +239,16 @@ public partial class HandView : HBoxContainer
 			tween.TweenProperty(card, "scale", new Vector2(scale, scale), LayoutTweenTime);
 			_tweens[card] = tween;
 		}
+	}
+
+	/// <summary>Selected-card resting place (bottom-centre anchor, fan coordinates) left of the board.</summary>
+	private Vector2 ParkPositionInFan(Vector2 cardSize)
+	{
+		Control root = GetParent() as Control;
+		float rootHeight = root?.Size.Y ?? 648f;
+		var rootPoint = new Vector2(SelectedParkPosition.X, SelectedParkPosition.Y * rootHeight);
+		Vector2 local = rootPoint - Position - _fan.Position;
+		return new Vector2(local.X, local.Y - cardSize.Y * 0.5f);
 	}
 
 	private void RestoreOrder()
@@ -248,6 +287,14 @@ public partial class HandView : HBoxContainer
 		int index = _cards.IndexOf(card);
 		if (index < 0)
 		{
+			return;
+		}
+		if (card == _suppressHover)
+		{
+			if (!hovered)
+			{
+				_suppressHover = null;
+			}
 			return;
 		}
 		if (hovered)

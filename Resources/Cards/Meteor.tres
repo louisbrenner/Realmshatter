@@ -5,13 +5,15 @@
 [resource]
 script = ExtResource("1")
 Name = "Meteor"
-Description = "1 damage to enemies in a cross, then Lava for 2 turns."
+Description = "1 damage to enemies in a cross, then Lava for 4 turns."
 CardType = 1
+Rarity = 1
 Role = 0
-ApCost = 2
+ApCost = 3
 SpellTarget = 2
 AreaShape = 1
 TileEffect = 1
-TileEffectDuration = 2
+TileEffectDuration = 4
 SpellDamage = 1
+Clan = 1
 Tint = Color(0.95, 0.25, 0.05, 1)

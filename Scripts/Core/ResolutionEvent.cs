@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Realmshatter;
 
-/// <summary>One step of turn resolution, in chronological order, for views to animate.</summary>
+/// <summary>One step of an action / spell / turn change, in chronological order, for views to animate.</summary>
 public sealed class ResolutionEvent
 {
 	public ResolutionEventType Type { get; init; }
@@ -12,7 +12,8 @@ public sealed class ResolutionEvent
 	public int OtherPieceId { get; init; } = -1;
 	public GridPos From { get; init; }
 	public GridPos To { get; init; }
-	public bool IsChain { get; init; }
+	/// <summary>Attacked: a secondary hit (Arc zap / Echo strike). StatusExpired: the status was consumed (Overcharged).</summary>
+	public bool IsSecondary { get; init; }
 	/// <summary>Attacked: this shot is the extra hit of a Pierce attack.</summary>
 	public bool IsPierce { get; init; }
 	public int Amount { get; init; }
@@ -36,11 +37,10 @@ public sealed class ResolutionEvent
 	{
 		ResolutionEventType.Moved => $"Moved #{PieceId} {From}->{To}",
 		ResolutionEventType.MoveBlocked => $"MoveBlocked #{PieceId} {From}->{To}",
-		ResolutionEventType.Attacked => $"Attacked #{PieceId} {From}->{To} target #{OtherPieceId}{(IsChain ? " (chain)" : "")}{(IsPierce ? " (pierce)" : "")}",
+		ResolutionEventType.Attacked => $"Attacked #{PieceId} {From}->{To} target #{OtherPieceId}{(IsSecondary ? " (secondary)" : "")}{(IsPierce ? " (pierce)" : "")}",
 		ResolutionEventType.AttackCancelled => $"AttackCancelled #{PieceId} ->{To}",
 		ResolutionEventType.Damaged => $"Damaged #{PieceId} by #{OtherPieceId}: {Amount} (shield {ShieldAbsorbed}, hp {HpLost}) -> HP {RemainingHp} SHD {RemainingShield}",
 		ResolutionEventType.Died => $"Died #{PieceId} at {From}",
-		ResolutionEventType.ChainTriggered => $"ChainTriggered #{OtherPieceId} -> #{PieceId}",
 		ResolutionEventType.SpellExpired => $"SpellExpired '{SpellName}' on #{PieceId}",
 		ResolutionEventType.Pushed => $"Pushed #{PieceId} {From}->{To} by #{OtherPieceId}",
 		ResolutionEventType.PushBlocked => $"PushBlocked #{PieceId} {From}->{To} by #{OtherPieceId}",
@@ -51,7 +51,7 @@ public sealed class ResolutionEvent
 		ResolutionEventType.TileDamage => $"TileDamage {TileEffect} at {To} -> #{PieceId} {Amount}",
 		ResolutionEventType.TileHeal => $"TileHeal at {To} -> #{PieceId} +{Amount} (HP {RemainingHp})",
 		ResolutionEventType.StatusApplied => $"StatusApplied {Status} on #{PieceId}",
-		ResolutionEventType.StatusExpired => $"StatusExpired {Status} on #{PieceId}{(IsChain ? " (consumed)" : "")}",
+		ResolutionEventType.StatusExpired => $"StatusExpired {Status} on #{PieceId}{(IsSecondary ? " (consumed)" : "")}",
 		ResolutionEventType.SpellCast => $"SpellCast '{CardName}' by P{PlayerIndex} at {To}",
 		_ => Type.ToString(),
 	};

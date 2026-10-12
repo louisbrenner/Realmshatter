@@ -5,10 +5,12 @@
 [resource]
 script = ExtResource("1")
 Name = "Static Charge"
-Description = "+1 Attack and Overcharged: its next chain hits double."
+Description = "+1 Attack and Overcharged: its next attack deals double."
 CardType = 1
+Rarity = 1
 Role = 0
-ApCost = 2
+ApCost = 3
 AttackDelta = 1
 GrantStatus = 2
+Clan = 4
 Tint = Color(0.55, 0.5, 1, 1)

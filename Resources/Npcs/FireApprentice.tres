@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcFireApprentice.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="r_FlameArcher"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "fire_apprentice"
+Name = "Kira"
+Title = "Ember Apprentice"
+Clan = 1
+Deck = ExtResource("3_deck")
+Position = Vector2(270, 430)
+Greeting = "Hey, you! I bet my embers burn hotter than anything in your deck. Wanna find out?"
+RematchLine = "Back for another scorching? I have been practising!"
+DefeatLine = "Ow, ow, ow... fine, you win. Take this - you earned it."
+VictoryLine = "Ha! Too hot to handle? Come back when you have cooled down."
+RewardGold = 60
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_FlameArcher")])

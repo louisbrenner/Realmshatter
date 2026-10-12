@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcStormApprentice.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/SparkTotem.tres" id="r_SparkTotem"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "storm_apprentice"
+Name = "Tavi"
+Title = "Spark Adept"
+Clan = 4
+Deck = ExtResource("3_deck")
+Position = Vector2(1550, 770)
+Greeting = "Zap! Ha, sorry - static. Wanna duel? My totems are fully charged!"
+RematchLine = "Recharged and ready! Round two?"
+DefeatLine = "Shocking! You beat me fair. Take my Spark Totem."
+VictoryLine = "Kaboom! Ooh, that was a good one. Again sometime?"
+RewardGold = 60
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_SparkTotem")])

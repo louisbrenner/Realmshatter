@@ -4,9 +4,12 @@ shader_type spatial;
 render_mode unshaded, cull_back, depth_draw_opaque, shadows_disabled;
 
 #include "res://Assets/Shaders/common.gdshaderinc"
+#include "res://Assets/Shaders/icon_glyphs.gdshaderinc"
 
 uniform vec3 tint : source_color = vec3(0.9, 0.3, 0.25);
 uniform int role = 0;
+// Class symbol (glyph of icon_glyphs, see ClassVisuals); -1 = role emblem.
+uniform int glyph = -1;
 uniform float desaturate = 0.0;
 uniform vec4 flash_color : source_color = vec4(1.0);
 uniform float flash = 0.0;
@@ -29,9 +32,15 @@ void fragment() {
 	float ang = atan(p.y, p.x);
 	col += tint * 0.14 * smoothstep(0.55, 1.0, sin(ang * 7.0 + TIME * 0.4 + seed)) * (1.0 - r);
 
-	vec2 ep = p / 0.78;
-	float e = pc_emblem(ep, role) * 0.78;
-	float es = pc_emblem((p - vec2(0.05, -0.06)) / 0.78, role) * 0.78;
+	float e;
+	float es;
+	if (glyph >= 0) {
+		e = pc_icon_glyph(p / 0.66, glyph, TIME) * 0.66;
+		es = pc_icon_glyph((p - vec2(0.05, -0.06)) / 0.66, glyph, TIME) * 0.66;
+	} else {
+		e = pc_emblem(p / 0.78, role) * 0.78;
+		es = pc_emblem((p - vec2(0.05, -0.06)) / 0.78, role) * 0.78;
+	}
 	float shadow = 1.0 - smoothstep(0.0, 0.08, es);
 	col = mix(col, col * 0.35, shadow * 0.65);
 	float emb = 1.0 - smoothstep(-0.01, 0.01, e);

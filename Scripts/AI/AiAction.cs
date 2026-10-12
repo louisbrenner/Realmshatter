@@ -7,7 +7,7 @@ namespace Realmshatter;
 /// PlayUnit: Card, PieceId = new piece, Target = deploy tile.
 /// PlaySpell: Card, PieceId = target piece (-1 for tile/area spells), Target = target piece position / anchor tile.
 /// ConvertVp: no extra fields (1 VP became 1 AP).
-/// SetOrder: PieceId = ordered piece, MoveTarget / AttackTarget as queued, Target = AttackTarget ?? MoveTarget.
+/// Command: PieceId = commanded piece, MoveTarget / AttackTarget as executed, Target = AttackTarget ?? MoveTarget.
 /// </summary>
 public sealed class AiAction
 {

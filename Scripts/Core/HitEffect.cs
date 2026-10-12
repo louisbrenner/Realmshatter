@@ -17,8 +17,6 @@ public enum HitEffect
 	PushBlocked = 1 << 3,
 	/// <summary>The friendly target was healed (Mending).</summary>
 	Healed = 1 << 4,
-	/// <summary>The friendly target was chain-triggered.</summary>
-	ChainTriggered = 1 << 5,
 	/// <summary>The target died.</summary>
 	Killed = 1 << 6,
 }

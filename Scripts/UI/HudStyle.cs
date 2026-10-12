@@ -30,8 +30,8 @@ public static class HudStyle
 	private static Font _font;
 	private static Theme _theme;
 
-	/// <summary>The serif HUD font (Resources/UI/CardFont.tres).</summary>
-	public static Font Font => _font ??= VfxAssets.CardFont;
+	/// <summary>The serif HUD font (MSDF, so it stays sharp when the HUD / overworld UI is scaled up).</summary>
+	public static Font Font => _font ??= VfxAssets.CardTextBoldFont;
 
 	/// <summary>Player accent color (0 = you / blue, 1 = AI / red).</summary>
 	public static Color Accent(int player) => player == 0 ? PlayerBlue : EnemyRed;

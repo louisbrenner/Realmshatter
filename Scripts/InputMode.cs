@@ -11,6 +11,10 @@ public enum InputMode
 	ChoosingMove,
 	/// <summary>The move step is done; waiting for the attack tile (or any other tile = move only).</summary>
 	ChoosingAttack,
+	/// <summary>A Builder is selected and the player picks the tile for its building.</summary>
+	ChoosingBuild,
+	/// <summary>A Trapper is selected and the player picks the tile for its trap.</summary>
+	ChoosingTrap,
 	/// <summary>Animations or the AI turn are running; human input is ignored.</summary>
 	Busy,
 }

@@ -5,7 +5,7 @@ using Godot;
 namespace Realmshatter;
 
 /// <summary>
-/// Minion-like token for one piece (root of Piece.tscn): oval portrait (card tint + role emblem)
+/// Minion-like token for one piece (root of Piece.tscn): oval portrait (card tint + class symbol, see ClassVisuals)
 /// in a gold rim, owner-colored ring, attack (yellow, bottom-left) and health (red drop, bottom-right)
 /// badges, a shield badge + golden bubble, a name below the token, a green "can act" glow and a
 /// "Zzz" exhausted state. Everything fits inside one tile; the badge plates sit at fixed token-local
@@ -57,6 +57,10 @@ public partial class PieceView : Node3D
 	private Label3D _nameLabel;
 	private Label3D _zzzLabel;
 	private Vector3 _zzzBase;
+	/// <summary>The three drifting "z" letters of the sleep indicator (the first is the scene's ZzzLabel).</summary>
+	private Label3D[] _zzz = System.Array.Empty<Label3D>();
+	private const float ZzzCycle = 2.4f;
+	private const float ZzzRise = 0.32f;
 	private Node3D _attackPlate;
 	private Node3D _healthPlate;
 	private Node3D _shieldPlate;
@@ -64,6 +68,11 @@ public partial class PieceView : Node3D
 	private Node3D _namePlate;
 	private Node3D[] _plates;
 	private readonly List<Node3D> _keywordPlates = new List<Node3D>();
+	private CardData _shownSource;
+	private bool _shownFirstHitUsed;
+	private Node3D _buildingModel;
+	private Node3D _scaffold;
+	private bool _underConstruction;
 	private Keyword _shownKeywords = Keyword.None;
 	private int _shownLevel = -1;
 	private float _namePixelSize;
@@ -132,11 +141,9 @@ public partial class PieceView : Node3D
 		_visual.Position = new Vector3(_shake.X, _lift + _shake.Y, _shake.Z);
 		_badges.Position = new Vector3(_shake.X, _lift, _shake.Z);
 		OrientPlates();
-		if (_zzzLabel.Visible)
+		if (_exhausted && _zzz.Length > 0)
 		{
-			float bob = Mathf.Sin(_time * 2.2f);
-			_zzzLabel.Position = _zzzBase + new Vector3(0.03f * Mathf.Sin(_time * 1.3f), 0.07f * bob, 0f);
-			_zzzLabel.Modulate = new Color(0.75f, 0.85f, 1f, 0.65f + 0.35f * (0.5f + 0.5f * bob));
+			AnimateZzz();
 		}
 	}
 
@@ -160,6 +167,7 @@ public partial class PieceView : Node3D
 		};
 		_portraitMat.SetShaderParameter("tint", _tint);
 		_portraitMat.SetShaderParameter("role", role);
+		_portraitMat.SetShaderParameter("glyph", ClassVisuals.ArtGlyph(piece.Source));
 		_portraitMat.SetShaderParameter("seed", piece.Id * 0.37f);
 		_ringMat.AlbedoColor = ownerColor;
 		_ringMat.Emission = ownerColor;
@@ -184,22 +192,65 @@ public partial class PieceView : Node3D
 		_maxHp = piece.MaxHp;
 		SetAttack(piece.EffectiveAttack);
 		SetStats(piece.CurrentHp, piece.TotalShield);
-		SetHasOrder(piece.Order != null);
-		SetKeywords(piece.Keywords, piece.Source?.Level ?? 0);
+		SetKeywords(piece.Keywords, piece.Source?.Level ?? 0, piece.Source, piece.WasHit);
+		if (piece.IsBuilding)
+		{
+			EnsureBuildingModel(piece);
+			SetUnderConstruction(piece.UnderConstruction);
+		}
+	}
+
+	/// <summary>Grows the building out of its scaffold when finished (or shrinks it back while under construction).</summary>
+	public void SetUnderConstruction(bool underConstruction)
+	{
+		if (_buildingModel == null || _underConstruction == underConstruction)
+		{
+			return;
+		}
+		_underConstruction = underConstruction;
+		_scaffold.Visible = true;
+		Tween tween = CreateTween();
+		tween.TweenProperty(_buildingModel, "scale", new Vector3(1f, underConstruction ? 0.35f : 1f, 1f), 0.45f)
+			.SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+		tween.TweenCallback(Callable.From(() => _scaffold.Visible = _underConstruction));
+	}
+
+	private void EnsureBuildingModel(Piece piece)
+	{
+		if (_buildingModel != null)
+		{
+			return;
+		}
+		foreach (Label3D z in _zzz)
+		{
+			z.Visible = false;
+		}
+		_portrait.Visible = false;
+		_buildingModel = BuildingModels.Create(piece.Building, piece.Source?.Tint ?? Colors.Gray, _ownerColor);
+		_buildingModel.Position = new Vector3(0, 0.1f, 0);
+		_buildingModel.Scale = new Vector3(1f, 0.35f, 1f);
+		_visual.AddChild(_buildingModel);
+		_scaffold = BuildingModels.CreateScaffold();
+		_scaffold.Position = new Vector3(0, 0.1f, 0);
+		_visual.AddChild(_scaffold);
+		_underConstruction = true;
 	}
 
 	/// <summary>
 	/// Shows one small emblem plate per keyword along the left edge of the token (flame = Burning,
-	/// snowflake = Frost, fist = Push, spear = Pierce, cross = Mending, bolt = Conduit, bell = Echo,
-	/// skull = Undying; an Undying level is shown as "+N" beside the skull).
+	/// snowflake = Frost, fist = Push, spear = Pierce, cross = Mending, bolt = Arc, bell = Echo,
+	/// skull = Undying; an Undying level is shown as "+N" beside the skull). The first-hit burst disappears once
+	/// it has fired (firstHitUsed).
 	/// </summary>
-	public void SetKeywords(Keyword keywords, int level = 0)
+	public void SetKeywords(Keyword keywords, int level = 0, CardData source = null, bool firstHitUsed = false)
 	{
 		EnsureNodes();
-		if (keywords == _shownKeywords && level == _shownLevel)
+		if (keywords == _shownKeywords && level == _shownLevel && source == _shownSource && firstHitUsed == _shownFirstHitUsed)
 		{
 			return;
 		}
+		_shownSource = source;
+		_shownFirstHitUsed = firstHitUsed;
 		_shownKeywords = keywords;
 		_shownLevel = level;
 		foreach (Node3D plate in _keywordPlates)
@@ -212,14 +263,16 @@ public partial class PieceView : Node3D
 		_keywordPlates.Clear();
 
 		List<Keyword> list = KeywordInfo.Split(keywords);
+		List<(FxIconShape Shape, Color Fg, Color Bg)> icons = source != null
+			? KeywordVisuals.IconsFor(source, firstHitUsed)
+			: list.ConvertAll(k => (KeywordVisuals.GetShape(k), KeywordVisuals.GetForeground(k), KeywordVisuals.GetBackground(k)));
 		float step = KeywordIconSize * 0.92f;
-		for (int i = 0; i < list.Count; i++)
+		for (int i = 0; i < icons.Count; i++)
 		{
-			Keyword k = list[i];
-			var plate = new Node3D { Name = $"Keyword_{k}", Position = new Vector3(-0.36f, 0.21f, -0.2f - i * step) };
+			Keyword k = i < list.Count ? list[i] : Keyword.None;
+			var plate = new Node3D { Name = $"Icon_{i}", Position = new Vector3(-0.36f, 0.21f, -0.2f - i * step) };
 			_badges.AddChild(plate);
-			MeshInstance3D icon = VfxAssets.CreateIcon((int)KeywordVisuals.GetShape(k), KeywordIconSize,
-				KeywordVisuals.GetForeground(k), KeywordVisuals.GetBackground(k), true, 31);
+			MeshInstance3D icon = VfxAssets.CreateIcon((int)icons[i].Shape, KeywordIconSize, icons[i].Fg, icons[i].Bg, true, 31);
 			var mat = (ShaderMaterial)icon.MaterialOverride;
 			mat.SetShaderParameter("billboard", false);
 			mat.SetShaderParameter("rim_color", new Color(0.86f, 0.66f, 0.3f));
@@ -294,16 +347,43 @@ public partial class PieceView : Node3D
 		_canActGlow.Visible = canAct;
 	}
 
-	/// <summary>Exhausted look (desaturated portrait + floating "Zzz"), e.g. for summoning sickness.</summary>
+	/// <summary>
+	/// Sleep indicator: three small z's rise one after another from the top of the token, growing, drifting
+	/// sideways and fading out, then start again.
+	/// </summary>
+	private void AnimateZzz()
+	{
+		for (int i = 0; i < _zzz.Length; i++)
+		{
+			float phase = Mathf.PosMod(_time / ZzzCycle + i / (float)_zzz.Length, 1f);
+			float sway = 0.035f * Mathf.Sin(phase * Mathf.Tau + i);
+			_zzz[i].Position = _zzzBase + new Vector3(phase * 0.1f + sway, phase * ZzzRise, 0f);
+			_zzz[i].Scale = Vector3.One * (0.55f + 0.6f * phase);
+			float alpha = Mathf.Sin(phase * Mathf.Pi);
+			_zzz[i].Modulate = new Color(0.78f, 0.88f, 1f, alpha);
+		}
+	}
+
+	/// <summary>
+	/// Exhausted look (desaturated portrait + drifting z's): summoning sick, busy building, or already acted this
+	/// turn.
+	/// </summary>
 	public void SetExhausted(bool exhausted)
 	{
 		EnsureNodes();
+		if (_buildingModel != null)
+		{
+			exhausted = false;
+		}
 		if (_exhausted == exhausted)
 		{
 			return;
 		}
 		_exhausted = exhausted;
-		_zzzLabel.Visible = exhausted;
+		foreach (Label3D z in _zzz)
+		{
+			z.Visible = exhausted;
+		}
 		_exhaustTween?.Kill();
 		_exhaustTween = CreateTween();
 		_exhaustTween.TweenMethod(Callable.From<float>(SetDesaturation),
@@ -501,8 +581,28 @@ public partial class PieceView : Node3D
 		_shieldLabel = GetNode<Label3D>("Badges/ShieldPlate/Label");
 		_nameLabel = GetNode<Label3D>("Badges/NamePlate/Label");
 		_zzzLabel = GetNode<Label3D>("Badges/ZzzLabel");
+		// Badge numbers: lining figures, centred on their badge.
+		foreach (Label3D number in new[] { _attackLabel, _healthLabel, _shieldLabel })
+		{
+			number.Font = VfxAssets.NumberFont;
+			number.VerticalAlignment = VerticalAlignment.Center;
+			// Label3D offsets point up: lift the digits by how far their ink sits below the line centre.
+			number.Offset = new Vector2(0f, VfxAssets.DigitDrop(number.FontSize));
+		}
 		_namePixelSize = _nameLabel.PixelSize;
-		_zzzBase = _zzzLabel.Position;
+		// Sleep indicator: start just above the token's top edge and build three single "z" letters.
+		_zzzBase = new Vector3(0.08f, 0.42f, -0.12f);
+		_zzzLabel.Text = "z";
+		_zzzLabel.Visible = false;
+		var letters = new List<Label3D> { _zzzLabel };
+		for (int i = 1; i < 3; i++)
+		{
+			var copy = (Label3D)_zzzLabel.Duplicate();
+			copy.Name = $"ZzzLabel{i + 1}";
+			_zzzLabel.GetParent().AddChild(copy);
+			letters.Add(copy);
+		}
+		_zzz = letters.ToArray();
 
 		_base.MaterialOverride = VfxAssets.CreateGoldMaterial(0.06f);
 		_ringMat = new StandardMaterial3D

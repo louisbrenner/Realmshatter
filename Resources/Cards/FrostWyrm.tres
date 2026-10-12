@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Frost Wyrm"
+Description = "Its wingbeat scatters everything nearby."
+CardType = 0
+Rarity = 2
+Role = 0
+Class = 8
+ApCost = 5
+Movement = 5
+Attack = 2
+Hp = 5
+Range = 1
+Shield = 0
+ApBonus = 0
+Keywords = 6
+Clan = 3
+Deathrattle = 7
+DeathrattleAmount = 1
+OnFirstHit = 5
+OnFirstHitAmount = 1
+Tint = Color(0.6, 0.9, 1, 1)

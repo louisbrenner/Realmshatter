@@ -6,6 +6,12 @@ namespace Realmshatter;
 /// </summary>
 public sealed class TileEffect
 {
+	/// <summary>ExpiryTurn of map effects that never expire (lava fields and springs of the map generator).</summary>
+	public const int Permanent = int.MaxValue / 4;
+
+	/// <summary>True for map effects that never expire.</summary>
+	public bool IsPermanent => ExpiryTurn >= Permanent;
+
 	public TileEffectType Type { get; }
 	public GridPos Position { get; }
 	/// <summary>Player who created the effect (-1 = neutral).</summary>

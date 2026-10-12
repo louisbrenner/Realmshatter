@@ -3,8 +3,8 @@ using System.Collections.Generic;
 namespace Realmshatter;
 
 /// <summary>
-/// Result of TurnController.PredictAttack: what ONE attack would cause on the CURRENT board (other queued
-/// orders are not simulated). Computed on a cloned state; the real state is never modified.
+/// Result of TurnController.PredictAttack: what ONE attack would cause on the CURRENT board (friendly fire,
+/// keywords, kills). Computed on a cloned state; the real state is never modified.
 /// Piece ids refer to the real pieces.
 /// </summary>
 public sealed class ChainPreview
@@ -17,10 +17,8 @@ public sealed class ChainPreview
 
 	/// <summary>The raw events the attack would produce (same format as resolution events).</summary>
 	public List<ResolutionEvent> Events { get; } = new List<ResolutionEvent>();
-	/// <summary>Every shot in chronological order.</summary>
+	/// <summary>Every hit in chronological order.</summary>
 	public List<PredictedHit> Hits { get; } = new List<PredictedHit>();
-	/// <summary>Friendlies that would be chain-triggered, in order.</summary>
-	public List<int> TriggeredPieceIds { get; } = new List<int>();
 	/// <summary>Pieces that would die.</summary>
 	public List<int> KilledPieceIds { get; } = new List<int>();
 	/// <summary>Tile effects the attack would create (e.g. Lava from Burning).</summary>
@@ -32,6 +30,9 @@ public sealed class ChainPreview
 	public int EnemyDamage { get; internal set; }
 	public int EnemyKills { get; internal set; }
 	public int FriendlyHealed { get; internal set; }
+	/// <summary>Total HP the attacker's own pieces would lose (friendly fire).</summary>
+	public int FriendlyHpLost { get; internal set; }
+	public int FriendlyKills { get; internal set; }
 
 	/// <summary>Builds the summary lists from the events of a simulated attack.</summary>
 	internal static ChainPreview FromEvents(int attackerId, GridPos from, GridPos target, int attackerOwner,
@@ -53,7 +54,7 @@ public sealed class ChainPreview
 						Tile = e.To,
 						TargetPieceId = e.OtherPieceId,
 						IsFriendly = friendly,
-						IsChain = e.IsChain,
+						IsSecondary = e.IsSecondary,
 						IsPierce = e.IsPierce,
 					};
 					preview.Hits.Add(current);
@@ -70,12 +71,20 @@ public sealed class ChainPreview
 						preview.EnemyDamage += e.Amount;
 						preview.EnemyHpLost += e.HpLost;
 					}
+					else
+					{
+						preview.FriendlyHpLost += e.HpLost;
+					}
 					break;
 				case ResolutionEventType.Died:
 					preview.KilledPieceIds.Add(e.PieceId);
 					if (!IsOwnedBy(owners, e.PieceId, attackerOwner))
 					{
 						preview.EnemyKills++;
+					}
+					else
+					{
+						preview.FriendlyKills++;
 					}
 					if (current != null && e.PieceId == current.TargetPieceId)
 					{
@@ -89,13 +98,6 @@ public sealed class ChainPreview
 					{
 						current.Healed += e.Amount;
 						current.Effects |= HitEffect.Healed;
-					}
-					break;
-				case ResolutionEventType.ChainTriggered:
-					preview.TriggeredPieceIds.Add(e.PieceId);
-					if (current != null && e.PieceId == current.TargetPieceId)
-					{
-						current.Effects |= HitEffect.ChainTriggered;
 					}
 					break;
 				case ResolutionEventType.TileEffectApplied:

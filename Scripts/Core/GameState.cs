@@ -10,7 +10,6 @@ public sealed class GameState
 
 	private readonly List<Piece> _pieces = new List<Piece>();
 	private int _nextPieceId = 1;
-	private int _nextOrderIndex;
 
 	public GameConfig Config { get; }
 	public BoardState Board { get; }
@@ -54,7 +53,6 @@ public sealed class GameState
 		Phase = other.Phase;
 		Winner = other.Winner;
 		_nextPieceId = other._nextPieceId;
-		_nextOrderIndex = other._nextOrderIndex;
 		foreach (Piece p in other._pieces)
 		{
 			var copy = new Piece(p);
@@ -64,7 +62,7 @@ public sealed class GameState
 	}
 
 	/// <summary>
-	/// Deep copy for simulations/previews (pieces, spells, statuses, orders, tile effects, card lists).
+	/// Deep copy for simulations/previews (pieces, spells, statuses, tile effects, card lists).
 	/// Cards and the config are shared; the clone gets its own (fixed-seed) Random.
 	/// </summary>
 	public GameState Clone() => new GameState(this);
@@ -113,14 +111,23 @@ public sealed class GameState
 		return piece;
 	}
 
+	/// <summary>Places an unfinished building (finished at the start of turn completeTurn) for its builder.</summary>
+	public Piece SpawnBuilding(BuildingType type, int ownerIndex, GridPos pos, int completeTurn, int builderId)
+	{
+		Piece b = SpawnPiece(BuildingInfo.GetCard(type), ownerIndex, pos);
+		if (b != null)
+		{
+			b.UnderConstruction = completeTurn > TurnNumber;
+			b.CompleteTurn = completeTurn;
+			b.BuilderId = builderId;
+		}
+		return b;
+	}
+
 	/// <summary>Removes a piece from the board and the piece list.</summary>
 	public void RemovePiece(Piece piece)
 	{
 		Board.Remove(piece);
 		_pieces.Remove(piece);
 	}
-
-	internal int TakeOrderIndex() => _nextOrderIndex++;
-
-	internal void ResetOrderIndex() => _nextOrderIndex = 0;
 }

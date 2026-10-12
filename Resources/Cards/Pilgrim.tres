@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Pilgrim"
+Description = "A humble traveller whose sacrifice is never in vain."
+CardType = 0
+Role = 2
+Class = 7
+ApCost = 1
+Movement = 3
+Attack = 1
+Hp = 2
+Range = 1
+Shield = 0
+Clan = 0
+Rarity = 0
+Keywords = 0
+Deathrattle = 8
+DeathrattleAmount = 2
+Tint = Color(0.75, 0.8, 1, 1)

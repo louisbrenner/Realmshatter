@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcStoneAdept.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/RockSlinger.tres" id="r_RockSlinger"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "stone_adept"
+Name = "Grenna"
+Title = "Stone Bastion · Stone Adept"
+Clan = 5
+House = 5
+Deck = ExtResource("3_deck")
+Position = Vector2(720, 470)
+Greeting = "Walls first, questions later. Shall we?"
+RematchLine = "The quarry is open again."
+DefeatLine = "You broke through. Respect."
+VictoryLine = "Stone outlasts everything."
+RewardGold = 75
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_RockSlinger")])

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Rockslide"
+Description = "1 damage to enemies in a column of 3, then Walls on the free tiles for 4 turns."
+CardType = 1
+Rarity = 1
+Role = 0
+ApCost = 3
+SpellTarget = 2
+AreaShape = 3
+TileEffect = 2
+TileEffectDuration = 4
+SpellDamage = 1
+Clan = 5
+Tint = Color(0.55, 0.5, 0.42, 1)

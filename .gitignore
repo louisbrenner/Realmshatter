@@ -7,3 +7,6 @@
 
 # Private images, not part of the game
 /WhatsApp Image *
+
+# Visual Studio local state
+.vs/

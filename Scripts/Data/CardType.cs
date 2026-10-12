@@ -5,4 +5,6 @@ public enum CardType
 {
 	Unit,
 	Spell,
+	/// <summary>A building piece created by a Builder (never part of a deck, see BuildingInfo).</summary>
+	Building,
 }

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="DeckData" load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/DeckData.cs" id="1_deck"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/Swordsman.tres" id="c_Swordsman"]
+[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archer.tres" id="c_Archer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
+[ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
+[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/Pilgrim.tres" id="c_Pilgrim"]
+[ext_resource type="Resource" path="res://Resources/Cards/ArcaneApprentice.tres" id="c_ArcaneApprentice"]
+[ext_resource type="Resource" path="res://Resources/Cards/DawnRanger.tres" id="c_DawnRanger"]
+[ext_resource type="Resource" path="res://Resources/Cards/Acolyte.tres" id="c_Acolyte"]
+[ext_resource type="Resource" path="res://Resources/Cards/Blessing.tres" id="c_Blessing"]
+[ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
+[ext_resource type="Resource" path="res://Resources/Cards/BoneKnight.tres" id="c_BoneKnight"]
+
+[resource]
+script = ExtResource("1_deck")
+Name = "Wren's Candles"
+Cards = Array[ExtResource("2_card")]([ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Pilgrim"), ExtResource("c_Pilgrim"), ExtResource("c_ArcaneApprentice"), ExtResource("c_ArcaneApprentice"), ExtResource("c_DawnRanger"), ExtResource("c_DawnRanger"), ExtResource("c_DawnRanger"), ExtResource("c_Acolyte"), ExtResource("c_Acolyte"), ExtResource("c_Acolyte"), ExtResource("c_Blessing"), ExtResource("c_Blessing"), ExtResource("c_Blessing"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_BoneKnight"), ExtResource("c_BoneKnight")])
+Description = "A beginner's deck of the Dawn Covenant."
+AccentColor = Color(1, 0.85, 0.4, 1)
+Showcase = ExtResource("c_Acolyte")

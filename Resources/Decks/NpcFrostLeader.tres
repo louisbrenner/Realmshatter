@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="DeckData" load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/DeckData.cs" id="1_deck"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/Hrimgar.tres" id="c_Hrimgar"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostWyrm.tres" id="c_FrostWyrm"]
+[ext_resource type="Resource" path="res://Resources/Cards/IceSentinel.tres" id="c_IceSentinel"]
+[ext_resource type="Resource" path="res://Resources/Cards/GlacierGolem.tres" id="c_GlacierGolem"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostMage.tres" id="c_FrostMage"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostArcher.tres" id="c_FrostArcher"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaTotem.tres" id="c_ManaTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/Raider.tres" id="c_Raider"]
+[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
+[ext_resource type="Resource" path="res://Resources/Cards/Hailstorm.tres" id="c_Hailstorm"]
+[ext_resource type="Resource" path="res://Resources/Cards/Frostbite.tres" id="c_Frostbite"]
+[ext_resource type="Resource" path="res://Resources/Cards/Gale.tres" id="c_Gale"]
+[ext_resource type="Resource" path="res://Resources/Cards/Weaken.tres" id="c_Weaken"]
+
+[resource]
+script = ExtResource("1_deck")
+Name = "Isolde's Winter"
+Cards = Array[ExtResource("2_card")]([ExtResource("c_Hrimgar"), ExtResource("c_FrostWyrm"), ExtResource("c_FrostWyrm"), ExtResource("c_FrostWyrm"), ExtResource("c_IceSentinel"), ExtResource("c_IceSentinel"), ExtResource("c_IceSentinel"), ExtResource("c_GlacierGolem"), ExtResource("c_GlacierGolem"), ExtResource("c_GlacierGolem"), ExtResource("c_FrostMage"), ExtResource("c_FrostMage"), ExtResource("c_FrostMage"), ExtResource("c_FrostArcher"), ExtResource("c_FrostArcher"), ExtResource("c_FrostArcher"), ExtResource("c_ManaTotem"), ExtResource("c_ManaTotem"), ExtResource("c_Raider"), ExtResource("c_Raider"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Hailstorm"), ExtResource("c_Hailstorm"), ExtResource("c_Hailstorm"), ExtResource("c_Frostbite"), ExtResource("c_Frostbite"), ExtResource("c_Gale"), ExtResource("c_Weaken"), ExtResource("c_Weaken")])
+Description = "An endless winter that freezes every advance."
+AccentColor = Color(0.5, 0.82, 1, 1)
+Showcase = ExtResource("c_FrostWyrm")

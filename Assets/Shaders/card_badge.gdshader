@@ -1,5 +1,5 @@
 // Card UI ornaments drawn with SDFs on a ColorRect.
-// shape: 0 = attack (yellow disc + sword), 1 = health (red drop), 2 = shield, 3 = mana gem,
+// shape: 0 = attack (bronze diamond crest), 1 = health (red diamond crest), 2 = shield, 3 = mana gem,
 //        4 = name ribbon, 5 = small plate, 6 = coin.
 shader_type canvas_item;
 
@@ -27,26 +27,23 @@ void fragment() {
 	float d;
 	float outline_px = 2.2;
 	if (shape == 0) {
-		float disc = length(p) - 0.6;
-		vec2 q = pc_rot(0.785398) * p;
-		float sw = pc_sd_sword(q);
-		d = min(disc, sw) * scale;
-		if (disc > 0.0) {
-			float blade = max(pc_sd_box(q - vec2(0.0, 0.3), vec2(0.1, 0.7)), q.y + abs(q.x) * 2.5 - 1.0);
-			float guard = pc_sd_box(q - vec2(0.0, -0.45), vec2(0.3, 0.07));
-			if (blade < 0.0) {
-				fill = mix(vec3(0.6, 0.64, 0.7), vec3(0.96, 0.98, 1.0), smoothstep(-0.1, 0.1, q.x));
-			} else if (guard < 0.0) {
-				fill = vec3(0.85, 0.6, 0.2);
-			} else {
-				fill = vec3(0.42, 0.22, 0.1);
-			}
-		} else {
-			fill *= mix(0.7, 1.0, smoothstep(0.0, 0.18, -disc));
-		}
+		// Bevelled diamond crest with a faintly engraved sword behind the number.
+		d = pc_sd_crest(p) * scale;
+		float inner = pc_sd_crest(p * 1.28) / 1.28;
+		fill = fill_color.rgb * (0.62 + 0.55 * hl);
+		fill *= mix(1.12, 0.78, smoothstep(-0.02, 0.02, inner));
+		float sw = pc_sd_sword(pc_rot(0.785398) * p * 1.35) / 1.35;
+		fill = mix(fill, fill * 0.74, (1.0 - smoothstep(-0.01, 0.02, sw)) * 0.55);
+		fill += vec3(1.0, 0.95, 0.8) * pow(hl, 5.0) * 0.25;
 	} else if (shape == 1) {
-		d = pc_sd_drop(p * 1.1) / 1.1 * scale;
-		fill *= 1.0 - smoothstep(-5.0, 0.0, d) * 0.3;
+		// The attack crest in red, with a faintly engraved heart behind the number.
+		d = pc_sd_crest(p) * scale;
+		float inner = pc_sd_crest(p * 1.28) / 1.28;
+		fill = fill_color.rgb * (0.62 + 0.55 * hl);
+		fill *= mix(1.12, 0.78, smoothstep(-0.02, 0.02, inner));
+		float heart = pc_sd_heart(p * 1.9) / 1.9;
+		fill = mix(fill, fill * 0.74, (1.0 - smoothstep(-0.01, 0.02, heart)) * 0.55);
+		fill += vec3(1.0, 0.9, 0.85) * pow(hl, 5.0) * 0.25;
 	} else if (shape == 2) {
 		d = pc_sd_shield(p * 1.12 - vec2(0.0, -0.1)) / 1.12 * scale;
 		fill *= 1.0 - smoothstep(-4.0, 0.0, d) * 0.3;

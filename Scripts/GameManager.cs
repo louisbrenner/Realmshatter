@@ -17,13 +17,6 @@ public partial class GameManager : Node
 	private const int AiPlayer = 1;
 	private const int MaxAutomatedTurns = 1000;
 
-	/// <summary>One committed order captured before EndTurn (for the "Order 2/4" resolution ticker).</summary>
-	private sealed class OrderStep
-	{
-		public int PieceId;
-		public string Text;
-	}
-
 	[ExportGroup("Rules")]
 	[Export] public GameConfig Config { get; set; }
 	[Export] public Godot.Collections.Array<CardData> PlayerDeck { get; set; } = new Godot.Collections.Array<CardData>();
@@ -37,17 +30,24 @@ public partial class GameManager : Node
 	/// theme). When empty, PlayerDeckData / AiDeckData are used directly without a selection screen.
 	/// </summary>
 	[Export] public Godot.Collections.Array<DeckData> ThemeDecks { get; set; } = new Godot.Collections.Array<DeckData>();
+	/// <summary>
+	/// When the battle scene is launched without a pending town battle (BattleSession), switch to the overworld
+	/// instead (ignored with --autoplay / --selftest, which keep the old deck-selection flow).
+	/// </summary>
+	[Export] public bool StartInOverworld { get; set; } = true;
 	/// <summary>Random seed for draws (0 = random every game).</summary>
 	[Export] public int Seed { get; set; } = 0;
 	/// <summary>Pause in seconds before and after the AI plays its cards.</summary>
-	[Export] public float AiStepDelay { get; set; } = 0.6f;
+	[Export] public float AiStepDelay { get; set; } = 0.9f;
+	/// <summary>Pause in seconds between two consecutive AI actions, so each one can be followed.</summary>
+	[Export] public float AiActionPause { get; set; } = 0.4f;
 
 	[ExportGroup("Nodes")]
 	[Export] public BoardView Board { get; set; }
 	[Export] public BoardAnimator Animator { get; set; }
 	[Export] public CameraRig CameraRig { get; set; }
 	[Export] public Hud Hud { get; set; }
-	/// <summary>Order arrows / numbers, planning and chain previews (created at the origin if not assigned).</summary>
+	/// <summary>Move / attack planning arrows and attack previews (created at the origin if not assigned).</summary>
 	[Export] public OrderOverlay Overlay { get; set; }
 
 	private GameState _state;
@@ -66,12 +66,19 @@ public partial class GameManager : Node
 	private readonly List<string> _pendingLog = new List<string>();
 	private readonly Dictionary<int, string> _pieceNames = new Dictionary<int, string>();
 	private readonly List<List<ResolutionEvent>> _capturedSpellEvents = new List<List<ResolutionEvent>>();
+	private readonly List<List<ResolutionEvent>> _capturedActionEvents = new List<List<ResolutionEvent>>();
 	private bool _captureSpells;
 	private readonly List<GridPos> _pendingScoreTiles = new List<GridPos>();
 	private int _pendingScorePlayer = -1;
 	private DeckData _playerTheme;
 	private DeckData _aiTheme;
 	private GridPos? _hoverTile;
+	/// <summary>Tiles already chosen for the current build (Barricades: up to two).</summary>
+	private readonly List<GridPos> _buildTiles = new List<GridPos>();
+	/// <summary>Hand card under the mouse (for the spell range overlay), or null.</summary>
+	private CardData _hoveredHandCard;
+	private List<GridPos> _rangeTiles = new List<GridPos>();
+	private bool _returnToTown;
 	private readonly Random _themeRandom = new Random();
 
 	public override void _Ready()
@@ -101,6 +108,12 @@ public partial class GameManager : Node
 			Engine.TimeScale = 8.0;
 			GD.Print("GameManager: autoplay enabled (both sides played by SimpleAi).");
 		}
+		bool selftest = Array.IndexOf(userArgs, "--selftest") >= 0;
+		if (!BattleSession.IsActive && StartInOverworld && !_autoplay && !selftest && ResourceLoader.Exists(BattleSession.OverworldScene))
+		{
+			Callable.From(() => GetTree().ChangeSceneToFile(BattleSession.OverworldScene)).CallDeferred();
+			return;
+		}
 
 		// Turn banners are driven explicitly (awaited at every turn start).
 		Hud.AutoTurnBanner = false;
@@ -115,9 +128,18 @@ public partial class GameManager : Node
 		Hud.DrawPressed += OnDrawPressed;
 		Hud.ConvertVpPressed += OnConvertVpPressed;
 		Hud.Hand.CardSelected += OnHandCardSelected;
+		Hud.Hand.CardHoverChanged += OnHandCardHoverChanged;
 		Hud.Draft.CardChosen += OnDraftCardChosen;
 		Hud.DeckSelect.DeckChosen += OnDeckChosen;
 		CameraRig.ViewModeChanged += OnViewModeChanged;
+		if (Array.IndexOf(userArgs, "--view=3d") >= 0)
+		{
+			CameraRig.SetMode(ViewMode.ThreeD, false);
+		}
+		else if (Array.IndexOf(userArgs, "--view=2.5d") >= 0)
+		{
+			CameraRig.SetMode(ViewMode.TwoPointFiveD, false);
+		}
 		OnViewModeChanged((int)CameraRig.Mode);
 
 		BeginNewGame();
@@ -126,6 +148,15 @@ public partial class GameManager : Node
 	/// <summary>Shows the deck selection (when ThemeDecks are set and not autoplaying), otherwise starts right away.</summary>
 	private void BeginNewGame()
 	{
+		if (BattleSession.IsActive)
+		{
+			// Town battle: the player's own deck against the NPC's deck, no deck selection.
+			_playerTheme = BattleSession.BuildPlayerDeck();
+			_aiTheme = BattleSession.Opponent.Deck;
+			Hud.SetOpponentName(BattleSession.Opponent.Name);
+			StartNewGame();
+			return;
+		}
 		List<DeckData> themes = ThemeList();
 		if (themes.Count == 0)
 		{
@@ -159,6 +190,7 @@ public partial class GameManager : Node
 			CameraRig.SetMode(CameraRig.Mode, false);
 		}
 		Board.Build(new BoardState(config));
+		_rangeTiles.Clear();
 		Animator.ClearAll();
 		Overlay.ClearAll();
 		Hud.HideWinScreen();
@@ -231,6 +263,11 @@ public partial class GameManager : Node
 		var random = Seed != 0 ? new Random(Seed) : new Random();
 
 		_state = new GameState(config, deck0, deck1, random);
+		if (BattleSession.IsActive)
+		{
+			_state.Players[AiPlayer].BonusApPerTurn = BattleSession.Opponent.BonusApPerTurn;
+		}
+		MapGenerator.MapInfo map = MapGenerator.Generate(_state);
 		_controller = new TurnController(_state);
 		_ai = new SimpleAi(_controller, AiPlayer);
 		_autoplayAi = _autoplay ? new SimpleAi(_controller, HumanPlayer) : null;
@@ -239,6 +276,7 @@ public partial class GameManager : Node
 		_pendingLog.Clear();
 		_pieceNames.Clear();
 		_capturedSpellEvents.Clear();
+		_capturedActionEvents.Clear();
 		_pendingScoreTiles.Clear();
 		_pendingScorePlayer = -1;
 		_hoverTile = null;
@@ -248,6 +286,8 @@ public partial class GameManager : Node
 		{
 			_pendingLog.Add($"Your deck: {playerDeck.Name}. AI deck: {aiDeck.Name}.");
 		}
+		_pendingLog.Add($"Battlefield: {map.Name}. {map.Description}");
+		Hud.ShowMessage($"{map.Name} - {map.Description}", 4f);
 
 		var fit = new Vector2(config.BoardWidth, config.BoardHeight);
 		if (CameraRig.BoardFitSize != fit)
@@ -257,6 +297,8 @@ public partial class GameManager : Node
 		}
 
 		Board.Build(_state.Board);
+		Board.SyncTerrain(_state.Board, config.RockHp);
+		_rangeTiles.Clear();
 		Animator.ClearAll();
 		Animator.SyncAll(_state);
 		Overlay.ClearAll();
@@ -299,6 +341,7 @@ public partial class GameManager : Node
 		_controller.VictoryPointsScored += OnVictoryPointsScored;
 		_controller.GameOver += OnGameOver;
 		_controller.SpellResolved += OnSpellResolved;
+		_controller.ActionResolved += OnActionResolved;
 	}
 
 	private void UnsubscribeController()
@@ -311,6 +354,7 @@ public partial class GameManager : Node
 		_controller.VictoryPointsScored -= OnVictoryPointsScored;
 		_controller.GameOver -= OnGameOver;
 		_controller.SpellResolved -= OnSpellResolved;
+		_controller.ActionResolved -= OnActionResolved;
 	}
 
 	private void OnTurnStarted(int player)
@@ -319,6 +363,15 @@ public partial class GameManager : Node
 		if (player == 1 && _state.Players[player].TurnsStarted == 1 && _state.Config.SecondPlayerFirstTurnBonusAp > 0)
 		{
 			_pendingLog.Add($"{PlayerLabel(player)} moves second: +{_state.Config.SecondPlayerFirstTurnBonusAp} AP this turn.");
+		}
+		int wells = 0;
+		foreach (Piece p in _state.GetPiecesOf(player))
+		{
+			wells += p.Building == BuildingType.ManaWell && !p.UnderConstruction ? 1 : 0;
+		}
+		if (wells > 0)
+		{
+			_pendingLog.Add($"{PlayerLabel(player)}: +{wells * _state.Config.ManaWellAp} AP from mana wells.");
 		}
 	}
 
@@ -329,7 +382,7 @@ public partial class GameManager : Node
 		_pendingScoreTiles.Clear();
 		foreach (Piece p in _state.GetPiecesOf(player))
 		{
-			if (_state.Board.IsInScoringZone(p.Position))
+			if (p.CanScore && _state.Board.IsInScoringZone(p.Position))
 			{
 				_pendingScoreTiles.Add(p.Position);
 			}
@@ -346,6 +399,14 @@ public partial class GameManager : Node
 		if (_captureSpells && events != null)
 		{
 			_capturedSpellEvents.Add(new List<ResolutionEvent>(events));
+		}
+	}
+
+	private void OnActionResolved(IReadOnlyList<ResolutionEvent> events)
+	{
+		if (_captureSpells && events != null)
+		{
+			_capturedActionEvents.Add(new List<ResolutionEvent>(events));
 		}
 	}
 
@@ -407,6 +468,7 @@ public partial class GameManager : Node
 
 		CachePieceNames();
 		_capturedSpellEvents.Clear();
+		_capturedActionEvents.Clear();
 		_captureSpells = true;
 		List<AiAction> actions;
 		try
@@ -445,6 +507,7 @@ public partial class GameManager : Node
 	private async Task AnimateAiActionsAsync(List<AiAction> actions, int generation)
 	{
 		int spellIndex = 0;
+		int actionIndex = 0;
 		foreach (AiAction action in actions)
 		{
 			Log($"{PlayerLabel(action.PlayerIndex)}: {action.Description}");
@@ -475,6 +538,19 @@ public partial class GameManager : Node
 						}
 					}
 					break;
+				case AiActionKind.Command:
+				case AiActionKind.Build:
+				case AiActionKind.Trap:
+					if (actionIndex < _capturedActionEvents.Count)
+					{
+						List<ResolutionEvent> events = _capturedActionEvents[actionIndex++];
+						await Animator.PlayEvents(events, _state, false);
+						foreach (ResolutionEvent e in events)
+						{
+							Log(DescribeEvent(e));
+						}
+					}
+					break;
 				case AiActionKind.ConvertVp:
 					Hud.ShowMessage($"{PlayerLabel(action.PlayerIndex)} converted 1 VP into 1 AP.");
 					break;
@@ -483,10 +559,15 @@ public partial class GameManager : Node
 			{
 				return;
 			}
+			await DelayAsync(AiActionPause);
+			if (!IsCurrent(generation))
+			{
+				return;
+			}
 		}
 	}
 
-	/// <summary>Ends the current turn, animates the resolution events order by order and logs them.</summary>
+	/// <summary>Ends the current turn: animates the expiring effects and the next turn's tile ticks, logs them.</summary>
 	private async Task<bool> EndTurnAsync(int generation)
 	{
 		if (_state.Phase != GamePhase.Main)
@@ -496,29 +577,15 @@ public partial class GameManager : Node
 		}
 
 		_mode = InputMode.Busy;
-		Hud.SetHint("Resolving orders...");
+		Hud.SetHint("Ending turn...");
 		Refresh();
 
 		CachePieceNames();
-		List<OrderStep> plan = BuildOrderPlan();
 		List<ResolutionEvent> events = _controller.EndTurn();
 		var turnStartEvents = new List<ResolutionEvent>(_controller.LastTurnStartEvents);
 
 		Overlay.ClearAll();
-		List<IReadOnlyList<ResolutionEvent>> groups = GroupEventsByOrder(events, plan, out List<int> groupSteps);
-		await Animator.PlayEventGroups(groups, _state, gi =>
-		{
-			int step = groupSteps[gi];
-			if (step >= 0)
-			{
-				Hud.ShowResolutionStep(step + 1, plan.Count, plan[step].Text);
-			}
-			else
-			{
-				Hud.HideResolutionStep();
-			}
-		}, turnStartEvents.Count == 0);
-		Hud.HideResolutionStep();
+		await Animator.PlayEvents(events, _state, turnStartEvents.Count == 0);
 		if (!IsCurrent(generation))
 		{
 			return false;
@@ -571,7 +638,8 @@ public partial class GameManager : Node
 			int player = _pendingScorePlayer;
 			_pendingScoreTiles.Clear();
 			_pendingScorePlayer = -1;
-			await Animator.PlayScore(tiles, player);
+			BoardState board = _state.Board;
+			await Animator.PlayScore(tiles, player, board.ScoreValue);
 		}
 		_pendingScorePlayer = -1;
 	}
@@ -579,7 +647,7 @@ public partial class GameManager : Node
 	private void EnterHumanTurnOrGameOver()
 	{
 		ResetSelection();
-		Board.ClearHighlights();
+		ClearAllHighlights();
 		Animator.ClearSelection();
 		Overlay.ClearPreview();
 		Overlay.ClearAttackPreview();
@@ -590,7 +658,16 @@ public partial class GameManager : Node
 			_mode = InputMode.Idle;
 			Refresh();
 			Hud.SetHint("Game over.");
-			Hud.ShowWinScreen(_state.Winner);
+			if (BattleSession.IsActive)
+			{
+				string result = BattleSession.Complete(_state.Winner == HumanPlayer);
+				_returnToTown = true;
+				Hud.ShowWinScreen(_state.Winner, result, "Return to town");
+			}
+			else if (!_returnToTown)
+			{
+				Hud.ShowWinScreen(_state.Winner);
+			}
 			if (_autoplay)
 			{
 				GD.Print($"AUTOPLAY RESULT: winner = {PlayerLabel(_state.Winner)} after {_state.TurnNumber} turns, " +
@@ -609,126 +686,6 @@ public partial class GameManager : Node
 		UpdateHint();
 		Refresh();
 		UpdateOrderOverlay();
-	}
-
-	/// <summary>The current player's committed orders in resolution order, with a short ticker text each.</summary>
-	private List<OrderStep> BuildOrderPlan()
-	{
-		var pieces = new List<Piece>();
-		foreach (Piece p in _state.GetPiecesOf(_state.CurrentPlayerIndex))
-		{
-			if (p.Order != null)
-			{
-				pieces.Add(p);
-			}
-		}
-		pieces.Sort((a, b) => a.Order.OrderIndex.CompareTo(b.Order.OrderIndex));
-		var plan = new List<OrderStep>();
-		foreach (Piece p in pieces)
-		{
-			string who = $"{(p.OwnerIndex == HumanPlayer ? "Your" : "AI")} {PieceLabel(p)}";
-			var parts = new List<string>();
-			if (p.Order.MoveTarget.HasValue && p.Order.MoveTarget.Value != p.Position)
-			{
-				parts.Add("moves");
-			}
-			if (p.Order.AttackTarget.HasValue)
-			{
-				Piece target = _state.Board.GetPieceAt(p.Order.AttackTarget.Value);
-				if (target == null || target == p)
-				{
-					parts.Add("attacks");
-				}
-				else if (target.OwnerIndex == p.OwnerIndex)
-				{
-					parts.Add($"triggers {PieceLabel(target)}");
-				}
-				else
-				{
-					parts.Add($"attacks {PieceLabel(target)}");
-				}
-			}
-			plan.Add(new OrderStep { PieceId = p.Id, Text = parts.Count > 0 ? $"{who} {string.Join(" & ", parts)}" : $"{who} holds" });
-		}
-		return plan;
-	}
-
-	/// <summary>
-	/// Splits the chronological resolution events into one group per resolved order (a group starts with the
-	/// acting piece's move / attack) plus a trailing upkeep group (expiring spells, statuses, tile effects).
-	/// groupSteps[i] = plan index of group i, or -1 for upkeep.
-	/// </summary>
-	private static List<IReadOnlyList<ResolutionEvent>> GroupEventsByOrder(List<ResolutionEvent> events, List<OrderStep> plan,
-		out List<int> groupSteps)
-	{
-		var groups = new List<IReadOnlyList<ResolutionEvent>>();
-		groupSteps = new List<int>();
-		List<ResolutionEvent> current = null;
-		int currentStep = int.MinValue;
-		int lastPlanIndex = -1;
-		for (int i = 0; i < events.Count; i++)
-		{
-			ResolutionEvent e = events[i];
-			bool upkeep = e.Type == ResolutionEventType.SpellExpired || e.Type == ResolutionEventType.TileEffectExpired ||
-				(e.Type == ResolutionEventType.StatusExpired && !e.IsChain);
-			int step;
-			if (upkeep)
-			{
-				step = -1;
-			}
-			else
-			{
-				int actor = -1;
-				switch (e.Type)
-				{
-					case ResolutionEventType.Moved:
-					case ResolutionEventType.MoveBlocked:
-					case ResolutionEventType.AttackCancelled:
-						actor = e.PieceId;
-						break;
-					case ResolutionEventType.Attacked:
-						actor = e.IsChain || e.IsPierce ? -1 : e.PieceId;
-						break;
-					case ResolutionEventType.PushBlocked:
-						ResolutionEvent next = i + 1 < events.Count ? events[i + 1] : null;
-						if (next != null && (next.Type == ResolutionEventType.Moved || next.Type == ResolutionEventType.MoveBlocked) &&
-							next.PieceId == e.OtherPieceId)
-						{
-							actor = e.OtherPieceId;
-						}
-						break;
-				}
-				step = currentStep == int.MinValue || currentStep < 0 ? Math.Max(lastPlanIndex, 0) : currentStep;
-				if (actor >= 0)
-				{
-					for (int k = lastPlanIndex + 1; k < plan.Count; k++)
-					{
-						if (plan[k].PieceId == actor)
-						{
-							step = k;
-							break;
-						}
-					}
-				}
-				if (plan.Count == 0)
-				{
-					step = -1;
-				}
-			}
-			if (current == null || step != currentStep)
-			{
-				current = new List<ResolutionEvent>();
-				groups.Add(current);
-				groupSteps.Add(step);
-				currentStep = step;
-				if (step > lastPlanIndex)
-				{
-					lastPlanIndex = step;
-				}
-			}
-			current.Add(e);
-		}
-		return groups;
 	}
 
 	// ------------------------------------------------------------------ HUD signal handlers
@@ -785,6 +742,11 @@ public partial class GameManager : Node
 
 	private void OnRestartPressed()
 	{
+		if (_returnToTown)
+		{
+			GetTree().ChangeSceneToFile(BattleSession.OverworldScene);
+			return;
+		}
 		BeginNewGame();
 	}
 
@@ -909,11 +871,9 @@ public partial class GameManager : Node
 		else
 		{
 			tiles = _controller.GetValidSpellTiles(card);
-			// Area spells can target (almost) any tile: the hover preview shows the area instead of a board-wide highlight.
-			if (!card.TargetsTile)
-			{
-				Board.ShowHighlights(tiles, HighlightKind.Spell);
-			}
+			// Spells reach only GameConfig.SpellCastRadius tiles around your units: show where they may be centred.
+			Board.ShowHighlights(tiles, HighlightKind.Spell);
+			UpdateRangeHighlight();
 			if (tiles.Count == 0)
 			{
 				Hud.ShowMessage(card.TargetsTile ? "There is no valid tile for this spell." : "There is no piece to target.");
@@ -948,6 +908,14 @@ public partial class GameManager : Node
 					}
 					GetViewport().SetInputAsHandled();
 					break;
+				case Key.B:
+					OnBuildPressed();
+					GetViewport().SetInputAsHandled();
+					break;
+				case Key.T:
+					OnTrapPressed();
+					GetViewport().SetInputAsHandled();
+					break;
 				case Key.V:
 					OnViewTogglePressed();
 					GetViewport().SetInputAsHandled();
@@ -974,6 +942,7 @@ public partial class GameManager : Node
 	{
 		_hoverTile = pos.X < 0 ? null : GridPos.FromVector2I(pos);
 		UpdateBoardInfo();
+		UpdateRangeHighlight();
 		if (pos.X < 0 || _mode == InputMode.Busy || _state == null)
 		{
 			Board.ClearHighlights(HighlightKind.Hover);
@@ -1037,9 +1006,80 @@ public partial class GameManager : Node
 		}
 	}
 
+	private void ClearAllHighlights()
+	{
+		Board.ClearHighlights();
+		_rangeTiles.Clear();
+	}
+
+	private void OnHandCardHoverChanged(CardView card, bool hovered)
+	{
+		if (hovered)
+		{
+			_hoveredHandCard = card?.Card;
+		}
+		else if (card != null && card.Card == _hoveredHandCard)
+		{
+			_hoveredHandCard = null;
+		}
+		UpdateRangeHighlight();
+	}
+
+	/// <summary>
+	/// Faint range overlay: the cast range of the selected (or hovered) spell card, the reach of a hovered building
+	/// (Turret shots, Shrine heals, Obelisk cast radius) or of the building a Builder would place on the hovered tile.
+	/// </summary>
+	private void UpdateRangeHighlight()
+	{
+		var tiles = new List<GridPos>();
+		bool humanMain = _state != null && _controller != null && _mode != InputMode.Busy && _state.Winner < 0
+			&& _state.CurrentPlayerIndex == HumanPlayer && _state.Phase == GamePhase.Main;
+		if (humanMain)
+		{
+			CardData spell = _mode == InputMode.CardSelected ? _selectedCard : (_mode == InputMode.Idle ? _hoveredHandCard : null);
+			if (spell != null && spell.CardType == CardType.Spell)
+			{
+				tiles = _controller.GetSpellRangeTiles();
+			}
+			else if (_hoverTile.HasValue)
+			{
+				GridPos tile = _hoverTile.Value;
+				Piece piece = _state.Board.GetPieceAt(tile);
+				if (_mode == InputMode.Idle && piece != null && piece.IsBuilding)
+				{
+					tiles = _controller.GetBuildingRangeTiles(piece.Building, piece.Position, piece.EffectiveRange);
+				}
+				else if (_mode == InputMode.ChoosingBuild && _selectedPiece != null && _controller.GetValidBuildTiles(_selectedPiece, _plannedMove).Contains(tile))
+				{
+					BuildingType type = _controller.GetBuildType(_selectedPiece);
+					tiles = _controller.GetBuildingRangeTiles(type, tile, BuildingInfo.GetCard(type).Range);
+				}
+			}
+		}
+		else if (_state != null && _hoverTile.HasValue && _state.Board.GetPieceAt(_hoverTile.Value) is Piece building && building.IsBuilding
+			&& _controller != null && _state.Winner < 0)
+		{
+			// Buildings can be inspected while waiting for the opponent, too.
+			tiles = _controller.GetBuildingRangeTiles(building.Building, building.Position, building.EffectiveRange);
+		}
+		if (tiles.Count == _rangeTiles.Count && tiles.TrueForAll(_rangeTiles.Contains))
+		{
+			return;
+		}
+		_rangeTiles = tiles;
+		if (tiles.Count == 0)
+		{
+			Board.ClearHighlights(HighlightKind.Range);
+		}
+		else
+		{
+			Board.ShowHighlights(tiles, HighlightKind.Range);
+		}
+	}
+
 	/// <summary>
 	/// While choosing an attack: shows the planned order with the hovered attack arc and, for occupied targets,
-	/// the predicted consequences (chain shots of triggered friendlies, damage, kills, pushes, new tile effects).
+	/// the predicted consequences (damage incl. friendly fire, kills, pushes, new tile effects).
 	/// </summary>
 	private void ShowAttackPlanPreview(GridPos tile)
 	{
@@ -1069,18 +1109,25 @@ public partial class GameManager : Node
 		Piece target = _state.Board.GetPieceAt(tile);
 		bool friendly = target != null && target.OwnerIndex == HumanPlayer && target != _selectedPiece;
 		var parts = new List<string>();
-		if (friendly)
+		if (friendly && p.FriendlyHealed <= 0)
 		{
-			parts.Add($"triggers {PieceLabel(target)}");
+			parts.Add($"hits your own {PieceLabel(target)}!");
 		}
-		parts.Add($"{p.EnemyHpLost} enemy dmg");
+		if (p.EnemyHpLost > 0 || !friendly)
+		{
+			parts.Add($"{p.EnemyHpLost} enemy dmg");
+		}
 		if (p.EnemyKills > 0)
 		{
 			parts.Add($"{p.EnemyKills} kill{(p.EnemyKills > 1 ? "s" : "")}");
 		}
-		if (p.TriggeredPieceIds.Count > 0 && !(friendly && p.TriggeredPieceIds.Count == 1))
+		if (p.FriendlyHpLost > 0)
 		{
-			parts.Add($"{p.TriggeredPieceIds.Count} chain{(p.TriggeredPieceIds.Count > 1 ? "s" : "")}");
+			parts.Add($"{p.FriendlyHpLost} friendly dmg");
+		}
+		if (p.FriendlyKills > 0)
+		{
+			parts.Add($"{p.FriendlyKills} own piece{(p.FriendlyKills > 1 ? "s" : "")} die{(p.FriendlyKills > 1 ? "" : "s")}");
 		}
 		if (p.FriendlyHealed > 0)
 		{
@@ -1114,7 +1161,254 @@ public partial class GameManager : Node
 			case InputMode.ChoosingAttack:
 				HandleAttackClick(pos);
 				break;
+			case InputMode.ChoosingBuild:
+				HandleBuildClick(pos);
+				break;
+			case InputMode.ChoosingTrap:
+				HandleTrapClick(pos);
+				break;
 		}
+	}
+
+	/// <summary>
+	/// Floating ability buttons beside the selected unit (currently: Build for Builders), docked on the side that
+	/// hides the fewest tiles the player is choosing from. 'from' is the planned destination during the attack
+	/// step (a unit may move and then build instead of attacking); null = its current tile. Unavailable abilities
+	/// are shown greyed out with the reason as tooltip.
+	/// </summary>
+	private void ShowUnitActions(Piece piece, GridPos? from = null)
+	{
+		var abilities = new List<UnitActionBar.Ability>();
+		BuildingType build = _controller.GetBuildType(piece);
+		GridPos at = from ?? piece.Position;
+		if (build != BuildingType.None)
+		{
+			int cost = BuildingInfo.GetCost(build);
+			int turns = BuildingInfo.GetBuildTurns(build);
+			int count = BuildingInfo.GetBuildCount(build);
+			string reason = piece.ConstructingId >= 0 ? "Already building." :
+				(cost > _state.CurrentPlayer.ActionPoints ? $"Needs {cost} AP." :
+				(_controller.GetValidBuildTiles(piece, from).Count == 0 ? "No free tile next to it." : ""));
+			string what = count > 1 ? $"{count} {BuildingInfo.GetName(build)}s" : BuildingInfo.GetName(build);
+			abilities.Add(new UnitActionBar.Ability(FxIconShape.Hammer, $"Build {BuildingInfo.GetName(build)}", cost, reason.Length == 0,
+				$"Build {what}: {BuildingInfo.GetDescription(build)} ({turns} turn{(turns > 1 ? "s" : "")}, B). Can follow a move instead of an attack." +
+				(reason.Length > 0 ? $"\n{reason}" : ""), OnBuildPressed));
+		}
+		TrapType? trap = _controller.GetTrapType(piece);
+		if (trap.HasValue)
+		{
+			int cost = _state.Config.TrapApCost;
+			string reason = piece.ConstructingId >= 0 ? "Busy building." :
+				(cost > _state.CurrentPlayer.ActionPoints ? $"Needs {cost} AP." :
+				(_controller.GetValidTrapTiles(piece, from).Count == 0 ? "No free tile next to it." : ""));
+			abilities.Add(new UnitActionBar.Ability(FxIconShape.Trap, "Set Trap", cost, reason.Length == 0,
+				$"{TrapInfo.GetName(trap.Value)}: hidden from the enemy. An enemy stepping on it is stopped and takes {TrapInfo.Describe(trap.Value)} " +
+				"(T). Can follow a move instead of an attack." + (reason.Length > 0 ? $"\n{reason}" : ""), OnTrapPressed));
+		}
+		if (abilities.Count == 0)
+		{
+			Hud.ActionBar.HideBar();
+			return;
+		}
+		int id = piece.Id;
+		bool moved = at != piece.Position;
+		List<GridPos> keepVisible = from.HasValue ? _controller.GetValidAttackTargets(piece, at) : _controller.GetValidMoveTargets(piece);
+		keepVisible.Add(at);
+		Hud.ActionBar.ShowFor(() =>
+		{
+			PieceView view = Animator.GetView(id);
+			Camera3D camera = CameraRig?.Camera ?? GetViewport()?.GetCamera3D();
+			if (view == null || camera == null || !IsInstanceValid(view))
+			{
+				return null;
+			}
+			Vector3 body = (moved ? Board.GridToWorld(at) : view.GlobalPosition) + new Vector3(0, 0.3f, 0);
+			if (camera.IsPositionBehind(body))
+			{
+				return null;
+			}
+			Vector2 center = camera.UnprojectPosition(body);
+			float halfTile = camera.UnprojectPosition(Board.GridToWorld(at))
+				.DistanceTo(camera.UnprojectPosition(Board.GridToWorld(new GridPos(at.X + 1, at.Y)))) * 0.5f;
+			var avoid = new List<Vector2>(keepVisible.Count);
+			foreach (GridPos pos in keepVisible)
+			{
+				avoid.Add(camera.UnprojectPosition(Board.GridToWorld(pos)));
+			}
+			return new UnitActionBar.Placement(center, halfTile, avoid);
+		}, abilities);
+	}
+
+	/// <summary>
+	/// Build mode: right after selecting the unit (build where it stands) or after choosing its move (the build
+	/// replaces the attack). Green tiles around the destination are valid; Barricades take two clicks.
+	/// </summary>
+	private void OnBuildPressed()
+	{
+		Piece piece = _selectedPiece;
+		if (!CanHumanAct() || piece == null || (_mode != InputMode.ChoosingMove && _mode != InputMode.ChoosingAttack))
+		{
+			return;
+		}
+		BuildingType type = _controller.GetBuildType(piece);
+		if (type == BuildingType.None)
+		{
+			return;
+		}
+		if (_mode == InputMode.ChoosingMove)
+		{
+			_plannedMove = null;
+		}
+		List<GridPos> tiles = _controller.GetValidBuildTiles(piece, _plannedMove);
+		if (tiles.Count == 0)
+		{
+			Hud.ShowMessage("No free tile next to this unit to build on.");
+			return;
+		}
+		_mode = InputMode.ChoosingBuild;
+		_buildTiles.Clear();
+		Hud.ActionBar.HideBar();
+		Board.ClearHighlights(HighlightKind.Move);
+		Board.ClearHighlights(HighlightKind.Attack);
+		Overlay.ClearAttackPreview();
+		if (_plannedMove.HasValue)
+		{
+			Board.ShowHighlights(new[] { _plannedMove.Value }, HighlightKind.Move);
+			Overlay.ShowPreview(piece, _plannedMove, null, Board, _controller.GetPlannedPath(piece, _plannedMove.Value), _state.Board);
+		}
+		else
+		{
+			Overlay.ClearPreview();
+		}
+		Board.ShowHighlights(tiles, HighlightKind.Deploy);
+		UpdateRangeHighlight();
+		UpdateBuildHint();
+	}
+
+	/// <summary>Trap mode: like building, right after selecting the Trapper or after choosing its move (replaces the attack).</summary>
+	private void OnTrapPressed()
+	{
+		Piece piece = _selectedPiece;
+		if (!CanHumanAct() || piece == null || (_mode != InputMode.ChoosingMove && _mode != InputMode.ChoosingAttack))
+		{
+			return;
+		}
+		TrapType? trap = _controller.GetTrapType(piece);
+		if (!trap.HasValue)
+		{
+			return;
+		}
+		if (_mode == InputMode.ChoosingMove)
+		{
+			_plannedMove = null;
+		}
+		List<GridPos> tiles = _controller.GetValidTrapTiles(piece, _plannedMove);
+		if (tiles.Count == 0)
+		{
+			Hud.ShowMessage("No free tile next to this unit for a trap.");
+			return;
+		}
+		_mode = InputMode.ChoosingTrap;
+		Hud.ActionBar.HideBar();
+		Board.ClearHighlights(HighlightKind.Move);
+		Board.ClearHighlights(HighlightKind.Attack);
+		Overlay.ClearAttackPreview();
+		if (_plannedMove.HasValue)
+		{
+			Board.ShowHighlights(new[] { _plannedMove.Value }, HighlightKind.Move);
+			Overlay.ShowPreview(piece, _plannedMove, null, Board, _controller.GetPlannedPath(piece, _plannedMove.Value), _state.Board);
+		}
+		else
+		{
+			Overlay.ClearPreview();
+		}
+		Board.ShowHighlights(tiles, HighlightKind.Deploy);
+		Hud.SetHint($"{PieceLabel(piece)}: click a green tile to hide a {TrapInfo.GetName(trap.Value)} ({_state.Config.TrapApCost} AP). Esc cancels.");
+	}
+
+	private void HandleTrapClick(GridPos pos)
+	{
+		Piece piece = _selectedPiece;
+		if (piece == null)
+		{
+			CancelSelection();
+			return;
+		}
+		GridPos? move = _plannedMove;
+		CachePieceNames();
+		List<ResolutionEvent> events = _controller.SetTrap(piece, pos, move);
+		if (events == null)
+		{
+			Hud.ShowMessage(_controller.LastError);
+			return;
+		}
+		TrapType trap = _controller.GetTrapType(piece) ?? TrapType.Spike;
+		Log($"Your {PieceLabel(piece)} {(move.HasValue ? $"moves to {move.Value} and " : "")}hides a {TrapInfo.GetName(trap)} at {pos}.");
+		CancelSelection();
+		_ = AnimateSpellEventsAsync(new List<ResolutionEvent>(events), _generation);
+	}
+
+	private void UpdateBuildHint()
+	{
+		Piece piece = _selectedPiece;
+		if (piece == null)
+		{
+			return;
+		}
+		BuildingType type = _controller.GetBuildType(piece);
+		int count = BuildingInfo.GetBuildCount(type);
+		string name = BuildingInfo.GetName(type);
+		string first = count > 1 ? $"click green tiles for your {count} {name}s" : $"click a green tile to build a {name}";
+		Hud.SetHint(_buildTiles.Count == 0
+			? $"{PieceLabel(piece)}: {first} ({BuildingInfo.GetCost(type)} AP). Esc cancels."
+			: $"{PieceLabel(piece)}: click a second green tile - or the marked tile again to build just one.");
+	}
+
+	private void HandleBuildClick(GridPos pos)
+	{
+		Piece piece = _selectedPiece;
+		if (piece == null)
+		{
+			CancelSelection();
+			return;
+		}
+		BuildingType type = _controller.GetBuildType(piece);
+		List<GridPos> valid = _controller.GetValidBuildTiles(piece, _plannedMove);
+		bool again = _buildTiles.Contains(pos);
+		if (!again)
+		{
+			if (!valid.Contains(pos))
+			{
+				Hud.ShowMessage("Build on a green tile next to the unit.");
+				return;
+			}
+			_buildTiles.Add(pos);
+			int remaining = valid.FindAll(t => !_buildTiles.Contains(t)).Count;
+			if (_buildTiles.Count < BuildingInfo.GetBuildCount(type) && remaining > 0)
+			{
+				// Barricades: mark the first tile and wait for the second.
+				Sfx.Play(SfxId.CardPick);
+				Board.ShowHighlights(_buildTiles, HighlightKind.Selected);
+				Board.ShowHighlights(new[] { piece.Position }, HighlightKind.Hover);
+				UpdateBuildHint();
+				return;
+			}
+		}
+		CachePieceNames();
+		GridPos? move = _plannedMove;
+		var tiles = new List<GridPos>(_buildTiles);
+		List<ResolutionEvent> events = _controller.Build(piece, tiles, move);
+		if (events == null)
+		{
+			Hud.ShowMessage(_controller.LastError);
+			_buildTiles.Clear();
+			return;
+		}
+		string where = string.Join(" and ", tiles);
+		string what = tiles.Count > 1 ? $"{tiles.Count} {BuildingInfo.GetName(type)}s" : $"a {BuildingInfo.GetName(type)}";
+		Log($"Your {PieceLabel(piece)} {(move.HasValue ? $"moves to {move.Value} and " : "")}starts building {what} at {where}.");
+		CancelSelection();
+		_ = AnimateSpellEventsAsync(new List<ResolutionEvent>(events), _generation);
 	}
 
 	private void HandleIdleClick(GridPos pos)
@@ -1193,7 +1487,7 @@ public partial class GameManager : Node
 		try
 		{
 			_mode = InputMode.Busy;
-			Board.ClearHighlights();
+			ClearAllHighlights();
 			await Animator.PlayEvents(events, _state);
 			if (!IsCurrent(generation))
 			{
@@ -1267,7 +1561,7 @@ public partial class GameManager : Node
 		{
 			attack = pos;
 		}
-		IssueOrder(piece, _plannedMove, attack);
+		ExecuteAction(piece, _plannedMove, attack);
 	}
 
 	private void SelectPiece(Piece piece)
@@ -1279,7 +1573,7 @@ public partial class GameManager : Node
 				: _controller.LastError, 3f);
 			return;
 		}
-		if (piece.Order == null && _state.Config.OrderApCost > _state.CurrentPlayer.ActionPoints)
+		if (_state.Config.OrderApCost > _state.CurrentPlayer.ActionPoints)
 		{
 			Hud.ShowMessage($"Not enough AP: commanding {PieceLabel(piece)} costs {_state.Config.OrderApCost} AP.", 3f);
 			return;
@@ -1294,6 +1588,7 @@ public partial class GameManager : Node
 		Board.ShowHighlights(_controller.GetValidMoveTargets(piece), HighlightKind.Move);
 		Overlay.ShowPreview(piece, null, null, Board, (IReadOnlyList<GridPos>)null, _state.Board);
 		Hud.SetCancelEnabled(true);
+		ShowUnitActions(piece);
 		UpdateHint();
 	}
 
@@ -1312,48 +1607,43 @@ public partial class GameManager : Node
 		Board.ShowHighlights(_controller.GetValidAttackTargets(piece, from), HighlightKind.Attack);
 		IReadOnlyList<GridPos> path = move.HasValue ? _controller.GetPlannedPath(piece, move.Value) : null;
 		Overlay.ShowPreview(piece, move, null, Board, path, _state.Board);
+		ShowUnitActions(piece, move ?? piece.Position);
 		UpdateHint();
 	}
 
-	private void IssueOrder(Piece piece, GridPos? move, GridPos? attack)
+	/// <summary>Commands a piece: its move and attack resolve immediately and are animated right away.</summary>
+	private void ExecuteAction(Piece piece, GridPos? move, GridPos? attack)
 	{
-		bool hadOrder = piece.Order != null;
-		int apBefore = _state.CurrentPlayer.ActionPoints;
+		bool moves = move.HasValue && move.Value != piece.Position;
+		if (!moves && !attack.HasValue)
+		{
+			CancelSelection();
+			Hud.ShowMessage($"{PieceLabel(piece)} holds position (no AP spent).");
+			return;
+		}
+		CachePieceNames();
 		Piece target = attack.HasValue ? _state.Board.GetPieceAt(attack.Value) : null;
-		if (!_controller.SetOrder(piece, move, attack))
+		List<ResolutionEvent> events = _controller.Act(piece, move, attack);
+		if (events == null)
 		{
 			Hud.ShowMessage(_controller.LastError);
 			return;
 		}
-		int apDelta = _state.CurrentPlayer.ActionPoints - apBefore;
-		string apText = apDelta < 0 ? $", {-apDelta} AP" : (apDelta > 0 ? $", +{apDelta} AP refunded" : "");
-
-		string name = PieceLabel(piece);
-		if (piece.Order == null)
+		string text = moves ? $"moves to {move.Value}" : "stays";
+		if (attack.HasValue)
 		{
-			Hud.ShowMessage(hadOrder ? $"{name}: order cleared{apText}." : $"{name} holds position.");
+			text += target != null ? $" and attacks {PieceName(target.Id)}" : $" and attacks {attack.Value}";
 		}
-		else
-		{
-			string text = move.HasValue ? $"move to {move.Value}" : "stay";
-			if (attack.HasValue)
-			{
-				text += target != null && target.OwnerIndex == HumanPlayer && target != piece
-					? $", chain via {PieceLabel(target)}"
-					: $", attack {attack.Value}";
-			}
-			Hud.ShowMessage($"{name}: {text} (order {piece.Order.OrderIndex + 1}{apText}).");
-		}
-		Animator.GetView(piece.Id)?.SetHasOrder(piece.Order != null);
+		Log($"Your {PieceLabel(piece)} {text}.");
 		CancelSelection();
-		Refresh();
-		UpdateOrderOverlay();
+		_ = AnimateSpellEventsAsync(new List<ResolutionEvent>(events), _generation);
 	}
 
 	// ------------------------------------------------------------------ selection / UI helpers
 
 	private bool IsSelecting() =>
-		_mode == InputMode.CardSelected || _mode == InputMode.ChoosingMove || _mode == InputMode.ChoosingAttack;
+		_mode == InputMode.CardSelected || _mode == InputMode.ChoosingMove || _mode == InputMode.ChoosingAttack
+		|| _mode == InputMode.ChoosingBuild || _mode == InputMode.ChoosingTrap;
 
 	private void ResetSelection()
 	{
@@ -1361,6 +1651,7 @@ public partial class GameManager : Node
 		_selectedCard = null;
 		_selectedPiece = null;
 		_plannedMove = null;
+		_buildTiles.Clear();
 	}
 
 	/// <summary>Clears any card/piece selection, highlights and previews and returns to Idle (not while Busy).</summary>
@@ -1371,13 +1662,15 @@ public partial class GameManager : Node
 		{
 			_mode = InputMode.Idle;
 		}
-		Board.ClearHighlights();
+		ClearAllHighlights();
 		Animator.ClearSelection();
 		Overlay.ClearPreview();
 		Overlay.ClearAttackPreview();
 		Overlay.ClearSpellAreaPreview();
 		Hud.Hand.SetSelectedIndex(-1);
 		Hud.SetCancelEnabled(false);
+		Hud.ActionBar.HideBar();
+		UpdateRangeHighlight();
 		UpdateHint();
 	}
 
@@ -1426,13 +1719,14 @@ public partial class GameManager : Node
 		}
 		GridPos tile = _hoverTile.Value;
 		Piece piece = _state.Board.GetPieceAt(tile);
-		string text = piece != null ? InfoText.Piece(piece, _state, HumanPlayer) : InfoText.Tile(tile, _state, HumanPlayer);
-		Hud.ShowBoardInfo(text);
+		InfoSheet sheet = piece != null ? InfoText.Piece(piece, _state, HumanPlayer) : InfoText.Tile(tile, _state, HumanPlayer);
+		Hud.ShowBoardInfo(sheet);
 	}
 
 	/// <summary>Green glow on the human's pieces that can still be commanded this turn (no order yet, enough AP).</summary>
 	private void UpdateCanAct()
 	{
+		Animator.SyncExhausted(_state);
 		if (Animator.IsPlaying)
 		{
 			return;
@@ -1446,13 +1740,13 @@ public partial class GameManager : Node
 			{
 				continue;
 			}
-			bool canAct = humanMain && piece.OwnerIndex == HumanPlayer && piece.Order == null &&
+			bool canAct = humanMain && piece.OwnerIndex == HumanPlayer && !piece.HasActed(_state.TurnNumber) &&
 				ap >= _state.Config.OrderApCost && _controller.CanCommand(piece);
 			view.SetCanAct(canAct);
 		}
 	}
 
-	/// <summary>Redraws the committed order arrows / numbers of the current player.</summary>
+	/// <summary>Clears the order overlay (actions resolve immediately; nothing stays queued).</summary>
 	private void UpdateOrderOverlay()
 	{
 		if (_state == null)
@@ -1493,7 +1787,7 @@ public partial class GameManager : Node
 				Hud.SetHint($"{PieceLabelWithKeywords(_selectedPiece)}: click a blue tile (own pieces get pushed) or itself to stay.");
 				return;
 			case InputMode.ChoosingAttack:
-				Hud.SetHint($"{PieceLabelWithKeywords(_selectedPiece)}: click red to attack (own piece = chain), else move only.");
+				Hud.SetHint($"{PieceLabelWithKeywords(_selectedPiece)}: click red to attack now (own pieces take damage too), elsewhere = move only.");
 				return;
 		}
 
@@ -1641,13 +1935,12 @@ public partial class GameManager : Node
 		{
 			ResolutionEventType.Moved => $"{name} moves {e.From} -> {e.To}",
 			ResolutionEventType.MoveBlocked => $"{name} is blocked moving to {e.To}",
-			ResolutionEventType.Attacked => $"{name} {(e.IsChain ? "chain-fires" : "attacks")} {e.To}" +
+			ResolutionEventType.Attacked => $"{name} {(e.IsSecondary ? "zaps" : "attacks")} {e.To}" +
 				(e.OtherPieceId >= 0 ? $" ({PieceName(e.OtherPieceId)})" : ""),
 			ResolutionEventType.AttackCancelled => $"{name}'s attack on {e.To} is cancelled",
 			ResolutionEventType.Damaged => $"{name} takes {e.HpLost} damage" +
 				(e.ShieldAbsorbed > 0 ? $" ({e.ShieldAbsorbed} blocked)" : "") + $", HP {e.RemainingHp}",
 			ResolutionEventType.Died => $"{name} dies",
-			ResolutionEventType.ChainTriggered => $"{name} is triggered by {PieceName(e.OtherPieceId)}",
 			ResolutionEventType.SpellExpired => $"{e.SpellName} on {name} expired",
 			ResolutionEventType.Pushed => $"{name} is pushed {e.From} -> {e.To} by {PieceName(e.OtherPieceId)}",
 			ResolutionEventType.PushBlocked => $"{name} cannot be pushed to {e.To}",
@@ -1660,10 +1953,20 @@ public partial class GameManager : Node
 			ResolutionEventType.TileDamage => $"{name} burns on lava ({e.Amount})",
 			ResolutionEventType.TileHeal => $"{name} is healed +{e.Amount} by the sanctuary, HP {e.RemainingHp}",
 			ResolutionEventType.StatusApplied => $"{name} is {KeywordInfo.GetStatusName(e.Status)}",
-			ResolutionEventType.StatusExpired => e.IsChain
+			ResolutionEventType.StatusExpired => e.IsSecondary
 				? $"{name} releases its {KeywordInfo.GetStatusName(e.Status)} charge"
 				: $"{name} is no longer {KeywordInfo.GetStatusName(e.Status)}",
-			ResolutionEventType.SpellCast => $"{PlayerLabel(e.PlayerIndex)} cast {e.CardName} at {e.To}",
+			ResolutionEventType.SpellCast => $"{PlayerLabel(e.PlayerIndex)} cast {e.CardName} at {e.To}{(e.Amount > 0 ? " (empowered by an Obelisk)" : "")}",
+			ResolutionEventType.Deathrattle => $"Deathrattle of {e.CardName}: {e.SpellName}",
+			ResolutionEventType.BuildingStarted => $"{name} starts building a {e.SpellName} at {e.To}",
+			ResolutionEventType.BuildingCompleted => $"{e.SpellName} at {e.To} is finished",
+			ResolutionEventType.AuraPulse => $"{name}'s {e.SpellName} pulses",
+			ResolutionEventType.FirstHitTriggered => $"{name} is hit for the first time: {e.SpellName}",
+			ResolutionEventType.TrapSet => e.PlayerIndex == HumanPlayer ? $"{name} hides a {e.CardName} at {e.To}" : "AI hides a trap somewhere",
+			ResolutionEventType.TrapTriggered => $"{name} steps into {(e.PlayerIndex == HumanPlayer ? "your" : "an enemy")} {e.CardName} at {e.To}!",
+			ResolutionEventType.TerrainDamaged => e.RemainingHp <= 0 ? $"The rock at {e.To} crumbles" : $"The rock at {e.To} takes {e.Amount} damage ({e.RemainingHp} HP left)",
+			ResolutionEventType.ApGained => $"{PlayerLabel(e.PlayerIndex)} gain{(e.PlayerIndex == HumanPlayer ? "" : "s")} {e.Amount} AP" +
+				$"{(e.IsSecondary ? " next turn" : "")} ({e.CardName})",
 			_ => e.Type.ToString(),
 		};
 	}

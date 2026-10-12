@@ -5,15 +5,20 @@
 [resource]
 script = ExtResource("1")
 Name = "Ice Sentinel"
-Description = "Frost. Icy bulwark that freezes whatever it hits."
+Description = "Icy bulwark: the cold around it freezes intruders."
 CardType = 0
+Rarity = 1
 Role = 1
-ApCost = 2
-Movement = 1
+Class = 3
+ApCost = 4
+Movement = 3
 Attack = 1
 Hp = 4
 Range = 1
 Shield = 1
 ApBonus = 0
-Keywords = 2
+Keywords = 514
+Clan = 3
+OnFirstHit = 3
+OnFirstHitAmount = 1
 Tint = Color(0.7, 0.9, 1, 1)

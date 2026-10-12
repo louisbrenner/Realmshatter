@@ -20,6 +20,8 @@ public partial class Hud : CanvasLayer
 	[Signal] public delegate void DrawPressedEventHandler();
 	/// <summary>The player clicked a VP-to-AP conversion slot (spend 1 VP for 1 AP).</summary>
 	[Signal] public delegate void ConvertVpPressedEventHandler();
+	/// <summary>The player clicked the Build button of a selected Builder.</summary>
+
 
 	private const int HumanPlayer = 0;
 	private const int AiPlayer = 1;
@@ -70,6 +72,7 @@ public partial class Hud : CanvasLayer
 	private readonly int[] _lastVp = { -1, -1 };
 	private string _lastBannerKey = "";
 	private Task _bannerTask = Task.CompletedTask;
+	private EnemyHandView _enemyHand;
 	private InfoPanel _boardInfo;
 	private InfoPanel _cardInfo;
 	private CardView _cardInfoOwner;
@@ -79,6 +82,9 @@ public partial class Hud : CanvasLayer
 
 	/// <summary>The draft popup (Root/DraftPopup).</summary>
 	public DraftPopup Draft { get; private set; }
+
+	/// <summary>Ability buttons floating above the selected unit (created in code).</summary>
+	public UnitActionBar ActionBar { get; private set; }
 
 	/// <summary>The deck selection screen (created in code on top of the HUD).</summary>
 	public DeckSelectScreen DeckSelect { get; private set; }
@@ -106,8 +112,8 @@ public partial class Hud : CanvasLayer
 		_aiMana = GetNode<ManaCrystalBar>("Root/AiPanel/VBox/Mana");
 		_playerCoins = GetNode<VictoryCoinStack>("Root/PlayerPanel/VBox/Coins");
 		_playerVpLabel = GetNode<Label>("Root/PlayerPanel/VBox/Header/VpLabel");
-		_playerMana = GetNode<ManaCrystalBar>("Root/ManaPanel/HBox/ManaBar");
-		_vpConvert = GetNode<VpConvertButton>("Root/ManaPanel/HBox/VpConvert");
+		_playerMana = GetNode<ManaCrystalBar>("Root/PlayerPanel/VBox/ManaRow/ManaBar");
+		_vpConvert = GetNode<VpConvertButton>("Root/PlayerPanel/VBox/ManaRow/VpConvert");
 		_deckPile = GetNode<DeckPile>("Root/DeckPile");
 		_endTurnButton = GetNode<EndTurnButton>("Root/EndTurnButton");
 		_cancelButton = GetNode<Button>("Root/CancelButton");
@@ -154,11 +160,27 @@ public partial class Hud : CanvasLayer
 			EmitSignal(SignalName.ConvertVpPressed);
 		};
 
+		// The enemy window holds its points, AP and its face-down hand.
+		_enemyHand = new EnemyHandView
+		{
+			Name = "EnemyHand",
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+			CustomMinimumSize = new Vector2(220, 74),
+		};
+		GetNode<VBoxContainer>("Root/AiPanel/VBox").AddChild(_enemyHand);
+		// The combat log hangs right below the opponent window (left column); the window sizes to its content.
+		var aiPanel = GetNode<Control>("Root/AiPanel");
+		aiPanel.Resized += () => PlaceLogBelow(aiPanel);
+		PlaceLogBelow(aiPanel);
+		ActionBar = new UnitActionBar { Name = "UnitActionBar" };
+		_root.AddChild(ActionBar);
+		_root.MoveChild(ActionBar, Hand.GetIndex());
+
 		DeckSelect = new DeckSelectScreen { Name = "DeckSelect", CardScene = Hand.CardScene };
 		_root.AddChild(DeckSelect);
-		_boardInfo = new InfoPanel { Name = "BoardInfo", TextWidth = 250f };
+		_boardInfo = new InfoPanel { Name = "BoardInfo", TextWidth = 240f };
 		_root.AddChild(_boardInfo);
-		_cardInfo = new InfoPanel { Name = "CardInfo", TextWidth = 240f };
+		_cardInfo = new InfoPanel { Name = "CardInfo", TextWidth = 230f };
 		_root.AddChild(_cardInfo);
 		Hand.CardHoverChanged += OnCardHoverChanged;
 		Draft.CardHoverChanged += OnCardHoverChanged;
@@ -193,15 +215,15 @@ public partial class Hud : CanvasLayer
 		}
 	}
 
-	/// <summary>Shows the board hover info (BBCode, see InfoText) next to the mouse; empty text hides it.</summary>
-	public void ShowBoardInfo(string bbcode)
+	/// <summary>Shows the board hover info (see InfoText) next to the mouse; an empty sheet hides it.</summary>
+	public void ShowBoardInfo(InfoSheet sheet)
 	{
-		if (string.IsNullOrEmpty(bbcode) || (_cardInfo != null && _cardInfo.Visible) || GetViewport().GuiGetHoveredControl() != null)
+		if (sheet == null || sheet.IsEmpty || (_cardInfo != null && _cardInfo.Visible) || GetViewport().GuiGetHoveredControl() != null)
 		{
 			_boardInfo.HidePanel();
 			return;
 		}
-		_boardInfo.ShowAtCursor(bbcode);
+		_boardInfo.ShowAtCursor(sheet);
 	}
 
 	/// <summary>Hides the board hover info.</summary>
@@ -272,6 +294,7 @@ public partial class Hud : CanvasLayer
 			humanMain && human.VictoryPoints > 0 && human.VpConvertedThisTurn < maxConvert);
 
 		_deckPile.SetDeck(human.Deck.Count, state.Config.DrawApCost);
+		_enemyHand.SetCount(ai.Hand.Count + ai.DraftOffer.Count);
 		_endTurnButton.SetPlayerTurn(current == HumanPlayer);
 		_endTurnButton.SetNothingLeft(humanMain && human.ActionPoints <= 0);
 		_turnIndicator.SetTurn(state.TurnNumber, current, PhaseCaption(state));
@@ -435,13 +458,17 @@ public partial class Hud : CanvasLayer
 	}
 
 	/// <summary>Shows the victory/defeat screen for the given player index (0 = you, 1 = AI).</summary>
-	public void ShowWinScreen(int winner)
+	public void ShowWinScreen(int winner) => ShowWinScreen(winner, null, null);
+
+	/// <summary>Victory/defeat screen with an optional custom subtitle (e.g. rewards) and button caption.</summary>
+	public void ShowWinScreen(int winner, string subtitleOverride, string buttonText)
 	{
 		Draft.HidePopup();
 		bool victory = winner == HumanPlayer;
 		Sfx.Play(victory ? SfxId.Victory : SfxId.Defeat);
-		string subtitle = winner == HumanPlayer ? "You reached the victory points target!"
-			: (winner == AiPlayer ? "The AI reached the victory points target." : "Game over");
+		string subtitle = subtitleOverride ?? (winner == HumanPlayer ? "You reached the victory points target!"
+			: (winner == AiPlayer ? "The AI reached the victory points target." : "Game over"));
+		_restartButton.Text = string.IsNullOrEmpty(buttonText) ? "Play again" : buttonText;
 		_victoryBanner.Present(victory, victory ? "VICTORY" : "DEFEAT", subtitle);
 		_winScreen.Visible = true;
 		_winTween?.Kill();
@@ -451,11 +478,23 @@ public partial class Hud : CanvasLayer
 		_winDim.Color = victory ? new Color(0.05f, 0.03f, 0f, 0.7f) : new Color(0f, 0f, 0f, 0.78f);
 	}
 
+
+	/// <summary>Sets the name shown on the opponent's plaque (e.g. the town NPC).</summary>
+	public void SetOpponentName(string name)
+	{
+		GetNode<Label>("Root/AiPanel/VBox/Header/NameLabel").Text = string.IsNullOrEmpty(name) ? "OPPONENT" : name.ToUpperInvariant();
+	}
+
 	/// <summary>Hides the win overlay (e.g. after a restart).</summary>
 	public void HideWinScreen()
 	{
 		_winTween?.Kill();
 		_winScreen.Visible = false;
+	}
+
+	private void PlaceLogBelow(Control panel)
+	{
+		_log.Position = new Vector2(_log.Position.X, panel.Position.Y + panel.Size.Y + 8f);
 	}
 
 	private void UpdateVp(int player, int vp, int target, bool animate)
@@ -481,7 +520,7 @@ public partial class Hud : CanvasLayer
 		{
 			GamePhase.Draft => human ? "Choose a card" : "AI drafts",
 			GamePhase.Main => human ? "Your move" : "AI is planning",
-			GamePhase.Resolving => "Resolving orders",
+			GamePhase.Resolving => "Ending turn",
 			GamePhase.GameOver => "Game over",
 			_ => "",
 		};
@@ -535,7 +574,6 @@ public partial class Hud : CanvasLayer
 
 		GetNode<PanelContainer>("Root/AiPanel").AddThemeStyleboxOverride("panel", HudStyle.WoodPanel(HudStyle.EnemyRed, 8));
 		GetNode<PanelContainer>("Root/PlayerPanel").AddThemeStyleboxOverride("panel", HudStyle.WoodPanel(HudStyle.PlayerBlue, 8));
-		GetNode<PanelContainer>("Root/ManaPanel").AddThemeStyleboxOverride("panel", HudStyle.WoodPanel(HudStyle.ManaBlue, 6));
 		StyleHeader(GetNode<Label>("Root/AiPanel/VBox/Header/NameLabel"), HudStyle.EnemyRed);
 		StyleHeader(GetNode<Label>("Root/PlayerPanel/VBox/Header/NameLabel"), HudStyle.PlayerBlue);
 		StyleVp(_aiVpLabel);

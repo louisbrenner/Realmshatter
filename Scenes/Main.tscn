@@ -1,4 +1,4 @@
-[gd_scene load_steps=31 format=3]
+[gd_scene load_steps=32 format=3]
 
 [ext_resource type="Script" path="res://Scripts/GameManager.cs" id="1_gm"]
 [ext_resource type="Script" path="res://Scripts/View/BoardView.cs" id="2_board"]
@@ -25,6 +25,7 @@
 [ext_resource type="Resource" path="res://Resources/Decks/DawnCovenant.tres" id="14_dawn"]
 [ext_resource type="Resource" path="res://Resources/Decks/Frostbound.tres" id="15_frost"]
 [ext_resource type="Resource" path="res://Resources/Decks/StormCircuit.tres" id="16_storm"]
+[ext_resource type="Resource" path="res://Resources/Decks/StoneBastion.tres" id="17_stone"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMaterial_tavern"]
 sky_top_color = Color(0.16, 0.1, 0.07, 1)
@@ -70,8 +71,8 @@ PlayerDeck = Array[ExtResource("8_carddata")]([ExtResource("c1_swordsman"), ExtR
 AiDeck = Array[ExtResource("8_carddata")]([ExtResource("c1_swordsman"), ExtResource("c1_swordsman"), ExtResource("c2_archer"), ExtResource("c2_archer"), ExtResource("c3_guardian"), ExtResource("c3_guardian"), ExtResource("c4_scout"), ExtResource("c4_scout"), ExtResource("c5_miner"), ExtResource("c5_miner"), ExtResource("c6_merchant"), ExtResource("c6_merchant"), ExtResource("c7_battlecry"), ExtResource("c7_battlecry"), ExtResource("c8_weaken"), ExtResource("c8_weaken")])
 PlayerDeckData = ExtResource("11_starterdeck")
 AiDeckData = ExtResource("11_starterdeck")
-ThemeDecks = Array[ExtResource("12_deckdata")]([ExtResource("13_ember"), ExtResource("14_dawn"), ExtResource("15_frost"), ExtResource("16_storm")])
-AiStepDelay = 0.6
+ThemeDecks = Array[ExtResource("12_deckdata")]([ExtResource("13_ember"), ExtResource("14_dawn"), ExtResource("15_frost"), ExtResource("16_storm"), ExtResource("17_stone")])
+AiStepDelay = 0.9
 Board = NodePath("Board")
 Animator = NodePath("Animator")
 CameraRig = NodePath("CameraRig")

@@ -9,4 +9,6 @@ public enum HighlightKind
 	Spell,
 	Selected,
 	Hover,
+	/// <summary>Reach of a building or the spell cast range (drawn faintly beneath the other kinds).</summary>
+	Range,
 }

@@ -7,11 +7,11 @@ namespace Realmshatter;
 /// Command interface for the rules. All mutating calls validate first; on failure they return
 /// false / null and set LastError. Turn flow:
 /// StartGame (deal hands) -> [StartTurn: tile ticks (Lava/Healing), score VP, check win, set AP] -> Main phase
-/// (PlayUnitCard / PlaySpellCard / PlaySpellOnTile / SetOrder / ConvertVpToAp / Draw -> Draft phase ->
-/// ChooseDraftCard -> Main) -> EndTurn (resolve orders, expire spells/statuses/tile effects, swap player,
-/// TurnNumber++, StartTurn).
-/// AP costs: cards (GetCardCost), Draw (GameConfig.DrawApCost), a NEW order (GameConfig.OrderApCost;
-/// replacing is free, clearing refunds). Pieces are summoning sick on the turn they were summoned.
+/// (PlayUnitCard / PlaySpellCard / PlaySpellOnTile / Act / ConvertVpToAp / Draw -> Draft phase ->
+/// ChooseDraftCard -> Main) -> EndTurn (expire spells/statuses/tile effects, swap player, TurnNumber++, StartTurn).
+/// Act resolves a piece's move + attack IMMEDIATELY (there is no end-of-turn resolution); every piece acts at
+/// most once per turn. AP costs: cards (GetCardCost), Draw (GameConfig.DrawApCost), an action
+/// (GameConfig.OrderApCost). Pieces are summoning sick on the turn they were summoned.
 /// Up to GameConfig.MaxVpToApPerTurn VP can be converted into AP per turn (1:1). Player 1 gets
 /// GameConfig.SecondPlayerFirstTurnBonusAp extra AP on its first turn.
 /// </summary>
@@ -26,8 +26,10 @@ public sealed class TurnController
 	public event Action<int, int> VictoryPointsScored;
 	/// <summary>Raised when a draft offer is ready (after a successful Draw). Arg: player index.</summary>
 	public event Action<int> DraftOffered;
-	/// <summary>Raised after orders were resolved in EndTurn (before the next turn starts).</summary>
-	public event Action<IReadOnlyList<ResolutionEvent>> OrdersResolved;
+	/// <summary>Raised after a piece action (Act) resolved, with its events.</summary>
+	public event Action<IReadOnlyList<ResolutionEvent>> ActionResolved;
+	/// <summary>Raised in EndTurn after spells / statuses / tile effects expired (before the next turn starts).</summary>
+	public event Action<IReadOnlyList<ResolutionEvent>> TurnEnded;
 	/// <summary>Raised at turn start (before scoring) when tile ticks produced events (Lava damage, healing).</summary>
 	public event Action<IReadOnlyList<ResolutionEvent>> TurnStartResolved;
 	/// <summary>Raised after a spell was cast (piece or tile spell) with its immediate events.</summary>
@@ -39,11 +41,14 @@ public sealed class TurnController
 
 	private List<ResolutionEvent> _lastTurnStartEvents = new List<ResolutionEvent>();
 	private List<ResolutionEvent> _lastSpellEvents = new List<ResolutionEvent>();
+	private List<ResolutionEvent> _lastActionEvents = new List<ResolutionEvent>();
 
 	/// <summary>Tile-tick events of the most recent turn start (Lava/Healing). Animate them after EndTurn's events.</summary>
 	public IReadOnlyList<ResolutionEvent> LastTurnStartEvents => _lastTurnStartEvents;
 	/// <summary>Immediate events of the most recently cast spell (SpellCast, Damaged, Healed, TileEffectApplied...).</summary>
 	public IReadOnlyList<ResolutionEvent> LastSpellEvents => _lastSpellEvents;
+	/// <summary>Events of the most recent piece action (Moved, Attacked, Damaged, Died...).</summary>
+	public IReadOnlyList<ResolutionEvent> LastActionEvents => _lastActionEvents;
 
 	public TurnController(GameState state)
 	{
@@ -68,18 +73,20 @@ public sealed class TurnController
 
 	/// <summary>
 	/// Starts the current player's turn: tile ticks for its pieces (Lava damage / Healing, see
-	/// LastTurnStartEvents), +1 VP per own piece in the scoring zone, win check,
+	/// LastTurnStartEvents), VP per own piece in the scoring zone (1, crown field HotZonePoints), win check,
 	/// AP = BaseAp + sum of own ApBonus (+ second-player bonus on player 1's first turn), then Main phase.
 	/// </summary>
 	public void StartTurn()
 	{
 		int idx = State.CurrentPlayerIndex;
 		PlayerState player = State.CurrentPlayer;
-		State.ResetOrderIndex();
 		player.TurnsStarted++;
 		player.VpConvertedThisTurn = 0;
 
 		_lastTurnStartEvents = OrderResolver.ResolveTurnStart(State, idx);
+		_lastTurnStartEvents.AddRange(OrderResolver.ResolveBuildingsTurnStart(State, idx));
+		_lastTurnStartEvents.AddRange(OrderResolver.ResolveAuras(State, idx));
+		_lastTurnStartEvents.AddRange(OrderResolver.ResolveLegends(State, idx));
 		if (_lastTurnStartEvents.Count > 0)
 		{
 			TurnStartResolved?.Invoke(_lastTurnStartEvents);
@@ -89,9 +96,17 @@ public sealed class TurnController
 		int apBonus = 0;
 		foreach (Piece p in State.GetPiecesOf(idx))
 		{
-			if (State.Board.IsInScoringZone(p.Position))
+			if (p.IsBuilding)
 			{
-				scored++;
+				if (p.Building == BuildingType.ManaWell && !p.UnderConstruction)
+				{
+					apBonus += State.Config.ManaWellAp;
+				}
+				continue;
+			}
+			if (p.CanScore)
+			{
+				scored += State.Board.ScoreValue(p.Position);
 			}
 			apBonus += p.ApBonus;
 		}
@@ -109,7 +124,8 @@ public sealed class TurnController
 			return;
 		}
 
-		player.ActionPoints = State.Config.BaseAp + apBonus;
+		player.ActionPoints = State.Config.BaseAp + apBonus + player.PendingAp + player.BonusApPerTurn;
+		player.PendingAp = 0;
 		if (idx == 1 && player.TurnsStarted == 1)
 		{
 			player.ActionPoints += Math.Max(0, State.Config.SecondPlayerFirstTurnBonusAp);
@@ -231,10 +247,38 @@ public sealed class TurnController
 		PlayerState player = State.CurrentPlayer;
 		if (!player.Hand.Contains(card)) return Fail("Card not in hand.");
 		if (GetCardCost(card) > player.ActionPoints) return Fail("Not enough AP.");
-		if (!State.Board.IsInDeployZone(State.CurrentPlayerIndex, pos)) return Fail("Not in own deploy rows.");
+		if (card.HasKeyword(Keyword.Planted))
+		{
+			if (!IsValidPlantTile(pos)) return Fail($"Planted units go within {State.Config.PlantRadius} tiles of one of your units (not on the crown).");
+		}
+		else if (!State.Board.IsInDeployZone(State.CurrentPlayerIndex, pos)) return Fail("Not in own deploy rows.");
 		if (State.Board.IsWall(pos)) return Fail("A wall blocks this tile.");
 		if (State.Board.IsOccupied(pos)) return Fail("Tile occupied.");
 		return true;
+	}
+
+	/// <summary>
+	/// Planted units: the own deploy rows, or any tile within GameConfig.PlantRadius of one of the current player's
+	/// units (buildings do not count). Never the crown field.
+	/// </summary>
+	private bool IsValidPlantTile(GridPos pos)
+	{
+		if (!State.Board.IsInside(pos) || State.Board.IsInHotZone(pos))
+		{
+			return false;
+		}
+		if (State.Board.IsInDeployZone(State.CurrentPlayerIndex, pos))
+		{
+			return true;
+		}
+		foreach (Piece p in State.GetPiecesOf(State.CurrentPlayerIndex))
+		{
+			if (!p.IsBuilding && p.Position.ManhattanDistance(pos) <= State.Config.PlantRadius)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/// <summary>Deploys a unit card from the hand on pos. Returns the new piece, or null on failure.</summary>
@@ -265,6 +309,7 @@ public sealed class TurnController
 		}
 		if (!CheckSpellBasics(card)) return false;
 		if (target == null || !target.IsAlive || State.GetPiece(target.Id) == null) return Fail("Invalid target.");
+		if (!IsInSpellRange(target.Position)) return Fail($"Too far from your units (spells reach {State.Config.SpellCastRadius} tiles).");
 		return true;
 	}
 
@@ -289,6 +334,7 @@ public sealed class TurnController
 		player.ActionPoints -= GetCardCost(card);
 		player.Hand.Remove(card);
 
+		int power = SpellPower(target.Position);
 		var events = new List<ResolutionEvent>
 		{
 			new ResolutionEvent
@@ -299,20 +345,22 @@ public sealed class TurnController
 				From = target.Position,
 				To = target.Position,
 				CardName = card.Name,
+				Amount = power,
 			},
 		};
-		SpellEffect effect = SpellEffect.FromCard(card);
+		SpellEffect effect = SpellEffect.FromCard(card, power);
 		bool hasModifiers = effect.AttackDelta != 0 || effect.HpDelta != 0 || effect.ShieldDelta != 0
 			|| effect.MovementDelta != 0 || effect.RangeDelta != 0;
-		if (hasModifiers || card.GrantStatus == StatusEffectType.None)
+		if (hasModifiers || (card.GrantStatus == StatusEffectType.None && card.ApGain <= 0))
 		{
 			target.ActiveSpells.Add(new ActiveSpell(card, effect, State.CurrentPlayerIndex, State.TurnNumber, State.TurnNumber + 2));
 			target.CurrentHp = Math.Clamp(target.CurrentHp + effect.HpDelta, 1, target.MaxHp);
 		}
 		if (card.GrantStatus != StatusEffectType.None)
 		{
-			OrderResolver.ApplyStatus(State, target, card.GrantStatus, State.Config.SpellStatusDuration, card.Name, -1, events);
+			OrderResolver.ApplyStatus(State, target, card.GrantStatus, State.Config.SpellStatusDuration + power, card.Name, -1, events);
 		}
+		OrderResolver.GrantAp(State, State.CurrentPlayerIndex, card.ApGain, -1, card.Name, target.Position, events);
 		FinishSpell(events);
 		return true;
 	}
@@ -326,6 +374,7 @@ public sealed class TurnController
 		if (!CheckSpellBasics(card)) return false;
 		if (!card.TargetsTile) return Fail("This spell targets a piece.");
 		if (!State.Board.IsInside(tile)) return Fail("Invalid tile.");
+		if (!IsInSpellRange(tile)) return Fail($"Too far from your units (spells reach {State.Config.SpellCastRadius} tiles).");
 		if (card.TileEffect == TileEffectType.Wall && card.SpellDamage <= 0 && card.SpellHeal <= 0)
 		{
 			bool any = false;
@@ -354,9 +403,14 @@ public sealed class TurnController
 		player.ActionPoints -= GetCardCost(card);
 		player.Hand.Remove(card);
 
+		// Obelisk: +1 damage, healing and duration.
+		int power = SpellPower(tile);
+		int damage = SpellEffect.Boost(card.SpellDamage, power);
+		int heal = SpellEffect.Boost(card.SpellHeal, power);
+		int duration = card.TileEffectDuration + power;
 		var events = new List<ResolutionEvent>
 		{
-			new ResolutionEvent { Type = ResolutionEventType.SpellCast, PlayerIndex = caster, From = tile, To = tile, CardName = card.Name },
+			new ResolutionEvent { Type = ResolutionEventType.SpellCast, PlayerIndex = caster, From = tile, To = tile, CardName = card.Name, Amount = power },
 		};
 		List<GridPos> area = GetSpellAreaPreview(card, tile);
 		foreach (GridPos p in area)
@@ -364,24 +418,50 @@ public sealed class TurnController
 			Piece piece = State.Board.GetPieceAt(p);
 			if (piece == null)
 			{
+				if (damage > 0 && State.Board.GetTerrain(p) == TerrainType.Rock)
+				{
+					OrderResolver.DamageRock(State, p, damage, events);
+				}
 				continue;
 			}
-			if (piece.OwnerIndex != caster && card.SpellDamage > 0)
+			if (piece.OwnerIndex != caster && damage > 0)
 			{
-				OrderResolver.ApplyDamage(State, piece, card.SpellDamage, -1, events);
+				OrderResolver.ApplyDamage(State, piece, damage, -1, events);
 			}
-			else if (piece.OwnerIndex == caster && card.SpellHeal > 0)
+			else if (piece.OwnerIndex == caster && heal > 0)
 			{
-				OrderResolver.ApplyHeal(State, piece, card.SpellHeal, -1, events);
+				OrderResolver.ApplyHeal(State, piece, heal, -1, events);
+			}
+		}
+		if (card.SpellPush)
+		{
+			// Farthest pieces first so the inner ones are not blocked by their own neighbours.
+			var pushed = new List<Piece>();
+			foreach (GridPos p in area)
+			{
+				Piece piece = State.Board.GetPieceAt(p);
+				if (piece != null)
+				{
+					pushed.Add(piece);
+				}
+			}
+			pushed.Sort((a, b) => b.Position.ManhattanDistance(tile).CompareTo(a.Position.ManhattanDistance(tile)));
+			foreach (Piece piece in pushed)
+			{
+				GridPos dir = piece.Position == tile
+					? new GridPos(0, BoardState.ForwardDirection(caster))
+					: OrderResolver.AttackDirection(tile, piece.Position);
+				OrderResolver.PushPiece(State, piece, dir, -1, events);
 			}
 		}
 		if (card.TileEffect != TileEffectType.None)
 		{
 			foreach (GridPos p in area)
 			{
-				OrderResolver.ApplyTileEffect(State, card.TileEffect, p, card.TileEffectDuration, caster, card.Name, -1, events);
+				OrderResolver.ApplyTileEffect(State, card.TileEffect, p, duration, caster, card.Name, -1, events);
 			}
 		}
+		OrderResolver.GrantAp(State, caster, card.ApGain, -1, card.Name, tile, events);
 		FinishSpell(events);
 		return true;
 	}
@@ -435,18 +515,327 @@ public sealed class TurnController
 		return result;
 	}
 
-	// ------------------------------------------------------------------ orders
+	// ------------------------------------------------------------------ piece actions
 
 	/// <summary>
 	/// Valid move destinations for a piece (excluding its own tile). Friendly pieces do not block and may be a
-	/// destination (they get pushed at resolution); enemies and walls block. Frozen pieces cannot move.
+	/// destination (they get pushed); enemies and walls block. Frozen pieces cannot move.
 	/// </summary>
 	public List<GridPos> GetValidMoveTargets(Piece piece) =>
-		State.Board.GetReachableTiles(piece.Position, piece.EffectiveMovement, piece.OwnerIndex);
+		piece.ConstructingId >= 0 || piece.IsBuilding || piece.HasKeyword(Keyword.Planted)
+			? new List<GridPos>()
+			: State.Board.GetReachableTiles(piece.Position, piece.EffectiveMovement, piece.OwnerIndex);
 
 	/// <summary>
-	/// Planned shortest path for a move (same rules as GetValidMoveTargets): the tiles after the piece's position,
-	/// ending with target. Empty if target is the current tile or unreachable. Other orders are not simulated.
+	/// True if the current player may cast a spell centred on 'tile': within GameConfig.SpellCastRadius
+	/// (Manhattan) of one of its units.
+	/// </summary>
+	public bool IsInSpellRange(GridPos tile)
+	{
+		foreach (Piece p in State.GetPiecesOf(State.CurrentPlayerIndex))
+		{
+			int d = p.Position.ManhattanDistance(tile);
+			if (!p.IsBuilding && d <= State.Config.SpellCastRadius)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/// <summary>All tiles where the current player may centre a spell (IsInSpellRange), for the cast range overlay.</summary>
+	public List<GridPos> GetSpellRangeTiles()
+	{
+		var result = new List<GridPos>();
+		for (int y = 0; y < State.Board.Height; y++)
+		{
+			for (int x = 0; x < State.Board.Width; x++)
+			{
+				var pos = new GridPos(x, y);
+				if (IsInSpellRange(pos))
+				{
+					result.Add(pos);
+				}
+			}
+		}
+		return result;
+	}
+
+	/// <summary>
+	/// Tiles a building standing on 'at' covers: Turret = its shooting range, Shrine = the 8 surrounding tiles,
+	/// Obelisk = its spell cast radius. Empty for buildings without a range.
+	/// </summary>
+	public List<GridPos> GetBuildingRangeTiles(BuildingType type, GridPos at, int turretRange)
+	{
+		var result = new List<GridPos>();
+		for (int y = 0; y < State.Board.Height; y++)
+		{
+			for (int x = 0; x < State.Board.Width; x++)
+			{
+				var pos = new GridPos(x, y);
+				bool inRange = type switch
+				{
+					BuildingType.Turret => State.Board.IsInAttackRange(at, pos, turretRange),
+					BuildingType.Shrine => pos != at && Math.Abs(pos.X - at.X) <= 1 && Math.Abs(pos.Y - at.Y) <= 1,
+					BuildingType.Obelisk => at.ManhattanDistance(pos) <= State.Config.ObeliskEmpowerRadius,
+					_ => false,
+				};
+				if (inRange)
+				{
+					result.Add(pos);
+				}
+			}
+		}
+		return result;
+	}
+
+	/// <summary>Trap a Trapper sets (by its clan), or null if the piece is no Trapper.</summary>
+	public TrapType? GetTrapType(Piece piece) =>
+		piece != null && !piece.IsBuilding && piece.HasKeyword(Keyword.Trapper) && piece.Source != null
+			? TrapInfo.ForClan(piece.Source.Clan)
+			: null;
+
+	/// <summary>Free tiles next to 'from' (default: the piece's tile; 8 directions) where it could hide a trap.</summary>
+	public List<GridPos> GetValidTrapTiles(Piece piece, GridPos? from = null)
+	{
+		var result = new List<GridPos>();
+		if (piece == null)
+		{
+			return result;
+		}
+		GridPos at = from ?? piece.Position;
+		for (int dy = -1; dy <= 1; dy++)
+		{
+			for (int dx = -1; dx <= 1; dx++)
+			{
+				var tile = new GridPos(at.X + dx, at.Y + dy);
+				Piece occupant = State.Board.GetPieceAt(tile);
+				if ((dx != 0 || dy != 0) && State.Board.IsPassable(tile) && (occupant == null || occupant == piece)
+					&& State.Board.GetTrap(tile) == null && !State.Board.IsInHotZone(tile))
+				{
+					result.Add(tile);
+				}
+			}
+		}
+		return result;
+	}
+
+	/// <summary>Checks a trap command: commandable Trapper, AP, an optional reachable move first, a valid tile next to the destination.</summary>
+	public bool CanSetTrap(Piece piece, GridPos tile, GridPos? move)
+	{
+		if (!CanCommand(piece)) return false;
+		if (!GetTrapType(piece).HasValue) return Fail("This unit cannot set traps.");
+		if (piece.ConstructingId >= 0) return Fail("Busy building.");
+		if (State.Config.TrapApCost > State.CurrentPlayer.ActionPoints) return Fail("Not enough AP.");
+		bool moves = move.HasValue && move.Value != piece.Position;
+		if (moves && State.Board.FindPath(piece.Position, move.Value, piece.EffectiveMovement, piece.OwnerIndex) == null)
+		{
+			return Fail(piece.IsFrozen ? "Frozen - cannot move this turn." : "Move target not reachable.");
+		}
+		if (!GetValidTrapTiles(piece, moves ? move : null).Contains(tile) || (moves && tile == move.Value))
+		{
+			return Fail("Hide the trap on a free tile next to the unit.");
+		}
+		return true;
+	}
+
+	/// <summary>
+	/// Trap command: pays GameConfig.TrapApCost and uses the piece's action. The piece first makes its move (if any,
+	/// enemy traps may stop it), then hides its clan's trap on 'tile'. A Trapper keeps at most
+	/// GameConfig.MaxTrapsPerTrapper traps; its oldest one disappears. Returns the events or null.
+	/// </summary>
+	public List<ResolutionEvent> SetTrap(Piece piece, GridPos tile, GridPos? move)
+	{
+		if (!CanSetTrap(piece, tile, move))
+		{
+			return null;
+		}
+		TrapType type = GetTrapType(piece).Value;
+		State.CurrentPlayer.ActionPoints -= Math.Max(0, State.Config.TrapApCost);
+		piece.ActedTurn = State.TurnNumber;
+		var events = new List<ResolutionEvent>();
+		if (move.HasValue && move.Value != piece.Position)
+		{
+			events.AddRange(OrderResolver.ResolveAction(State, piece, move, null));
+		}
+		bool adjacent = Math.Abs(tile.X - piece.Position.X) <= 1 && Math.Abs(tile.Y - piece.Position.Y) <= 1;
+		if (piece.IsAlive && State.GetPiece(piece.Id) != null && adjacent && State.Board.IsPassable(tile)
+			&& !State.Board.IsOccupied(tile) && State.Board.GetTrap(tile) == null)
+		{
+			var own = new List<Trap>();
+			foreach (Trap t in State.Board.Traps.Values)
+			{
+				if (t.SourcePieceId == piece.Id)
+				{
+					own.Add(t);
+				}
+			}
+			own.Sort((a, b) => a.Serial.CompareTo(b.Serial));
+			for (int i = 0; i <= own.Count - Math.Max(1, State.Config.MaxTrapsPerTrapper); i++)
+			{
+				State.Board.RemoveTrap(own[i].Position);
+			}
+			State.Board.AddTrap(tile, piece.OwnerIndex, type, piece.Id);
+			events.Add(new ResolutionEvent
+			{
+				Type = ResolutionEventType.TrapSet,
+				PieceId = piece.Id,
+				PlayerIndex = piece.OwnerIndex,
+				From = piece.Position,
+				To = tile,
+				CardName = TrapInfo.GetName(type),
+				SpellName = type.ToString(),
+			});
+		}
+		_lastActionEvents = events;
+		ActionResolved?.Invoke(_lastActionEvents);
+		StateChanged?.Invoke();
+		return _lastActionEvents;
+	}
+
+	/// <summary>
+	/// Spell power bonus for a spell of the current player aimed at 'target': 1 if one of its finished Obelisks
+	/// stands within GameConfig.ObeliskEmpowerRadius, else 0 (several Obelisks do not stack).
+	/// </summary>
+	public int SpellPower(GridPos target)
+	{
+		foreach (Piece p in State.GetPiecesOf(State.CurrentPlayerIndex))
+		{
+			if (p.Building == BuildingType.Obelisk && !p.UnderConstruction && p.Position.ManhattanDistance(target) <= State.Config.ObeliskEmpowerRadius)
+			{
+				return 1;
+			}
+		}
+		return 0;
+	}
+
+	/// <summary>The building this piece could construct (None if it is no Builder or its class builds nothing).</summary>
+	public BuildingType GetBuildType(Piece piece) =>
+		piece != null && !piece.IsBuilding && piece.HasKeyword(Keyword.Builder) && piece.Source != null
+			? BuildingInfo.ForClass(piece.Source.Class)
+			: BuildingType.None;
+
+	/// <summary>
+	/// Free tiles next to 'from' (default: the piece's tile; 8 directions) where the piece could build after
+	/// moving there. The piece's own current tile counts as free when it builds from somewhere else.
+	/// </summary>
+	public List<GridPos> GetValidBuildTiles(Piece piece, GridPos? from = null)
+	{
+		var result = new List<GridPos>();
+		if (piece == null)
+		{
+			return result;
+		}
+		GridPos at = from ?? piece.Position;
+		for (int dy = -1; dy <= 1; dy++)
+		{
+			for (int dx = -1; dx <= 1; dx++)
+			{
+				var tile = new GridPos(at.X + dx, at.Y + dy);
+				Piece occupant = State.Board.GetPieceAt(tile);
+				if ((dx != 0 || dy != 0) && State.Board.IsPassable(tile) && (occupant == null || occupant == piece)
+					&& !State.Board.IsInDeployZone(1 - piece.OwnerIndex, tile) && !State.Board.IsInHotZone(tile))
+				{
+					result.Add(tile);
+				}
+			}
+		}
+		return result;
+	}
+
+	/// <summary>CanBuild with a single tile and no move.</summary>
+	public bool CanBuild(Piece piece, GridPos tile) => CanBuild(piece, new[] { tile }, null);
+
+	/// <summary>
+	/// Checks a build command: commandable Builder, not already building, enough AP, an optional reachable move
+	/// first (the build replaces the attack), and 1..BuildingInfo.GetBuildCount distinct free tiles next to the
+	/// destination.
+	/// </summary>
+	public bool CanBuild(Piece piece, IReadOnlyList<GridPos> tiles, GridPos? move)
+	{
+		if (!CanCommand(piece)) return false;
+		BuildingType type = GetBuildType(piece);
+		if (type == BuildingType.None) return Fail("This unit cannot build.");
+		if (piece.ConstructingId >= 0) return Fail("Already building something.");
+		if (BuildingInfo.GetCost(type) > State.CurrentPlayer.ActionPoints) return Fail("Not enough AP.");
+		bool moves = move.HasValue && move.Value != piece.Position;
+		if (moves && State.Board.FindPath(piece.Position, move.Value, piece.EffectiveMovement, piece.OwnerIndex) == null)
+		{
+			return Fail(piece.IsFrozen ? "Frozen - cannot move this turn." : "Move target not reachable.");
+		}
+		if (tiles == null || tiles.Count == 0 || tiles.Count > BuildingInfo.GetBuildCount(type)) return Fail("Choose where to build.");
+		List<GridPos> valid = GetValidBuildTiles(piece, moves ? move : null);
+		var seen = new HashSet<GridPos>();
+		foreach (GridPos tile in tiles)
+		{
+			if (!seen.Add(tile) || !valid.Contains(tile) || (moves && tile == move.Value))
+			{
+				return Fail("Build on free tiles next to the unit.");
+			}
+		}
+		return true;
+	}
+
+	/// <summary>Build on one tile without moving.</summary>
+	public List<ResolutionEvent> Build(Piece piece, GridPos tile) => Build(piece, new[] { tile }, null);
+
+	/// <summary>
+	/// Build command: pays the building's AP cost and uses the piece's action. The piece first makes its move (if
+	/// any; it resolves like a normal move, Turrets may shoot), then places its building(s) on the given tiles next
+	/// to it (Barricades: up to two) and stays pinned until they are finished (BuildingInfo.GetBuildTurns own turns
+	/// later). Returns the events or null.
+	/// </summary>
+	public List<ResolutionEvent> Build(Piece piece, IReadOnlyList<GridPos> tiles, GridPos? move)
+	{
+		if (!CanBuild(piece, tiles, move))
+		{
+			return null;
+		}
+		BuildingType type = GetBuildType(piece);
+		State.CurrentPlayer.ActionPoints -= BuildingInfo.GetCost(type);
+		piece.ActedTurn = State.TurnNumber;
+		var events = new List<ResolutionEvent>();
+		if (move.HasValue && move.Value != piece.Position)
+		{
+			events.AddRange(OrderResolver.ResolveAction(State, piece, move, null));
+		}
+		if (piece.IsAlive && State.GetPiece(piece.Id) != null)
+		{
+			foreach (GridPos tile in tiles)
+			{
+				// A push chain or a Turret shot during the move may have changed the board: skip blocked tiles.
+				if (!State.Board.IsPassable(tile) || State.Board.IsOccupied(tile)
+					|| System.Math.Abs(tile.X - piece.Position.X) > 1 || System.Math.Abs(tile.Y - piece.Position.Y) > 1)
+				{
+					continue;
+				}
+				Piece building = State.SpawnBuilding(type, piece.OwnerIndex, tile, State.TurnNumber + 2 * BuildingInfo.GetBuildTurns(type), piece.Id);
+				if (piece.ConstructingId < 0)
+				{
+					piece.ConstructingId = building.Id;
+				}
+				events.Add(new ResolutionEvent
+				{
+					Type = ResolutionEventType.BuildingStarted,
+					PieceId = piece.Id,
+					OtherPieceId = building.Id,
+					PlayerIndex = piece.OwnerIndex,
+					From = piece.Position,
+					To = tile,
+					SpellName = BuildingInfo.GetName(type),
+					ExpiryTurn = building.CompleteTurn,
+				});
+			}
+		}
+		_lastActionEvents = events;
+		ActionResolved?.Invoke(_lastActionEvents);
+		StateChanged?.Invoke();
+		return _lastActionEvents;
+	}
+
+	/// <summary>
+	/// Shortest path for a move (same rules as GetValidMoveTargets): the tiles after the piece's position,
+	/// ending with target. Empty if target is the current tile or unreachable.
 	/// </summary>
 	public List<GridPos> GetPlannedPath(Piece piece, GridPos target)
 	{
@@ -462,8 +851,8 @@ public sealed class TurnController
 		State.Board.GetTilesInRange(fromPos ?? piece.Position, piece.EffectiveRange);
 
 	/// <summary>
-	/// True if the current player may give this piece orders now: Main phase, own living piece,
-	/// not summoning sick. Does not check AP.
+	/// True if the current player may command this piece now: Main phase, own living piece, not summoning sick,
+	/// not acted yet this turn. Does not check AP.
 	/// </summary>
 	public bool CanCommand(Piece piece)
 	{
@@ -471,25 +860,28 @@ public sealed class TurnController
 		if (piece == null || State.GetPiece(piece.Id) == null) return Fail("Invalid piece.");
 		if (piece.OwnerIndex != State.CurrentPlayerIndex) return Fail("Not your piece.");
 		if (piece.IsSummoningSick(State.TurnNumber)) return Fail("Summoning sick - can act next turn.");
+		if (piece.IsBuilding) return Fail("Buildings cannot be commanded.");
+		if (piece.HasActed(State.TurnNumber)) return Fail("Already acted this turn.");
 		return true;
 	}
 
 	/// <summary>
-	/// Checks an order without applying it. A new order needs GameConfig.OrderApCost AP; replacing an
-	/// existing order or clearing it (null/null) needs none. Moves follow GetValidMoveTargets.
+	/// Checks an action without applying it: CanCommand, GameConfig.OrderApCost AP, the move must be reachable
+	/// (GetValidMoveTargets) and the attack tile in range from the destination. At least a move or an attack.
 	/// </summary>
-	public bool CanSetOrder(Piece piece, GridPos? move, GridPos? attack)
+	public bool CanAct(Piece piece, GridPos? move, GridPos? attack)
 	{
 		if (!CanCommand(piece)) return false;
-		bool isNew = piece.Order == null && (move.HasValue || attack.HasValue);
-		if (isNew && State.Config.OrderApCost > State.CurrentPlayer.ActionPoints) return Fail("Not enough AP.");
-		if (move.HasValue && move.Value != piece.Position
-			&& State.Board.FindPath(piece.Position, move.Value, piece.EffectiveMovement, piece.OwnerIndex) == null)
+		bool moves = move.HasValue && move.Value != piece.Position;
+		if (!moves && !attack.HasValue) return Fail("Nothing to do.");
+		if (State.Config.OrderApCost > State.CurrentPlayer.ActionPoints) return Fail("Not enough AP.");
+		if (moves && piece.ConstructingId >= 0) return Fail("Busy building - it cannot move until the building is finished.");
+		if (moves && State.Board.FindPath(piece.Position, move.Value, piece.EffectiveMovement, piece.OwnerIndex) == null)
 		{
 			return Fail(piece.IsFrozen ? "Frozen - cannot move this turn." : "Move target not reachable.");
 		}
 		GridPos attackFrom = move ?? piece.Position;
-		if (attack.HasValue && !State.Board.IsInAttackRange(attackFrom, attack.Value, piece.EffectiveRange))
+		if (attack.HasValue && (attack.Value == attackFrom || !State.Board.IsInAttackRange(attackFrom, attack.Value, piece.EffectiveRange)))
 		{
 			return Fail("Attack target out of range.");
 		}
@@ -497,49 +889,29 @@ public sealed class TurnController
 	}
 
 	/// <summary>
-	/// Queues (or replaces) the order of a piece. A new order costs GameConfig.OrderApCost and gets the next
-	/// order index; replacing an existing order is free and keeps its index. Passing null for both clears
-	/// the order and refunds its AP.
+	/// Commands a piece: pays GameConfig.OrderApCost, then its move and attack resolve IMMEDIATELY (friendly fire
+	/// included). The piece cannot act again this turn. Returns the events (also LastActionEvents and
+	/// ActionResolved), or null if the action is invalid (see LastError).
 	/// </summary>
-	public bool SetOrder(Piece piece, GridPos? move, GridPos? attack)
+	public List<ResolutionEvent> Act(Piece piece, GridPos? move, GridPos? attack)
 	{
-		if (!CanSetOrder(piece, move, attack))
+		if (!CanAct(piece, move, attack))
 		{
-			return false;
+			return null;
 		}
-		if (!move.HasValue && !attack.HasValue)
-		{
-			RemoveOrderWithRefund(piece);
-		}
-		else if (piece.Order != null)
-		{
-			piece.Order.MoveTarget = move;
-			piece.Order.AttackTarget = attack;
-		}
-		else
-		{
-			int cost = Math.Max(0, State.Config.OrderApCost);
-			State.CurrentPlayer.ActionPoints -= cost;
-			piece.Order = new PieceOrder(move, attack, State.TakeOrderIndex()) { ApPaid = cost };
-		}
+		State.CurrentPlayer.ActionPoints -= Math.Max(0, State.Config.OrderApCost);
+		piece.ActedTurn = State.TurnNumber;
+		GridPos? realMove = move.HasValue && move.Value != piece.Position ? move : null;
+		_lastActionEvents = OrderResolver.ResolveAction(State, piece, realMove, attack);
+		ActionResolved?.Invoke(_lastActionEvents);
 		StateChanged?.Invoke();
-		return true;
-	}
-
-	/// <summary>Removes the queued order of a piece and refunds the AP paid for it (current player's turn only).</summary>
-	public void ClearOrder(Piece piece)
-	{
-		if (piece != null && piece.Order != null)
-		{
-			RemoveOrderWithRefund(piece);
-			StateChanged?.Invoke();
-		}
+		return _lastActionEvents;
 	}
 
 	/// <summary>
 	/// Predicts what ONE attack of 'attacker' standing at 'fromPos' on tile 'target' would cause, on a clone of
-	/// the CURRENT board: chains, damage, kills, keyword effects. Other queued orders are NOT simulated (it is a
-	/// preview of that single attack). If fromPos holds a friendly, the planned move is simulated (push).
+	/// the CURRENT board: damage (friendly fire included), kills, keyword effects. If fromPos holds a friendly,
+	/// the planned move is simulated (push).
 	/// Does not check AP / summoning sickness; IsValid is false if the attack is impossible (range etc.).
 	/// </summary>
 	public ChainPreview PredictAttack(Piece attacker, GridPos fromPos, GridPos target)
@@ -585,26 +957,12 @@ public sealed class TurnController
 	public ChainPreview PredictAttack(Piece attacker, GridPos target) =>
 		PredictAttack(attacker, attacker?.Position ?? target, target);
 
-	private void RemoveOrderWithRefund(Piece piece)
-	{
-		if (piece.Order == null)
-		{
-			return;
-		}
-		if (piece.OwnerIndex == State.CurrentPlayerIndex && State.Phase == GamePhase.Main)
-		{
-			State.CurrentPlayer.ActionPoints += piece.Order.ApPaid;
-		}
-		piece.Order = null;
-	}
-
 	// ------------------------------------------------------------------ end of turn
 
 	/// <summary>
-	/// Ends the current turn: resolves the current player's orders, clears orders (no refund), expires spells,
-	/// statuses and tile effects with ExpiryTurn &lt;= TurnNumber, swaps player, increments TurnNumber and starts
-	/// the next turn (its tile ticks are in LastTurnStartEvents). Returns the resolution events (empty list if
-	/// the call was invalid).
+	/// Ends the current turn: expires spells, statuses and tile effects with ExpiryTurn &lt;= TurnNumber, swaps
+	/// player, increments TurnNumber and starts the next turn (its tile ticks are in LastTurnStartEvents).
+	/// Returns the expiry events (empty list if the call was invalid). Piece actions were already resolved by Act.
 	/// </summary>
 	public List<ResolutionEvent> EndTurn()
 	{
@@ -614,16 +972,11 @@ public sealed class TurnController
 			return new List<ResolutionEvent>();
 		}
 		State.Phase = GamePhase.Resolving;
-		List<ResolutionEvent> events = OrderResolver.Resolve(State, State.CurrentPlayerIndex);
-
-		foreach (Piece p in State.Pieces)
-		{
-			p.Order = null;
-		}
+		var events = new List<ResolutionEvent>();
 		ExpireSpells(events);
 		ExpireStatuses(events);
 		ExpireTileEffects(events);
-		OrdersResolved?.Invoke(events);
+		TurnEnded?.Invoke(events);
 
 		State.CurrentPlayerIndex = 1 - State.CurrentPlayerIndex;
 		State.TurnNumber++;

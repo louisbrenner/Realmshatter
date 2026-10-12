@@ -109,8 +109,8 @@ public partial class DeckPile : Button
 		DrawPolyline(HudStyle.Close(HudStyle.RoundRect(badgeRect, 10f)), HudStyle.GoldDark, 1.5f, true);
 		HudStyle.DrawTextCentered(this, _count.ToString(), badge, 15, HudStyle.TextLight, 3);
 
-		// Cost gem (top-right).
-		Vector2 gem = origin + new Vector2(cardSize.X - 2f, -layers * 2.5f + 4f);
+		// Cost gem (top-left, like on the cards).
+		Vector2 gem = origin + new Vector2(2f, -layers * 2.5f + 4f);
 		HudStyle.DrawCrystal(this, gem, 26f, 1f, live ? 0.25f * _hover : 0f, Disabled ? 0.7f : 1f);
 		HudStyle.DrawTextCentered(this, _cost.ToString(), gem + new Vector2(0, 1f), 16, Colors.White, 4, new Color(0.02f, 0.05f, 0.16f));
 

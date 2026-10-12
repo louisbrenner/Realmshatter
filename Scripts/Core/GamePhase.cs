@@ -7,9 +7,9 @@ public enum GamePhase
 	NotStarted,
 	/// <summary>Current player must choose one card of the draft offer.</summary>
 	Draft,
-	/// <summary>Current player may play cards and set orders.</summary>
+	/// <summary>Current player may play cards and command pieces.</summary>
 	Main,
-	/// <summary>Orders are being resolved (transient, inside EndTurn).</summary>
+	/// <summary>The turn is being handed over (transient, inside EndTurn).</summary>
 	Resolving,
 	/// <summary>A player reached the points target; Winner is set.</summary>
 	GameOver,

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcFrostApprentice.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostMage.tres" id="r_FrostMage"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "frost_apprentice"
+Name = "Ivo"
+Title = "Frost Scout"
+Clan = 3
+Deck = ExtResource("3_deck")
+Position = Vector2(270, 770)
+Greeting = "Brr... you look warm. Let me fix that. A duel?"
+RematchLine = "Still not frozen? Let us try again."
+DefeatLine = "Cold hands, warm heart, right? Take this Frost Mage."
+VictoryLine = "Frozen solid! Come thaw out by the fountain."
+RewardGold = 60
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_FrostMage")])

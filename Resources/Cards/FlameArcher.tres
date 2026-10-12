@@ -5,15 +5,18 @@
 [resource]
 script = ExtResource("1")
 Name = "Flame Archer"
-Description = "Burning. Its hits leave Lava under the enemy."
+Description = "Its hits leave Lava under the target."
 CardType = 0
+Rarity = 1
 Role = 0
+Class = 2
 ApCost = 2
-Movement = 1
+Movement = 3
 Attack = 1
 Hp = 2
 Range = 3
 Shield = 0
 ApBonus = 0
 Keywords = 1
+Clan = 1
 Tint = Color(1, 0.35, 0.1, 1)

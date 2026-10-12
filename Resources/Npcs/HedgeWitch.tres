@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcHedgeWitch.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaTotem.tres" id="r_ManaTotem"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "hedge_witch"
+Name = "Old Maud"
+Title = "Hedge Witch"
+Clan = 0
+House = 0
+Deck = ExtResource("3_deck")
+Position = Vector2(1240, 1100)
+Greeting = "Heh heh... the clans think they own magic. I borrowed a little from each. Care to taste it?"
+RematchLine = "Back for another sip of my brew?"
+DefeatLine = "Well, well... you have a gift. Take this totem, dearie."
+VictoryLine = "Too strong a brew for you, dearie."
+RewardGold = 120
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_ManaTotem")])

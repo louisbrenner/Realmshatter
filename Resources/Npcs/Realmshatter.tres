@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/BossRealmshatter.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/Ignis.tres" id="l_Ignis"]
+[ext_resource type="Resource" path="res://Resources/Cards/Solenne.tres" id="l_Solenne"]
+[ext_resource type="Resource" path="res://Resources/Cards/Hrimgar.tres" id="l_Hrimgar"]
+[ext_resource type="Resource" path="res://Resources/Cards/Voltaris.tres" id="l_Voltaris"]
+[ext_resource type="Resource" path="res://Resources/Cards/Gorran.tres" id="l_Gorran"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "realmshatter"
+Name = "Malrec"
+Title = "The Realmshatter · Endboss"
+Clan = 0
+Deck = ExtResource("3_deck")
+Position = Vector2(960, 400)
+Greeting = "So you broke all five clans. I broke the realm itself. Their legends kneel before my throne - win one, if you can."
+RematchLine = "Back for another crown? The legends are still mine to give."
+DefeatLine = "Impossible... Take it. A legend should never serve a loser."
+VictoryLine = "Shattered, like everyone before you."
+RewardGold = 500
+BonusApPerTurn = 2
+RewardOneOf = Array[ExtResource("2_card")]([ExtResource("l_Ignis"), ExtResource("l_Solenne"), ExtResource("l_Hrimgar"), ExtResource("l_Voltaris"), ExtResource("l_Gorran")])
+RequiresDefeated = Array[String](["fire_leader", "healing_leader", "frost_leader", "storm_leader", "stone_leader"])
+LockedLine = "The Realmshatter only duels those who have humbled every clan leader. Come back when all five have fallen."

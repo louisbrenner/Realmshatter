@@ -5,10 +5,14 @@ using Godot;
 namespace Realmshatter;
 
 /// <summary>
-/// Hearthstone-style card (root of Scenes/UI/Card.tscn): stone frame with gold trim, oval (unit) or
-/// rounded (spell) art window, blue mana gem with the AP cost, name ribbon, parchment text box,
-/// attack/health badges for units, shield and AP bonus mini badges. Playable cards glow green,
-/// selected cards glow gold and lift. The root Control receives the mouse; the inner "Body" animates.
+/// Printed tabletop card (root of Scenes/UI/Card.tscn): the artwork fills the whole face (CardData.Art, or a
+/// procedural painting while a card has no picture yet) inside a thin clan-coloured card-stock border. A printed
+/// overlay (card_overlay.gdshader) adds the name bar, a rules panel (only when the card has rules text) and the
+/// type plate at the bottom, whose outline shows the kind of card: notched ribbon = unit, pill = spell, pointed
+/// hexagon = area spell, octagon = totem (Planted). Attack / health badges sit in the bottom corners, the shield
+/// badge stacks above the health badge. The flavour description is only shown in the info panel.
+/// Playable cards glow green, selected cards glow gold and lift. The root Control receives the mouse; the inner
+/// "Body" animates.
 /// </summary>
 public partial class CardView : Control
 {
@@ -24,13 +28,27 @@ public partial class CardView : Control
 	private const int DescriptionMinFont = 9;
 	private const int NameMaxFont = 15;
 	private const int StatsMaxFont = 11;
-	/// <summary>Parchment text box (x, y, w, h) drawn by card_frame.gdshader; holds the stats line and the text.</summary>
-	private static readonly Vector4 TextRect = new Vector4(11f, 106f, 128f, 80f);
+	/// <summary>Rules panel (x, y, w, h) drawn by card_overlay.gdshader; holds the rules text.</summary>
+	private static readonly Vector4 TextRect = new Vector4(10f, 124f, 130f, 44f);
+	/// <summary>Name bar (x, y, w, h) drawn by card_overlay.gdshader.</summary>
+	private static readonly Vector4 NameRect = new Vector4(5f, 5f, 140f, 25f);
+	/// <summary>Type plate (x, y, w, h) at the bottom; its outline depends on the card kind.</summary>
+	private static readonly Vector4 PlateRect = new Vector4(38f, 186f, 74f, 20f);
+	/// <summary>Painting centre offset (pixels, y down) so the subject sits above the rules panel.</summary>
+	private static readonly Vector2 ArtFocusWithText = new Vector2(0f, -34f);
+	private static readonly Vector2 ArtFocusNoText = new Vector2(0f, -16f);
 
-	private static readonly Color UnitFrameColor = new Color(0.5f, 0.44f, 0.37f);
-	private static readonly Color SpellFrameColor = new Color(0.38f, 0.34f, 0.54f);
 	private static readonly Color UnitBannerColor = new Color(0.78f, 0.6f, 0.36f);
-	private static readonly Color SpellBannerColor = new Color(0.6f, 0.5f, 0.82f);
+	/// <summary>Card colour of neutral (clan-less) cards: near-black card stock.</summary>
+	private static readonly Color NeutralCardColor = new Color(0.14f, 0.13f, 0.125f);
+	private static readonly Color RulesInk = new Color(0.16f, 0.1f, 0.05f);
+	/// <summary>Every icon in the rules panel has the same size, however many there are.</summary>
+	private const float RuleIconSize = 21f;
+	private const int RuleFontSize = 12;
+	private const float RuleIconGap = 2f;
+	private const float RuleHGap = 5f;
+	private const float RuleVGap = 1f;
+	private const float RuleMinScale = 0.6f;
 	private static readonly Color PlayableGlowColor = new Color(0.3f, 1f, 0.38f);
 	private static readonly Color SelectedGlowColor = new Color(1f, 0.82f, 0.25f);
 	private static readonly Color HoverGlowColor = new Color(1f, 0.9f, 0.6f);
@@ -56,10 +74,15 @@ public partial class CardView : Control
 	private Label _attackLabel;
 	private Label _healthLabel;
 	private RichTextLabel _richDescription;
-	private HBoxContainer _keywordRow;
+	private VBoxContainer _rulesBox;
+	private HFlowContainer _rulesFlow;
+	private List<RuleItem> _ruleItems = new List<RuleItem>();
 	private ShaderMaterial _frameMat;
 	private ShaderMaterial _artMat;
 	private ShaderMaterial _bannerMat;
+	private ShaderMaterial _plateMat;
+	private ShaderMaterial _overlayMat;
+	private ColorRect _overlay;
 	private StyleBoxFlat _glowStyle;
 	private Tween _raiseTween;
 	private Tween _revealTween;
@@ -118,14 +141,26 @@ public partial class CardView : Control
 
 		_frameMat = new ShaderMaterial { Shader = VfxAssets.GetShader("card_frame") };
 		_frameMat.SetShaderParameter("card_size", Size.X > 0 ? Size : new Vector2(150, 210));
-		_frameMat.SetShaderParameter("art_rect", new Vector4(_art.Position.X, _art.Position.Y, _art.Size.X, _art.Size.Y));
-		_frameMat.SetShaderParameter("text_rect", TextRect);
 		_frame.Material = _frameMat;
 		_artMat = new ShaderMaterial { Shader = VfxAssets.GetShader("card_art") };
 		_artMat.SetShaderParameter("rect_size", _art.Size);
+		_artMat.SetShaderParameter("frame_shape", 2);
 		_art.Material = _artMat;
+		_overlayMat = new ShaderMaterial { Shader = VfxAssets.GetShader("card_overlay") };
+		_overlayMat.SetShaderParameter("card_size", Size.X > 0 ? Size : new Vector2(150, 210));
+		_overlayMat.SetShaderParameter("name_rect", NameRect);
+		_overlayMat.SetShaderParameter("text_rect", TextRect);
+		_overlayMat.SetShaderParameter("plate_rect", PlateRect);
+		_overlay = new ColorRect { Name = "Overlay", MouseFilter = MouseFilterEnum.Ignore, Material = _overlayMat };
+		_overlay.SetAnchorsPreset(LayoutPreset.FullRect);
+		_body.AddChild(_overlay);
+		_body.MoveChild(_overlay, _art.GetIndex() + 1);
+		// Drawn by the overlay now; the old ribbon / plate nodes and the stats line stay hidden.
+		_banner.Visible = false;
+		_typePlate.Visible = false;
+		_statsLabel.Visible = false;
 		_bannerMat = CreateBadgeMaterial(_banner, 4, UnitBannerColor);
-		CreateBadgeMaterial(_typePlate, 5, new Color(0.42f, 0.36f, 0.3f));
+		_plateMat = CreateBadgeMaterial(_typePlate, 5, new Color(0.42f, 0.36f, 0.3f));
 		CreateBadgeMaterial(_gem, 3, new Color(0.22f, 0.5f, 1f));
 		CreateBadgeMaterial(_apBadge, 6, new Color(0.2f, 0.65f, 0.25f));
 		CreateBadgeMaterial(_shieldBadge, 2, new Color(0.78f, 0.8f, 0.86f));
@@ -150,7 +185,7 @@ public partial class CardView : Control
 
 		foreach (Node child in _body.GetChildren())
 		{
-			if (child is CanvasItem item && child != _glow && child != _frame)
+			if (child is CanvasItem item && child != _glow && child != _frame && child != _banner && child != _typePlate && child != _statsLabel)
 			{
 				_faceItems.Add(item);
 			}
@@ -331,38 +366,49 @@ public partial class CardView : Control
 			_descriptionLabel.Text = "";
 			_richDescription.Text = "";
 			TooltipText = "";
-			_keywordRow.Visible = false;
+			_rulesBox.Visible = false;
 			_artMat.SetShaderParameter("has_art", false);
 			return;
 		}
 
 		bool unit = Card.CardType == CardType.Unit;
+		bool planted = unit && Card.HasKeyword(Keyword.Planted);
 		Color tint = new Color(Card.Tint.R, Card.Tint.G, Card.Tint.B);
-		_frameMat.SetShaderParameter("style", unit ? 0 : 1);
-		_frameMat.SetShaderParameter("frame_color", unit ? UnitFrameColor : SpellFrameColor);
-		_frameMat.SetShaderParameter("accent_color", tint);
-		_bannerMat.SetShaderParameter("fill_color", unit ? UnitBannerColor : SpellBannerColor);
+		Color clan = Card.Clan == Clan.None ? NeutralCardColor : ClanInfo.GetColor(Card.Clan);
+		// Legendary cards get a gold card stock border.
+		_frameMat.SetShaderParameter("frame_color", Card.Rarity == CardRarity.Legendary ? new Color(0.95f, 0.72f, 0.3f) : clan.Darkened(0.12f));
 
+		// Artwork: a real picture (CardData.Art) fills the face; without one the procedural painting stands in.
 		_artMat.SetShaderParameter("has_art", Card.Art != null);
 		if (Card.Art != null)
 		{
 			_artMat.SetShaderParameter("art_texture", Card.Art);
 		}
 		_artMat.SetShaderParameter("tint", tint);
-		_artMat.SetShaderParameter("frame_shape", unit ? 0 : 1);
 		_artMat.SetShaderParameter("emblem", unit ? RoleEmblem(Card.Role) : (SpellIsPositive(Card) ? 3 : 4));
+		_artMat.SetShaderParameter("glyph", ClassVisuals.ArtGlyph(Card));
+		_artMat.SetShaderParameter("animate", Card.Rarity != CardRarity.Common);
 		_artMat.SetShaderParameter("seed", (Mathf.Abs((Card.Name ?? "").GetHashCode()) % 1000) * 0.01f);
+
+		// Rules panel: icons (keywords, triggers, stat changes, statuses, tile effects) with short values.
+		_ruleItems = unit ? UnitRuleItems(Card) : SpellRuleItems(Card);
+		int ruleItems = _ruleItems.Count;
+		_rulesBox.Visible = ruleItems > 0;
+		bool hasText = ruleItems > 0;
+		_artMat.SetShaderParameter("focus", hasText ? ArtFocusWithText : ArtFocusNoText);
+		_overlayMat.SetShaderParameter("has_text", hasText);
+		_overlayMat.SetShaderParameter("clan_color", clan);
+		_overlayMat.SetShaderParameter("rarity_color", CardEconomy.RarityColor(Card.Rarity));
+		_overlayMat.SetShaderParameter("plate_shape", unit ? (planted ? 3 : 0) : (Card.TargetsTile ? 2 : 1));
 
 		_nameLabel.Text = string.IsNullOrEmpty(Card.Name) ? "(unnamed)" : Card.Name;
 		_costLabel.Text = _apCost.ToString();
-		_typeLabel.Text = unit ? Card.Role.ToString() : (Card.TargetsTile ? "Area Spell" : "Spell");
-		_statsLabel.Text = unit ? $"Move {Card.Movement}  ·  Range {Card.Range}" : BuildSpellStats(Card);
-		FitLabel(_nameLabel, NameMaxFont, 10);
-		FitLabel(_statsLabel, StatsMaxFont, 8);
+		_typeLabel.Text = unit ? ClassInfo.ClassOrRole(Card) : (Card.TargetsTile ? "Area Spell" : "Spell");
+		FitLabel(_typeLabel, 10, 7);
+		FitLabel(_nameLabel, NameMaxFont, 8);
 		_descriptionLabel.Text = "";
-		_richDescription.Text = BuildDescriptionBbcode(Card);
-		LayoutDescription(unit);
-		BuildKeywordEmblems(Card);
+		_richDescription.Text = "";
+		_richDescription.Visible = false;
 		// Full rules are shown by the HUD's card info panel instead of a delayed native tooltip.
 		TooltipText = "";
 
@@ -376,16 +422,11 @@ public partial class CardView : Control
 		_shieldBadge.Visible = shield;
 		_shieldLabel.Visible = shield;
 		_shieldLabel.Text = Card.Shield.ToString();
+		LayoutDescription(shield);
 		bool ap = unit && Card.ApBonus != 0;
 		_apBadge.Visible = ap;
 		_apLabel.Visible = ap;
 		_apLabel.Text = FormatDelta(Card.ApBonus);
-		_statsLabel.Modulate = Colors.White;
-		if (!unit)
-		{
-			_statsLabel.Modulate = Card.TargetsTile ? TileEffectTextColor(Card.TileEffect)
-				: (SpellIsPositive(Card) ? new Color(0.3f, 0.75f, 0.3f) : new Color(0.8f, 0.4f, 1f));
-		}
 	}
 
 	// ------------------------------------------------------------------ keywords
@@ -399,6 +440,25 @@ public partial class CardView : Control
 			{
 				label.AddThemeFontOverride("font", VfxAssets.CardTextBoldFont);
 			}
+		}
+		// Badge numbers: lining figures, centred in their badge (label box = badge box, ink centred via margins).
+		var pairs = new (Label Number, ColorRect Badge)[]
+		{
+			(_costLabel, _gem), (_attackLabel, _attackBadge), (_healthLabel, _healthBadge), (_shieldLabel, _shieldBadge), (_apLabel, _apBadge),
+		};
+		foreach ((Label number, ColorRect badge) in pairs)
+		{
+			number.AddThemeFontOverride("font", VfxAssets.NumberFont);
+			number.VerticalAlignment = VerticalAlignment.Center;
+			number.HorizontalAlignment = HorizontalAlignment.Center;
+			number.Position = badge.Position;
+			number.Size = badge.Size;
+			float drop = VfxAssets.DigitDrop(number.GetThemeFontSize("font_size"));
+			number.AddThemeStyleboxOverride("normal", new StyleBoxEmpty
+			{
+				ContentMarginTop = Mathf.Max(0f, -drop * 2f),
+				ContentMarginBottom = Mathf.Max(0f, drop * 2f),
+			});
 		}
 	}
 
@@ -416,21 +476,24 @@ public partial class CardView : Control
 	}
 
 	/// <summary>
-	/// Places the card text inside the parchment box (narrower and shorter for units so the attack / health badges
-	/// never cover it) and picks the largest font size at which the whole text fits.
+	/// Places the rules text inside the rules panel (leaving room on the right for the shield badge, which overlaps
+	/// the panel's corner) and picks the largest font size at which the whole text fits; the rule icons are built
+	/// at the largest scale at which all their rows fit the panel.
 	/// </summary>
-	private void LayoutDescription(bool unit)
+	private void LayoutDescription(bool shield)
 	{
 		Vector2 pos = _descriptionLabel.Position;
 		Vector2 size = _descriptionLabel.Size;
-		if (unit)
+		if (shield)
 		{
-			pos.X += 4f;
-			size.X -= 8f;
-			size.Y -= 10f;
+			size.X -= 18f;
 		}
 		_richDescription.Position = pos;
 		_richDescription.Size = size;
+		// The icon box keeps clear of the shield badge, which overlaps the panel's right corner.
+		_rulesBox.Position = new Vector2(TextRect.X + 3f, TextRect.Y + 2f);
+		_rulesBox.Size = new Vector2(TextRect.Z - 6f - (shield ? 20f : 0f), TextRect.W - 4f);
+		BuildRuleIcons(_ruleItems, FitRuleScale(_ruleItems, _rulesBox.Size));
 		for (int fontSize = DescriptionMaxFont; fontSize >= DescriptionMinFont; fontSize--)
 		{
 			_richDescription.AddThemeFontSizeOverride("normal_font_size", fontSize);
@@ -467,92 +530,247 @@ public partial class CardView : Control
 		_body.AddChild(_richDescription);
 		_body.MoveChild(_richDescription, _descriptionLabel.GetIndex() + 1);
 
-		_keywordRow = new HBoxContainer
+		_rulesBox = new VBoxContainer
 		{
-			Name = "KeywordRow",
+			Name = "RulesBox",
 			MouseFilter = MouseFilterEnum.Ignore,
 			Alignment = BoxContainer.AlignmentMode.Center,
-			Position = new Vector2(_art.Position.X, _art.Position.Y + _art.Size.Y - 32f),
-			Size = new Vector2(_art.Size.X, 26f),
+			Position = new Vector2(TextRect.X + 3f, TextRect.Y + 2f),
+			Size = new Vector2(TextRect.Z - 6f, TextRect.W - 4f),
+			Visible = false,
 		};
-		_keywordRow.AddThemeConstantOverride("separation", 2);
-		_body.AddChild(_keywordRow);
-		_body.MoveChild(_keywordRow, _banner.GetIndex());
+		_rulesFlow = new HFlowContainer
+		{
+			Name = "RulesFlow",
+			MouseFilter = MouseFilterEnum.Ignore,
+			Alignment = FlowContainer.AlignmentMode.Center,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+		};
+		_rulesFlow.AddThemeConstantOverride("h_separation", (int)RuleHGap);
+		_rulesFlow.AddThemeConstantOverride("v_separation", (int)RuleVGap);
+		_rulesBox.AddChild(_rulesFlow);
+		_body.AddChild(_rulesBox);
+		_body.MoveChild(_rulesBox, _richDescription.GetIndex() + 1);
 	}
 
-	private void BuildKeywordEmblems(CardData card)
+	/// <summary>
+	/// One entry of the rules panel: a keyword emblem (Glyph = FxIconShape) or a card badge (Badge = card_badge shape:
+	/// 0 attack, 1 health, 2 shield), its colours, an optional value / name next to it and an optional small overlay
+	/// (Undying level). Glyph and Badge both -1 = plain text.
+	/// </summary>
+	private readonly record struct RuleItem(int Glyph, int Badge, Color Fg, Color Bg, string Label, string Overlay = "");
+
+	private static RuleItem Emblem(FxIconShape shape, Color fg, Color bg, string label = "") => new RuleItem((int)shape, -1, fg, bg, label);
+	private static RuleItem StatBadge(int badge, Color fill, string label) => new RuleItem(-1, badge, fill, fill, label);
+
+	private static readonly Color AttackFill = new Color(1f, 0.66f, 0.2f);
+	private static readonly Color HealthFill = new Color(0.86f, 0.12f, 0.1f);
+	private static readonly Color ShieldFill = new Color(0.78f, 0.8f, 0.86f);
+
+	/// <summary>Unit rules: one emblem per keyword (the icon replaces the name; Builder adds its building, Undying its level), then triggers.</summary>
+	private static List<RuleItem> UnitRuleItems(CardData card)
 	{
-		foreach (Node child in _keywordRow.GetChildren())
+		var items = new List<RuleItem>();
+		foreach (Keyword k in KeywordInfo.Split(card.Keywords))
 		{
-			_keywordRow.RemoveChild(child);
+			Color fg = KeywordVisuals.GetForeground(k);
+			Color bg = KeywordVisuals.GetBackground(k);
+			if (k == Keyword.Aura)
+			{
+				fg = ClanInfo.GetColor(card.Clan).Lightened(0.35f);
+				bg = ClanInfo.GetColor(card.Clan).Darkened(0.65f);
+			}
+			string label = k == Keyword.Builder && BuildingInfo.ForClass(card.Class) != BuildingType.None
+				? BuildingInfo.GetName(BuildingInfo.ForClass(card.Class))
+				: (k == Keyword.Trapper ? TrapInfo.GetName(TrapInfo.ForClan(card.Clan)) : "");
+			string overlay = k == Keyword.Undying && card.Level > 0 ? $"+{card.Level}" : "";
+			items.Add(new RuleItem((int)KeywordVisuals.GetShape(k), -1, fg, bg, label, overlay));
+		}
+		if (card.Legend != LegendEffect.None)
+		{
+			items.Add(Emblem(LegendInfo.GetShape(card.Legend), LegendInfo.GetColor(card.Legend), LegendInfo.EmblemBackground, LegendInfo.GetName(card.Legend)));
+		}
+		foreach (string line in TriggerInfo.CardFaceLines(card))
+		{
+			int colon = line.IndexOf(':');
+			string head = colon >= 0 ? line[..colon] : line;
+			string effect = colon >= 0 ? line[(colon + 1)..].Trim() : "";
+			if (head == "First hit")
+			{
+				items.Add(Emblem(FxIconShape.Burst, new Color(1f, 0.82f, 0.45f), new Color(0.45f, 0.16f, 0.08f, 0.97f), effect));
+			}
+			else if (head == "Deathrattle")
+			{
+				items.Add(Emblem(FxIconShape.Tomb, new Color(0.85f, 0.85f, 0.95f), new Color(0.18f, 0.16f, 0.26f, 0.97f), effect));
+			}
+		}
+		return items;
+	}
+
+	/// <summary>Spell rules: area (text), damage / heal / push, tile effect with its duration, stat changes, status, AP.</summary>
+	private static List<RuleItem> SpellRuleItems(CardData card)
+	{
+		var items = new List<RuleItem>();
+		if (card.TargetsTile)
+		{
+			items.Add(new RuleItem(-1, -1, RulesInk, RulesInk, AreaName(card.SpellTarget == SpellTargetType.Tile ? AreaShape.Single : card.AreaShape)));
+			if (card.SpellDamage > 0)
+			{
+				items.Add(Emblem(FxIconShape.Burst, new Color(1f, 0.75f, 0.4f), new Color(0.5f, 0.1f, 0.06f, 0.97f), card.SpellDamage.ToString()));
+			}
+			if (card.SpellHeal > 0)
+			{
+				items.Add(StatBadge(1, HealthFill, $"+{card.SpellHeal}"));
+			}
+			if (card.SpellPush)
+			{
+				items.Add(Emblem(FxIconShape.Fist, KeywordVisuals.GetForeground(Keyword.Push), KeywordVisuals.GetBackground(Keyword.Push)));
+			}
+			if (card.TileEffect != TileEffectType.None)
+			{
+				(FxIconShape shape, Color fg, Color bg) = card.TileEffect switch
+				{
+					TileEffectType.Lava => (FxIconShape.Flame, new Color(1f, 0.55f, 0.15f), new Color(0.42f, 0.1f, 0.03f, 0.97f)),
+					TileEffectType.Healing => (FxIconShape.Plus, new Color(0.55f, 1f, 0.55f), new Color(0.1f, 0.38f, 0.14f, 0.97f)),
+					_ => (FxIconShape.Bricks, new Color(0.88f, 0.82f, 0.72f), new Color(0.3f, 0.27f, 0.24f, 0.97f)),
+				};
+				items.Add(Emblem(shape, fg, bg, $"{card.TileEffectDuration}T"));
+			}
+		}
+		else
+		{
+			AddStat(items, card.AttackDelta, 0, AttackFill);
+			AddStat(items, card.HpDelta, 1, HealthFill);
+			AddStat(items, card.ShieldDelta, 2, ShieldFill);
+			if (card.MovementDelta != 0)
+			{
+				items.Add(Emblem(FxIconShape.Chevrons, new Color(0.75f, 1f, 0.7f), new Color(0.14f, 0.32f, 0.16f, 0.97f), FormatDelta(card.MovementDelta)));
+			}
+			if (card.RangeDelta != 0)
+			{
+				items.Add(Emblem(FxIconShape.Crosshair, new Color(1f, 0.88f, 0.65f), new Color(0.38f, 0.22f, 0.1f, 0.97f), FormatDelta(card.RangeDelta)));
+			}
+			if (card.GrantStatus == StatusEffectType.Frozen)
+			{
+				items.Add(Emblem(FxIconShape.Snowflake, KeywordVisuals.GetForeground(Keyword.Frost), KeywordVisuals.GetBackground(Keyword.Frost)));
+			}
+			else if (card.GrantStatus == StatusEffectType.Overcharged)
+			{
+				items.Add(Emblem(FxIconShape.Bolt, KeywordVisuals.GetForeground(Keyword.Arc), KeywordVisuals.GetBackground(Keyword.Arc), "x2"));
+			}
+		}
+		if (card.ApGain > 0)
+		{
+			items.Add(Emblem(FxIconShape.Gem, KeywordVisuals.GetForeground(Keyword.Plunder), KeywordVisuals.GetBackground(Keyword.Plunder), $"+{card.ApGain}"));
+		}
+		return items;
+	}
+
+	private static void AddStat(List<RuleItem> items, int value, int badge, Color fill)
+	{
+		if (value != 0)
+		{
+			items.Add(StatBadge(badge, fill, FormatDelta(value)));
+		}
+	}
+
+	/// <summary>
+	/// Largest scale (1 = full size, down to RuleMinScale) at which the rule items, flowed into rows like the
+	/// HFlowContainer does, fit the rules panel (long trigger names on legendaries / epics would overflow it).
+	/// </summary>
+	private static float FitRuleScale(List<RuleItem> items, Vector2 box)
+	{
+		Font font = VfxAssets.CardTextBoldFont;
+		for (float scale = 1f; scale > RuleMinScale; scale -= 0.05f)
+		{
+			float icon = RuleIconSize * scale;
+			int fontSize = Mathf.Max(7, Mathf.RoundToInt(RuleFontSize * scale));
+			float rowHeight = Mathf.Max(icon, font.GetHeight(fontSize));
+			int rows = 1;
+			float x = 0f;
+			foreach (RuleItem rule in items)
+			{
+				bool hasIcon = rule.Glyph >= 0 || rule.Badge >= 0;
+				float w = (hasIcon ? icon : 0f) + (hasIcon && rule.Label.Length > 0 ? RuleIconGap : 0f)
+					+ (rule.Label.Length > 0 ? font.GetStringSize(rule.Label, HorizontalAlignment.Left, -1, fontSize).X : 0f);
+				if (x > 0f && x + RuleHGap + w > box.X)
+				{
+					rows++;
+					x = w;
+				}
+				else
+				{
+					x += (x > 0f ? RuleHGap : 0f) + w;
+				}
+			}
+			if (rows * rowHeight + (rows - 1) * RuleVGap <= box.Y)
+			{
+				return scale;
+			}
+		}
+		return RuleMinScale;
+	}
+
+	/// <summary>Fills the rules panel with the given items (icon + value) at a size scale; returns their number (0 = no panel).</summary>
+	private int BuildRuleIcons(List<RuleItem> items, float scale = 1f)
+	{
+		foreach (Node child in _rulesFlow.GetChildren())
+		{
+			_rulesFlow.RemoveChild(child);
 			child.QueueFree();
 		}
-		foreach (Keyword k in KeywordInfo.Split(card.Keywords))
+		float size = RuleIconSize * scale;
+		int fontSize = Mathf.Max(7, Mathf.RoundToInt(RuleFontSize * scale));
+		foreach (RuleItem rule in items)
 		{
-			var emblem = new ColorRect
+			var item = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+			item.AddThemeConstantOverride("separation", (int)RuleIconGap);
+			if (rule.Glyph >= 0 || rule.Badge >= 0)
 			{
-				CustomMinimumSize = new Vector2(26f, 26f),
-				MouseFilter = MouseFilterEnum.Ignore,
-				Material = CreateKeywordMaterial(k),
-			};
-			_keywordRow.AddChild(emblem);
-			if (k == Keyword.Undying && card.Level > 0)
-			{
-				var lv = new Label
+				var icon = new ColorRect
 				{
-					Text = $"+{card.Level}",
-					Position = new Vector2(13f, 11f),
+					CustomMinimumSize = new Vector2(size, size),
+					Size = new Vector2(size, size),
 					MouseFilter = MouseFilterEnum.Ignore,
+					SizeFlagsVertical = SizeFlags.ShrinkCenter,
 				};
-				lv.AddThemeFontOverride("font", VfxAssets.CardTextBoldFont);
-				lv.AddThemeFontSizeOverride("font_size", 11);
-				lv.AddThemeColorOverride("font_color", new Color(0.75f, 1f, 0.9f));
-				lv.AddThemeColorOverride("font_outline_color", new Color(0.03f, 0.08f, 0.07f));
-				lv.AddThemeConstantOverride("outline_size", 4);
-				emblem.AddChild(lv);
+				if (rule.Glyph >= 0)
+				{
+					var mat = new ShaderMaterial { Shader = VfxAssets.GetShader("keyword_icon") };
+					mat.SetShaderParameter("shape", rule.Glyph);
+					mat.SetShaderParameter("fg_color", rule.Fg);
+					mat.SetShaderParameter("bg_color", rule.Bg);
+					icon.Material = mat;
+				}
+				else
+				{
+					CreateBadgeMaterial(icon, rule.Badge, rule.Fg);
+				}
+				if (rule.Overlay.Length > 0)
+				{
+					var lv = new Label { Text = rule.Overlay, Position = new Vector2(size * 0.5f, size * 0.42f), MouseFilter = MouseFilterEnum.Ignore };
+					lv.AddThemeFontOverride("font", VfxAssets.CardTextBoldFont);
+					lv.AddThemeFontSizeOverride("font_size", 10);
+					lv.AddThemeColorOverride("font_color", new Color(0.75f, 1f, 0.9f));
+					lv.AddThemeColorOverride("font_outline_color", new Color(0.03f, 0.08f, 0.07f));
+					lv.AddThemeConstantOverride("outline_size", 4);
+					icon.AddChild(lv);
+				}
+				item.AddChild(icon);
 			}
-		}
-		_keywordRow.Visible = _keywordRow.GetChildCount() > 0 || card.Keywords != Keyword.None;
-	}
-
-	private static ShaderMaterial CreateKeywordMaterial(Keyword k)
-	{
-		var mat = new ShaderMaterial { Shader = VfxAssets.GetShader("keyword_icon") };
-		mat.SetShaderParameter("shape", (int)KeywordVisuals.GetShape(k));
-		mat.SetShaderParameter("fg_color", KeywordVisuals.GetForeground(k));
-		mat.SetShaderParameter("bg_color", KeywordVisuals.GetBackground(k));
-		return mat;
-	}
-
-	/// <summary>Description with bold keyword names first ("Burning. ..."), as BBCode.</summary>
-	private static string BuildDescriptionBbcode(CardData card)
-	{
-		string text = card.Description ?? "";
-		var heads = new List<string>();
-		foreach (Keyword k in KeywordInfo.Split(card.Keywords))
-		{
-			string name = KeywordInfo.GetName(k);
-			string trimmed = text.TrimStart();
-			if (trimmed.StartsWith(name + ".") || trimmed.StartsWith(name + ":"))
+			if (rule.Label.Length > 0)
 			{
-				text = trimmed.Substring(name.Length + 1).TrimStart();
+				var text = new Label { Text = rule.Label, MouseFilter = MouseFilterEnum.Ignore, VerticalAlignment = VerticalAlignment.Center };
+				text.AddThemeFontOverride("font", VfxAssets.CardTextBoldFont);
+				text.AddThemeFontSizeOverride("font_size", fontSize);
+				text.AddThemeColorOverride("font_color", RulesInk);
+				text.AddThemeConstantOverride("outline_size", 0);
+				item.AddChild(text);
 			}
-			heads.Add(k == Keyword.Undying && card.Level > 0 ? $"{name} +{card.Level}" : name);
+			_rulesFlow.AddChild(item);
 		}
-		string body = EscapeBbcode(text);
-		string head = heads.Count > 0 ? $"[b]{string.Join(", ", heads)}.[/b] " : "";
-		return $"[center]{head}{body}[/center]";
+		return items.Count;
 	}
-
-	private static string EscapeBbcode(string text) => text.Replace("[", "[lb]");
-
-	private static Color TileEffectTextColor(TileEffectType type) => type switch
-	{
-		TileEffectType.Lava => new Color(0.85f, 0.3f, 0.05f),
-		TileEffectType.Wall => new Color(0.42f, 0.36f, 0.3f),
-		TileEffectType.Healing => new Color(0.25f, 0.6f, 0.2f),
-		_ => new Color(0.6f, 0.35f, 0.85f),
-	};
 
 	private static string AreaName(AreaShape shape) => shape switch
 	{
@@ -602,46 +820,6 @@ public partial class CardView : Control
 
 	private static bool SpellIsPositive(CardData card) =>
 		card.AttackDelta + card.HpDelta + card.ShieldDelta + card.MovementDelta + card.RangeDelta >= 0;
-
-	private static string BuildSpellStats(CardData card)
-	{
-		var parts = new List<string>();
-		if (card.TargetsTile)
-		{
-			parts.Add(AreaName(card.AreaShape));
-			if (card.SpellDamage > 0)
-			{
-				parts.Add($"{card.SpellDamage} dmg");
-			}
-			if (card.SpellHeal > 0)
-			{
-				parts.Add($"+{card.SpellHeal} HP");
-			}
-			if (card.TileEffect != TileEffectType.None)
-			{
-				parts.Add($"{KeywordInfo.GetTileEffectName(card.TileEffect)} {card.TileEffectDuration}T");
-			}
-			return string.Join(" · ", parts);
-		}
-		if (card.GrantStatus != StatusEffectType.None)
-		{
-			parts.Add(KeywordInfo.GetStatusName(card.GrantStatus));
-		}
-		AddDelta(parts, card.AttackDelta, "Atk");
-		AddDelta(parts, card.HpDelta, "HP");
-		AddDelta(parts, card.ShieldDelta, "Shield");
-		AddDelta(parts, card.MovementDelta, "Move");
-		AddDelta(parts, card.RangeDelta, "Range");
-		return parts.Count > 0 ? string.Join("  ", parts) : "No stat change";
-	}
-
-	private static void AddDelta(List<string> parts, int value, string label)
-	{
-		if (value != 0)
-		{
-			parts.Add($"{FormatDelta(value)} {label}");
-		}
-	}
 
 	private static string FormatDelta(int value) => value > 0 ? $"+{value}" : value.ToString();
 }

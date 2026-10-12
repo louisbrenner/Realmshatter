@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Storm Herald"
+Description = "Its static charge throws attackers back."
+CardType = 0
+Role = 0
+Movement = 5
+Attack = 2
+Hp = 2
+Range = 1
+Shield = 0
+ApBonus = 0
+Clan = 4
+Class = 5
+Rarity = 1
+ApCost = 3
+Keywords = 8
+OnFirstHit = 2
+OnFirstHitAmount = 1
+Tint = Color(0.6, 0.6, 1, 1)

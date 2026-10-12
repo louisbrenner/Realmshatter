@@ -119,3 +119,24 @@ float pc_emblem(vec2 p, int kind) {
 	float hole = length(p - vec2(0.0, 0.05)) - 0.16;
 	return max(spiky, -hole);
 }
+
+// Heart (health badge), p in [-1, 1] with y up; fills about [-0.88, 0.88] x [-0.8, 0.82].
+float pc_sd_heart(vec2 p) {
+	const float k = 0.68;
+	vec2 h = vec2(abs(p.x), p.y + 0.8) * k;
+	float d;
+	if (h.y + h.x > 1.0) {
+		d = length(h - vec2(0.25, 0.75)) - 0.35355339;
+	} else {
+		vec2 a = h - vec2(0.0, 1.0);
+		vec2 b = h - 0.5 * max(h.x + h.y, 0.0);
+		d = sqrt(min(dot(a, a), dot(b, b))) * sign(h.x - h.y);
+	}
+	return d / k;
+}
+
+// Attack crest: a bevelled diamond, p in [-1, 1] with y up.
+float pc_sd_crest(vec2 p) {
+	vec2 q = pc_rot(0.785398) * p;
+	return pc_sd_round_box(q, vec2(0.5), 0.14);
+}

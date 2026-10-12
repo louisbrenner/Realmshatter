@@ -5,15 +5,20 @@
 [resource]
 script = ExtResource("1")
 Name = "Acolyte"
-Description = "Mending. Young healer that patches up the friendlies it hits."
+Description = "Young healer who can raise a Shrine."
 CardType = 0
 Role = 1
-ApCost = 1
-Movement = 2
+Class = 7
+ApCost = 2
+Movement = 5
 Attack = 1
 Hp = 2
 Range = 1
 Shield = 0
 ApBonus = 0
-Keywords = 16
+Keywords = 272
+Clan = 2
+Rarity = 0
+Deathrattle = 4
+DeathrattleAmount = 1
 Tint = Color(1, 0.92, 0.7, 1)

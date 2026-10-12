@@ -22,8 +22,26 @@ public sealed class Piece
 	public List<ActiveSpell> ActiveSpells { get; } = new List<ActiveSpell>();
 	/// <summary>Temporary statuses (Frozen, Overcharged...). Read-only for views.</summary>
 	public List<StatusEffect> StatusEffects { get; } = new List<StatusEffect>();
-	/// <summary>Queued order for the current turn, or null.</summary>
-	public PieceOrder Order { get; internal set; }
+	/// <summary>True for building pieces (Source.CardType == Building).</summary>
+	public bool IsBuilding => Source != null && Source.CardType == CardType.Building;
+	/// <summary>Which building this piece is (None for units).</summary>
+	public BuildingType Building => Source?.Building ?? BuildingType.None;
+	/// <summary>Buildings: still being built (no effect yet). Cleared when it is finished.</summary>
+	public bool UnderConstruction { get; internal set; }
+	/// <summary>Buildings: global turn at whose start it is finished.</summary>
+	public int CompleteTurn { get; internal set; }
+	/// <summary>Buildings: id of the unit building it (-1 = none).</summary>
+	public int BuilderId { get; internal set; } = -1;
+	/// <summary>Builders: id of the unfinished building they work on (-1 = none). They cannot move meanwhile.</summary>
+	public int ConstructingId { get; internal set; } = -1;
+	/// <summary>Turrets: global turn in which it last fired (once per turn).</summary>
+	public int ReactedTurn { get; internal set; } = -1;
+	/// <summary>True once the piece has taken damage (its first-hit effect is used up).</summary>
+	public bool WasHit { get; internal set; }
+	/// <summary>Permanent attack bonus (e.g. from Enrage).</summary>
+	public int BonusAttack { get; internal set; }
+	/// <summary>Global turn number in which the piece last acted (moved / attacked); -1 = never.</summary>
+	public int ActedTurn { get; internal set; } = -1;
 	/// <summary>Global turn number in which the piece entered the board.</summary>
 	public int SummonedTurn { get; internal set; }
 
@@ -44,7 +62,7 @@ public sealed class Piece
 		CurrentShield = Math.Max(0, BaseStats.Shield);
 	}
 
-	/// <summary>Deep copy (spells, statuses, order) for state clones / previews.</summary>
+	/// <summary>Deep copy (spells, statuses, acted turn) for state clones / previews.</summary>
 	internal Piece(Piece other)
 	{
 		Id = other.Id;
@@ -66,10 +84,14 @@ public sealed class Piece
 		{
 			StatusEffects.Add(new StatusEffect(s.Type, s.AppliedTurn, s.ExpiryTurn, s.SourceName));
 		}
-		if (other.Order != null)
-		{
-			Order = new PieceOrder(other.Order.MoveTarget, other.Order.AttackTarget, other.Order.OrderIndex) { ApPaid = other.Order.ApPaid };
-		}
+		ActedTurn = other.ActedTurn;
+		WasHit = other.WasHit;
+		BonusAttack = other.BonusAttack;
+		UnderConstruction = other.UnderConstruction;
+		CompleteTurn = other.CompleteTurn;
+		BuilderId = other.BuilderId;
+		ConstructingId = other.ConstructingId;
+		ReactedTurn = other.ReactedTurn;
 	}
 
 	/// <summary>
@@ -78,8 +100,17 @@ public sealed class Piece
 	/// </summary>
 	public bool IsSummoningSick(int turnNumber) => turnNumber <= SummonedTurn;
 
+	/// <summary>True if the piece already acted in the given turn (each piece acts once per turn).</summary>
+	public bool HasActed(int turnNumber) => ActedTurn == turnNumber;
+
 	/// <summary>True if the piece has all given keyword flags.</summary>
 	public bool HasKeyword(Keyword keyword) => keyword != Keyword.None && (Keywords & keyword) == keyword;
+
+	/// <summary>
+	/// True if the piece scores VP in the scoring zone: not buildings, not Planted units, and not units that are busy
+	/// building (they score again once their building is finished).
+	/// </summary>
+	public bool CanScore => !IsBuilding && !HasKeyword(Keyword.Planted) && ConstructingId < 0;
 
 	/// <summary>True if the piece currently has the status.</summary>
 	public bool HasStatus(StatusEffectType type)
@@ -98,7 +129,7 @@ public sealed class Piece
 	public bool IsFrozen => HasStatus(StatusEffectType.Frozen);
 
 	public int EffectiveMovement => IsFrozen ? 0 : Math.Max(0, BaseStats.Movement + SumDelta(e => e.MovementDelta));
-	public int EffectiveAttack => Math.Max(0, BaseStats.Attack + SumDelta(e => e.AttackDelta));
+	public int EffectiveAttack => Math.Max(0, BaseStats.Attack + BonusAttack + SumDelta(e => e.AttackDelta));
 	public int EffectiveRange => Math.Max(0, BaseStats.Range + SumDelta(e => e.RangeDelta));
 	public int MaxHp => Math.Max(1, BaseStats.Hp + SumDelta(e => e.HpDelta));
 

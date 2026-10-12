@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcFrostInitiate.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/RimeStalker.tres" id="r_RimeStalker"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "frost_initiate"
+Name = "Nils"
+Title = "Frostbound · Frost Initiate"
+Clan = 3
+House = 3
+Deck = ExtResource("3_deck")
+Position = Vector2(240, 470)
+Greeting = "Brr, close the door! ...Unless you want a duel? Then leave it open."
+RematchLine = "Back for a snowball fight?"
+DefeatLine = "Frozen solid. Nice moves."
+VictoryLine = "Cold, huh? You get used to it."
+RewardGold = 50
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_RimeStalker")])

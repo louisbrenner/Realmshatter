@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Decks/NpcStormInitiate.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormRunner.tres" id="r_StormRunner"]
+
+[resource]
+script = ExtResource("1_npc")
+Id = "storm_initiate"
+Name = "Zip"
+Title = "Storm Circuit · Spark Initiate"
+Clan = 4
+House = 4
+Deck = ExtResource("3_deck")
+Position = Vector2(240, 470)
+Greeting = "Zzzap! Wanna duel? I am super charged! Mostly!"
+RematchLine = "Recharged and ready!"
+DefeatLine = "Bzzt... short circuit. You win!"
+VictoryLine = "Ha! Shocking, right?"
+RewardGold = 50
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_StormRunner")])

@@ -1,7 +1,7 @@
 // Whole board top surface on one plane: stone tiles with grout + fake bevel, parchment scoring zone
 // with an animated glowing rune border, and subtly tinted deploy rows per player.
 shader_type spatial;
-render_mode blend_mix, cull_back, depth_draw_opaque, diffuse_burley, specular_schlick_ggx;
+render_mode blend_mix, cull_disabled, depth_draw_opaque, diffuse_burley, specular_schlick_ggx;
 
 #include "res://Assets/Shaders/common.gdshaderinc"
 
@@ -11,6 +11,8 @@ uniform float grout_width = 0.06;
 uniform float bevel_width = 0.1;
 uniform float bevel_strength = 0.05;
 uniform vec4 scoring_rect = vec4(2.0, 3.0, 6.0, 2.0);
+uniform vec4 hot_rect = vec4(-10.0, -10.0, 0.0, 0.0);
+uniform vec3 hot_color : source_color = vec3(1.0, 0.5, 0.1);
 uniform float deploy_rows = 2.0;
 uniform vec3 stone_color : source_color = vec3(0.47, 0.44, 0.40);
 uniform vec3 stone_dark : source_color = vec3(0.26, 0.24, 0.22);
@@ -25,9 +27,11 @@ uniform float zone_glow = 0.12;
 uniform float checker = 0.05;
 
 varying vec3 v_local;
+varying vec3 v_normal;
 
 void vertex() {
 	v_local = VERTEX;
+	v_normal = NORMAL;
 }
 
 float tile_height(vec2 g) {
@@ -70,6 +74,15 @@ void fragment() {
 		float pulse = 0.5 + 0.5 * sin(TIME * 1.6 + (cell.x + cell.y) * 0.7);
 		emission += rune_color * zone_glow * (0.35 + 0.65 * pulse) * smoothstep(0.05, 0.5, e) * 0.3;
 		rough = 0.85;
+		bool in_hot = cell.x >= hot_rect.x && cell.x < hot_rect.x + hot_rect.z
+			&& cell.y >= hot_rect.y && cell.y < hot_rect.y + hot_rect.w;
+		if (in_hot) {
+			// Crown field: polished gold inlay that breathes.
+			float hp = 0.5 + 0.5 * sin(TIME * 2.4);
+			col = mix(col, hot_color * (0.8 + 0.25 * pc_fbm(g * 6.0)), 0.55);
+			emission += hot_color * (0.25 + 0.35 * hp) * smoothstep(0.05, 0.5, e);
+			rough = 0.45;
+		}
 	} else if (cell.y >= board_size.y - deploy_rows) {
 		col = mix(col, col * 0.55 + p0_tint * 0.5, tint_strength);
 	} else if (cell.y < deploy_rows) {
@@ -81,6 +94,9 @@ void fragment() {
 
 	// Grout and ambient occlusion in the bevel.
 	col *= mix(0.62, 1.0, bev);
+	// Real geometry: chamfers and block sides are darker (ambient occlusion between the stones).
+	float upness = clamp(v_normal.y, 0.0, 1.0);
+	col *= mix(0.5, 1.0, upness * upness);
 	col = mix(col, grout_color, groove);
 
 	// Animated rune border around the scoring zone (in grid units).
@@ -114,12 +130,26 @@ void fragment() {
 	emission += rune_color * (rune_energy * glow + halo);
 	col = mix(col, rune_color * 0.7, clamp(glow, 0.0, 1.0) * 0.65);
 
+	// Glowing double frame around the crown field.
+	if (hot_rect.z > 0.0) {
+		vec2 hc = hot_rect.xy + hot_rect.zw * 0.5;
+		vec2 hq = abs(g - hc) - hot_rect.zw * 0.5;
+		float hsd = length(max(hq, vec2(0.0))) + min(max(hq.x, hq.y), 0.0);
+		float hline = (1.0 - smoothstep(0.0, 0.03, abs(hsd + 0.03))) + 0.6 * (1.0 - smoothstep(0.0, 0.02, abs(hsd + 0.13)));
+		float hwave = 0.6 + 0.4 * sin(TIME * 3.0 + (g.x + g.y) * 2.0);
+		emission += hot_color * 3.0 * hline * hwave;
+		col = mix(col, hot_color, clamp(hline, 0.0, 1.0) * 0.7);
+	}
+
 	// Normal from the procedural height field.
 	float eps = 0.01;
 	float hx = tile_height(g + vec2(eps, 0.0)) - tile_height(g - vec2(eps, 0.0));
 	float hy = tile_height(g + vec2(0.0, eps)) - tile_height(g - vec2(0.0, eps));
 	vec3 n_local = normalize(vec3(-hx / (2.0 * eps) * bevel_strength, 1.0, -hy / (2.0 * eps) * bevel_strength));
-	NORMAL = normalize((VIEW_MATRIX * (MODEL_MATRIX * vec4(n_local, 0.0))).xyz);
+	if (v_normal.y > 0.95) {
+		// Fine surface relief only on the block tops; chamfers and sides keep their geometric normals.
+		NORMAL = normalize((VIEW_MATRIX * (MODEL_MATRIX * vec4(n_local, 0.0))).xyz);
+	}
 
 	ALBEDO = col;
 	ROUGHNESS = rough;
