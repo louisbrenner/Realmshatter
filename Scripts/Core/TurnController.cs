@@ -563,9 +563,10 @@ public sealed class TurnController
 
 	/// <summary>
 	/// Tiles a building standing on 'at' covers: Turret = its shooting range, Shrine = the 8 surrounding tiles,
-	/// Obelisk = its spell cast radius. Empty for buildings without a range.
+	/// Obelisk = its spell cast radius; clan buildings add the 8 tiles their aura pulses onto. Empty for buildings
+	/// without a range.
 	/// </summary>
-	public List<GridPos> GetBuildingRangeTiles(BuildingType type, GridPos at, int turretRange)
+	public List<GridPos> GetBuildingRangeTiles(BuildingType type, GridPos at, int turretRange, Clan clan = Clan.None)
 	{
 		var result = new List<GridPos>();
 		for (int y = 0; y < State.Board.Height; y++)
@@ -580,6 +581,7 @@ public sealed class TurnController
 					BuildingType.Obelisk => at.ManhattanDistance(pos) <= State.Config.ObeliskEmpowerRadius,
 					_ => false,
 				};
+				inRange |= clan != Clan.None && pos != at && Math.Abs(pos.X - at.X) <= 1 && Math.Abs(pos.Y - at.Y) <= 1;
 				if (inRange)
 				{
 					result.Add(pos);
@@ -809,7 +811,8 @@ public sealed class TurnController
 				{
 					continue;
 				}
-				Piece building = State.SpawnBuilding(type, piece.OwnerIndex, tile, State.TurnNumber + 2 * BuildingInfo.GetBuildTurns(type), piece.Id);
+				Piece building = State.SpawnBuilding(type, piece.OwnerIndex, tile, State.TurnNumber + 2 * BuildingInfo.GetBuildTurns(type), piece.Id,
+					piece.Source.Clan);
 				if (piece.ConstructingId < 0)
 				{
 					piece.ConstructingId = building.Id;
@@ -822,7 +825,7 @@ public sealed class TurnController
 					PlayerIndex = piece.OwnerIndex,
 					From = piece.Position,
 					To = tile,
-					SpellName = BuildingInfo.GetName(type),
+					SpellName = BuildingInfo.GetName(type, piece.Source.Clan),
 					ExpiryTurn = building.CompleteTurn,
 				});
 			}

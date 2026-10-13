@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcFireInitiate.tres" id="3_deck"]
-[ext_resource type="Resource" path="res://Resources/Cards/EmberImp.tres" id="r_EmberImp"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberStalker.tres" id="r_EmberStalker"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameWall.tres" id="r_FlameWall"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="r_FlameArcher"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ position = Vector2(240, 470)
 greeting = "Oh! A challenger! I only just got my first ember... go easy on me?"
 rematch_line = "Again? I have been practising!"
 defeat_line = "Ouch, singed my eyebrows. Fair win!"
-victory_line = "I won?! Wait till Varkas hears this!"
+victory_line = "I won?! Wait till Varkas hears this! ...And I'll keep a few coins as a trophy."
 reward_gold = 50
-reward_cards = Array[ExtResource("2_card")]([ExtResource("r_EmberImp")])
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_EmberStalker"), ExtResource("r_EmberStalker"), ExtResource("r_FlameWall"), ExtResource("r_FlameArcher")])

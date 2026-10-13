@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Ashen Raider"
+description = "Burns the field and pockets whatever is left."
+card_type = 0
+role = 0
+class_ = 1
+ap_cost = 2
+movement = 5
+attack = 2
+hp = 3
+range = 1
+shield = 0
+clan = 1
+rarity = 1
+keywords = 2049
+tint = Color(0.95, 0.4, 0.2, 1)

@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcFireAdept.tres" id="3_deck"]
-[ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="r_FlameArcher"]
+[ext_resource type="Resource" path="res://Resources/Cards/Berserker.tres" id="r_Berserker"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameWarden.tres" id="r_FlameWarden"]
+[ext_resource type="Resource" path="res://Resources/Cards/Fireball.tres" id="r_Fireball"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ Position = Vector2(720, 470)
 Greeting = "The hall is warm, but my arrows are warmer. Ready to burn?"
 RematchLine = "Back for more heat?"
 DefeatLine = "Hmph. The fire in you is real."
-VictoryLine = "Too slow. The flames take the hesitant."
+VictoryLine = "Too slow. The flames take the hesitant - and their gold."
 RewardGold = 75
-RewardCards = Array[ExtResource("2_card")]([ExtResource("r_FlameArcher")])
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_Berserker"), ExtResource("r_Berserker"), ExtResource("r_FlameWarden"), ExtResource("r_Fireball"), ExtResource("r_Fireball")])

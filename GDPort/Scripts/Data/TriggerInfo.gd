@@ -107,7 +107,7 @@ static func card_face_lines(card: CardData) -> Array[String]:
 	if card == null or card.card_type != CardType.UNIT:
 		return lines
 	if card.has_keyword(Keyword.BUILDER) and BuildingInfo.for_class(card.class_) != BuildingType.NONE:
-		lines.append("Builds: %s" % BuildingInfo.display_name(BuildingInfo.for_class(card.class_)))
+		lines.append("Builds: %s" % BuildingInfo.display_name(BuildingInfo.for_class(card.class_), card.clan))
 	if card.has_keyword(Keyword.AURA):
 		lines.append("Aura: %s" % aura_name(card.clan))
 	if card.on_first_hit != FirstHitType.NONE:

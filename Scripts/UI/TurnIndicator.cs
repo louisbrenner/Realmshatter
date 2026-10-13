@@ -10,6 +10,7 @@ public partial class TurnIndicator : Control
 {
 	private int _turn = 1;
 	private int _current;
+	private readonly string[] _labels = { "YOU", "AI" };
 	private string _phase = "";
 	private float _time;
 	private float _switch;
@@ -17,6 +18,14 @@ public partial class TurnIndicator : Control
 	public override void _Ready()
 	{
 		MouseFilter = MouseFilterEnum.Ignore;
+	}
+
+	/// <summary>Short captions on the two player shields (default "YOU" / "AI").</summary>
+	public void SetLabels(string player0, string player1)
+	{
+		_labels[0] = player0 ?? "";
+		_labels[1] = player1 ?? "";
+		QueueRedraw();
 	}
 
 	/// <summary>Updates turn number, current player and the small phase caption.</summary>
@@ -67,8 +76,8 @@ public partial class TurnIndicator : Control
 			HudStyle.DrawTextCentered(this, _phase, new Vector2(c.X, c.Y + 11f), 11, new Color(HudStyle.TextLight, 0.85f), 3);
 		}
 
-		DrawShield(new Vector2(plaque.Position.X - 26f, c.Y), 0, "YOU");
-		DrawShield(new Vector2(plaque.End.X + 26f, c.Y), 1, "AI");
+		DrawShield(new Vector2(plaque.Position.X - 26f, c.Y), 0, _labels[0]);
+		DrawShield(new Vector2(plaque.End.X + 26f, c.Y), 1, _labels[1]);
 
 		// Chevron from the active player toward the next one.
 		float dir = _current == 0 ? 1f : -1f;

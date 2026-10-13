@@ -59,6 +59,7 @@ public static class RulesSelfTest
 		RunSection(r, "Tile spells", TestTileSpells);
 		RunSection(r, "Keyword Burning", TestBurning);
 		RunSection(r, "Keyword Frost", TestFrost);
+		RunSection(r, "Area attacks", TestAreaAttack);
 		RunSection(r, "Keyword Push", TestPushKeyword);
 		RunSection(r, "Keyword Pierce", TestPierce);
 		RunSection(r, "Keyword Mending", TestMending);
@@ -68,6 +69,7 @@ public static class RulesSelfTest
 		RunSection(r, "Deathrattles", TestDeathrattles);
 		RunSection(r, "First-hit effects", TestFirstHit);
 		RunSection(r, "Buildings + turrets", TestBuildings);
+		RunSection(r, "Clan buildings", TestClanBuildings);
 		RunSection(r, "Auras", TestAuras);
 		RunSection(r, "Spell cast radius", TestSpellRange);
 		RunSection(r, "Push spell", TestPushSpell);
@@ -160,7 +162,7 @@ public static class RulesSelfTest
 		return n;
 	}
 
-	private static void Place(GameState state, TileEffectType type, GridPos pos, int duration = 2) =>
+	private static void Place(GameState state, TileEffectType type, GridPos pos, int duration = 3) =>
 		OrderResolver.ApplyTileEffect(state, type, pos, duration, 0, "Test", -1, null);
 
 	// ------------------------------------------------------------------ tests
@@ -383,9 +385,9 @@ public static class RulesSelfTest
 		TurnController tc = NewGame(out GameState state);
 		Piece walker = SpawnReady(state, Unit("Walker", mov: 3), 0, G(5, 12));
 		state.Board.SetTerrain(G(5, 11), TerrainType.Water);
-		r.Check(state.Board.MoveCost(G(5, 11)) == 2, "entering water costs 2 movement");
+		r.Check(state.Board.MoveCost(G(5, 11)) == 3, "entering water costs 3 movement");
 		List<GridPos> reach = tc.GetValidMoveTargets(walker);
-		r.Check(reach.Contains(G(5, 10)) && !reach.Contains(G(5, 9)), "a river slows a straight crossing (3 movement: water + 1 tile)");
+		r.Check(reach.Contains(G(5, 11)) && !reach.Contains(G(5, 10)), "a river slows a straight crossing (3 movement: the water tile only)");
 		state.Board.SetTerrain(G(5, 11), TerrainType.Bridge);
 		r.Check(state.Board.MoveCost(G(5, 11)) == 1, "bridges cost normal movement");
 
@@ -747,7 +749,7 @@ public static class RulesSelfTest
 	{
 		TurnController tc = NewGame(out GameState state);
 		Piece a = SpawnReady(state, Unit("A", mov: 2), 0, G(4, 12));
-		r.Check(OrderResolver.ApplyTileEffect(state, TileEffectType.Wall, G(4, 11), 2, 0, "Test", -1, null), "wall placed");
+		r.Check(OrderResolver.ApplyTileEffect(state, TileEffectType.Wall, G(4, 11), 3, 0, "Test", -1, null), "wall placed");
 		List<GridPos> targets = tc.GetValidMoveTargets(a);
 		r.Check(!targets.Contains(G(4, 11)) && !targets.Contains(G(4, 10)), "wall is impassable");
 		r.Check(!OrderResolver.ApplyTileEffect(state, TileEffectType.Wall, a.Position, 2, 0, "Test", -1, null), "no wall on an occupied tile");
@@ -775,7 +777,7 @@ public static class RulesSelfTest
 		r.Check(tc.PlaySpellOnTile(meteor, G(5, 8)) && p0.ActionPoints == 1, "PlaySpellOnTile pays AP");
 		r.Check(e1.CurrentHp == 2 && !e2.IsAlive && f.CurrentHp == 3, "area damage hits enemies only");
 		// (5, 8) is a crown tile and stays clean; the rest of the cross turns to lava.
-		r.Check(state.Board.GetTileEffect(G(4, 8))?.ExpiryTurn == state.TurnNumber + 4 && state.Board.GetTileEffect(G(5, 8)) == null,
+		r.Check(state.Board.GetTileEffect(G(4, 8))?.ExpiryTurn == state.TurnNumber + 3 && state.Board.GetTileEffect(G(5, 8)) == null,
 			"lava lasts the card's duration (never on the crown field)");
 	}
 
@@ -786,7 +788,33 @@ public static class RulesSelfTest
 		Piece en = SpawnReady(state, Unit("En", hp: 3), 1, G(5, 9));
 		tc.Act(a, null, G(5, 9));
 		r.Check(en.CurrentHp == 2 && state.Board.GetTileEffectType(G(5, 9)) == TileEffectType.Lava, "Burning hit leaves lava");
-		r.Check(state.Board.GetTileEffect(G(5, 9)).ExpiryTurn == state.TurnNumber + state.Config.BurningLavaDuration, "lava duration = BurningLavaDuration");
+		r.Check(state.Board.GetTileEffect(G(5, 9)).ExpiryTurn == state.TurnNumber + state.Config.BurningLavaDuration - 1, "lava duration = BurningLavaDuration (creation turn counts)");
+	}
+
+	private static void TestAreaAttack(Report r)
+	{
+		TurnController tc = NewGame(out GameState state);
+		CardData mortarCard = Unit("Mortar", atk: 2, rng: 3);
+		mortarCard.AttackArea = AreaShape.Plus;
+		Piece mortar = SpawnReady(state, mortarCard, 0, G(5, 12));
+		Piece center = SpawnReady(state, Unit("C", hp: 3), 1, G(5, 9));
+		Piece left = SpawnReady(state, Unit("L", hp: 3), 1, G(4, 9));
+		Piece up = SpawnReady(state, Unit("U", hp: 3), 1, G(5, 8));
+		Piece friend = SpawnReady(state, Unit("F", hp: 3), 0, G(6, 9));
+		Piece outside = SpawnReady(state, Unit("O", hp: 3), 1, G(7, 9));
+		tc.Act(mortar, null, G(5, 9));
+		r.Check(center.CurrentHp == 1 && left.CurrentHp == 1 && up.CurrentHp == 1, "a cross attack hits the target and its neighbours with full damage");
+		r.Check(friend.CurrentHp == 1, "area attacks hit friendly pieces too");
+		r.Check(outside.CurrentHp == 3 && mortar.CurrentHp == mortar.MaxHp, "pieces outside the area and the attacker are untouched");
+
+		TurnController tc2 = NewGame(out GameState state2);
+		CardData lineCard = Unit("Line", atk: 1);
+		lineCard.AttackArea = AreaShape.Column3;
+		Piece line = SpawnReady(state2, lineCard, 0, G(5, 10));
+		Piece front = SpawnReady(state2, Unit("Front", hp: 3), 1, G(5, 9));
+		Piece back = SpawnReady(state2, Unit("Back", hp: 3), 1, G(5, 8));
+		tc2.Act(line, null, G(5, 9));
+		r.Check(front.CurrentHp == 2 && back.CurrentHp == 2 && line.CurrentHp == line.MaxHp, "an adjacent area attacker never hits itself");
 	}
 
 	private static void TestFrost(Report r)
@@ -980,6 +1008,39 @@ public static class RulesSelfTest
 		return c;
 	}
 
+	private static void TestClanBuildings(Report r)
+	{
+		TurnController tc = NewGame(out GameState state);
+		CardData engineerCard = Classed("Engineer", UnitClass.Archer, kw: Keyword.Builder);
+		engineerCard.Clan = Clan.Fire;
+		Piece engineer = SpawnReady(state, engineerCard, 0, G(5, 12));
+		tc.Build(engineer, G(5, 11));
+		Piece turret = state.Board.GetPieceAt(G(5, 11));
+		r.Check(turret != null && turret.Source.Clan == Clan.Fire && turret.Source.Name == "Ember Turret" && turret.Building == BuildingType.Turret,
+			"a Fire builder raises the Fire version of its building (Ember Turret)");
+		r.Check(BuildingInfo.GetCard(BuildingType.Turret).Clan == Clan.None && BuildingInfo.GetName(BuildingType.Turret, Clan.None) == "Turret",
+			"neutral builders still raise plain buildings");
+
+		// Finished: at the owner's turn start it pulses the clan aura (Fire: 1 damage to adjacent enemies).
+		turret.UnderConstruction = false;
+		Piece enemy = SpawnReady(state, Unit("Enemy", hp: 5), 1, G(6, 10));
+		Piece far = SpawnReady(state, Unit("Far", hp: 5), 1, G(9, 6));
+		tc.EndTurn();
+		tc.EndTurn();
+		r.Check(enemy.CurrentHp == 4 && far.CurrentHp == 5 && Has(tc.LastTurnStartEvents, ResolutionEventType.AuraPulse, turret.Id),
+			"a finished Ember Turret burns adjacent enemies at its owner's turn start");
+
+		// Stone: allies next to a Granite building gain Shield.
+		Piece wall = state.SpawnBuilding(BuildingType.Barricade, 0, G(2, 12), 0, -1, Clan.Stone);
+		wall.UnderConstruction = false;
+		Piece ally = SpawnReady(state, Unit("Ally"), 0, G(2, 13));
+		tc.EndTurn();
+		tc.EndTurn();
+		r.Check(wall.Source.Name == "Granite Barricade" && ally.CurrentShield >= 1, "a Granite Barricade shields adjacent allies");
+		r.Check(tc.GetBuildingRangeTiles(BuildingType.Barricade, G(2, 12), 1, Clan.Stone).Count == 8
+			&& tc.GetBuildingRangeTiles(BuildingType.Barricade, G(2, 12), 1).Count == 0, "clan buildings show their aura tiles as range");
+	}
+
 	private static void TestBuildings(Report r)
 	{
 		TurnController tc = NewGame(out GameState state);
@@ -987,23 +1048,21 @@ public static class RulesSelfTest
 		r.Check(tc.GetBuildType(archer) == BuildingType.Turret, "Archers build Turrets");
 		List<ResolutionEvent> ev = tc.Build(archer, G(5, 11));
 		Piece turret = state.Board.GetPieceAt(G(5, 11));
-		r.Check(ev != null && turret != null && turret.IsBuilding && turret.UnderConstruction && state.Players[0].ActionPoints == 1,
-			"building started (2 AP), unfinished");
+		r.Check(ev != null && turret != null && turret.IsBuilding && turret.UnderConstruction && state.Players[0].ActionPoints == 2,
+			"building started (1 AP), unfinished");
 		r.Check(archer.ConstructingId == turret.Id && !tc.CanAct(archer, G(4, 12), null), "the builder cannot move while building");
 		r.Check(!tc.CanCommand(turret), "buildings cannot be commanded");
 		tc.EndTurn();
-		tc.EndTurn();
-		r.Check(turret.UnderConstruction, "still unfinished after one own turn");
-		tc.EndTurn();
+		r.Check(turret.UnderConstruction, "still unfinished during the opponent's turn");
 		tc.EndTurn();
 		r.Check(!turret.UnderConstruction && archer.ConstructingId == -1 && Has(tc.LastTurnStartEvents, ResolutionEventType.BuildingCompleted, turret.Id),
-			"finished at the start of the second own turn, builder freed");
+			"a Turret is finished at the start of the next own turn, builder freed");
 		r.Check(state.Players[0].VictoryPoints == 0, "buildings do not score");
 
-		// A unit busy building does not score either, until its building is finished.
+		// A unit busy building does not score either, until its building is finished (Mana Wells take two own turns).
 		{
 			TurnController tz = NewGame(out GameState zs);
-			Piece zoneBuilder = SpawnReady(zs, Classed("ZoneBuilder", UnitClass.Archer, kw: Keyword.Builder), 0, G(4, 6));
+			Piece zoneBuilder = SpawnReady(zs, Classed("ZoneBuilder", UnitClass.Worker, kw: Keyword.Builder), 0, G(4, 6));
 			Piece zoneRunner = SpawnReady(zs, Unit("Runner"), 0, G(7, 6));
 			tz.Build(zoneBuilder, G(4, 5));
 			tz.EndTurn();
@@ -1046,7 +1105,7 @@ public static class RulesSelfTest
 		List<ResolutionEvent> moveBuild = tc.Build(mover, new[] { G(5, 11) }, G(5, 12));
 		Piece placed = state.Board.GetPieceAt(G(5, 11));
 		r.Check(moveBuild != null && mover.Position == G(5, 12) && placed?.Building == BuildingType.Turret
-			&& Has(moveBuild, ResolutionEventType.Moved, mover.Id) && state.Players[0].ActionPoints == 1,
+			&& Has(moveBuild, ResolutionEventType.Moved, mover.Id) && state.Players[0].ActionPoints == 2,
 			"a Builder can move and then build (pays only the building's AP)");
 		r.Check(!tc.CanCommand(mover), "moving + building uses the unit's action");
 
@@ -1135,10 +1194,12 @@ public static class RulesSelfTest
 			if (ok)
 			{
 				byId[npc.Id] = npc;
+				bool hasEpic = false;
 				foreach (CardData c in npc.RewardCards)
 				{
-					epicRewards += c.Rarity == CardRarity.Epic ? 1 : 0;
+					hasEpic |= c.Rarity == CardRarity.Epic;
 				}
+				epicRewards += hasEpic && npc.Id.EndsWith("_leader") ? 1 : 0;
 				var copies = new Dictionary<CardData, int>();
 				foreach (CardData c in npc.Deck.Cards)
 				{

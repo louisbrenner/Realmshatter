@@ -169,6 +169,8 @@ public partial class PieceView : Node3D
 		_portraitMat.SetShaderParameter("role", role);
 		_portraitMat.SetShaderParameter("glyph", ClassVisuals.ArtGlyph(piece.Source));
 		_portraitMat.SetShaderParameter("seed", piece.Id * 0.37f);
+		// Area attackers: outward marks in the area's shape around the attack crest.
+		((ShaderMaterial)_attackBadge.MaterialOverride).SetShaderParameter("area", (int)piece.AttackArea);
 		_ringMat.AlbedoColor = ownerColor;
 		_ringMat.Emission = ownerColor;
 		_nameLabel.Text = piece.Source?.Name ?? $"#{piece.Id}";

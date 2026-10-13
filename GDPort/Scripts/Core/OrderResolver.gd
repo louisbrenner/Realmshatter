@@ -237,12 +237,15 @@ static func resolve_buildings_turn_start(state: GameState, player_index: int) ->
 				builder.constructing_id = -1
 			var e := _ev(ResolutionEventType.BUILDING_COMPLETED, b.id, b.position, b.position)
 			e.player_index = player_index
-			e.spell_name = BuildingInfo.display_name(b.building)
+			e.spell_name = BuildingInfo.display_name(b.building, b.source.clan)
 			events.append(e)
 		elif not b.under_construction and b.building == BuildingType.SHRINE:
 			for ally: Piece in _around(state, b.position):
 				if ally.owner_index == player_index and not ally.is_building:
 					apply_heal(state, ally, 1, b.id, events)
+		# Finished clan buildings pulse their clan's aura.
+		if not b.under_construction and b.source.clan != Clan.NONE and b.is_alive and state.get_piece(b.id) != null:
+			_pulse_aura(state, b, b.source.clan, player_index, events)
 	return events
 
 
@@ -306,31 +309,37 @@ static func resolve_auras(state: GameState, player_index: int) -> Array[Resoluti
 	for source: Piece in state.get_pieces_of(player_index):
 		if source.is_building or not source.has_keyword(Keyword.AURA) or not source.is_alive or state.get_piece(source.id) == null:
 			continue
-		var clan: int = source.source.clan if source.source != null else Clan.NONE
-		var pulse := _ev(ResolutionEventType.AURA_PULSE, source.id, source.position, source.position)
-		pulse.player_index = player_index
-		pulse.spell_name = TriggerInfo.aura_name(clan)
-		pulse.card_name = Clan.name_of(clan)
-		events.append(pulse)
-		for p: Piece in _around(state, source.position):
-			var ally: bool = p.owner_index == player_index
-			match clan:
-				Clan.FIRE:
-					if not ally:
-						apply_damage(state, p, 1, source.id, events)
-				Clan.HEALING:
-					if ally:
-						apply_heal(state, p, 1, source.id, events)
-				Clan.FROST:
-					if not ally and not p.is_building:
-						apply_status(state, p, StatusEffectType.FROZEN, state.config.frost_duration, TriggerInfo.aura_name(clan), source.id, events)
-				Clan.STORM:
-					if ally and not p.is_building:
-						p.active_spells.append(ActiveSpell.new(source.source, SpellEffect.new(1), player_index, state.turn_number, state.turn_number))
-				Clan.STONE:
-					if ally and p.current_shield < 2:
-						p.current_shield += 1
+		_pulse_aura(state, source, source.source.clan if source.source != null else Clan.NONE, player_index, events)
 	return events
+
+
+## One aura pulse of 'source' (an Aura unit or a clan building): an AuraPulse event, then the clan effect on the
+## 8 surrounding tiles - Fire burns enemies, Healing heals allies, Frost freezes enemies, Storm gives allies +1
+## Attack this turn, Stone gives allies +1 Shield (up to 2).
+static func _pulse_aura(state: GameState, source: Piece, clan: int, player_index: int, events: Array[ResolutionEvent]) -> void:
+	var pulse := _ev(ResolutionEventType.AURA_PULSE, source.id, source.position, source.position)
+	pulse.player_index = player_index
+	pulse.spell_name = TriggerInfo.aura_name(clan)
+	pulse.card_name = Clan.name_of(clan)
+	events.append(pulse)
+	for p: Piece in _around(state, source.position):
+		var ally: bool = p.owner_index == player_index
+		match clan:
+			Clan.FIRE:
+				if not ally:
+					apply_damage(state, p, 1, source.id, events)
+			Clan.HEALING:
+				if ally:
+					apply_heal(state, p, 1, source.id, events)
+			Clan.FROST:
+				if not ally and not p.is_building:
+					apply_status(state, p, StatusEffectType.FROZEN, state.config.frost_duration, TriggerInfo.aura_name(clan), source.id, events)
+			Clan.STORM:
+				if ally and not p.is_building:
+					p.active_spells.append(ActiveSpell.new(source.source, SpellEffect.new(1), player_index, state.turn_number, state.turn_number))
+			Clan.STONE:
+				if ally and p.current_shield < 2:
+					p.current_shield += 1
 
 
 ## Living pieces on the 8 tiles around a position.
@@ -476,7 +485,8 @@ static func apply_heal(state: GameState, target: Piece, amount: int, source_piec
 
 
 ## Places a tile effect (no rule checks besides: on the board, and a Wall only on an empty tile).
-## Replaces an existing effect on that tile. expiry_turn = turn_number + max(1, duration_turns). 'events' may be null.
+## Replaces an existing effect on that tile. expiry_turn = turn_number + max(1, duration_turns) - 1 (the creation
+## turn counts). 'events' may be null.
 static func apply_tile_effect(state: GameState, type: int, pos: Vector2i, duration_turns: int,
 		creator_index: int, source_name: String, source_piece_id: int, events: Variant) -> bool:
 	# The crown field never carries tile effects (no lava, walls, healing or rubble on it).
@@ -489,7 +499,7 @@ static func apply_tile_effect(state: GameState, type: int, pos: Vector2i, durati
 	if (existing != null and existing.is_permanent) or (type != TileEffectType.WALL and state.board.is_wall(pos)):
 		return false
 	var duration: int = maxi(1, duration_turns)
-	var expiry: int = state.turn_number + duration
+	var expiry: int = state.turn_number + duration - 1
 	state.board.set_tile_effect(TileEffect.new(type, pos, creator_index, state.turn_number, expiry, source_name))
 	var e := _ev(ResolutionEventType.TILE_EFFECT_APPLIED, -1, pos, pos)
 	e.other_piece_id = source_piece_id
@@ -729,7 +739,7 @@ static func _try_push_line(ctx: Context, first: Piece, dir: Vector2i, allow_chai
 	return true
 
 
-## One declared attack: Overcharge multiplier, the main hit (with Pierce / Arc), then the Echo strike.
+## One declared attack: Overcharge multiplier, the main hit (with Pierce / Arc / area), then the Echo strike.
 static func _strike(ctx: Context, attacker: Piece, tile: Vector2i) -> void:
 	var damage: int = attacker.effective_attack
 	for i: int in range(attacker.status_effects.size() - 1, -1, -1):
@@ -765,11 +775,24 @@ static func _hit_tile(ctx: Context, attacker: Piece, tile: Vector2i, damage: int
 		behind = ctx.board.get_piece_at(behind_tile)
 		if behind == attacker:
 			behind = null
+	# Area attacks: every other piece (or rock) in the area takes the full hit - collected before the main hit
+	# pushes anything around.
+	var area_tiles: Array[Vector2i] = []
+	var area_targets: Array[Piece] = []
+	if primary and attacker.attack_area != AreaShape.SINGLE:
+		for a: Vector2i in ctx.board.get_area_tiles(tile, attacker.attack_area):
+			if a == tile or a == attacker.position:
+				continue
+			var ap: Piece = ctx.board.get_piece_at(a)
+			if ap != null and ap != behind:
+				area_targets.append(ap)
+			elif ap == null and ctx.board.get_terrain(a) == TerrainType.ROCK:
+				area_tiles.append(a)
 	var arc_targets: Array[Piece] = []
 	if primary and attacker.has_keyword(Keyword.ARC) and ctx.config.arc_damage > 0:
 		for n: Vector2i in GridPos.neighbors(tile):
 			var p: Piece = ctx.board.get_piece_at(n)
-			if p != null and p != attacker and p != behind:
+			if p != null and p != attacker and p != behind and not area_targets.has(p):
 				arc_targets.append(p)
 
 	if target != null:
@@ -780,6 +803,12 @@ static func _hit_tile(ctx: Context, attacker: Piece, tile: Vector2i, damage: int
 		_leave_attack_ground(ctx, attacker, tile)
 	if behind != null and behind.is_alive and attacker.is_alive and ctx.board.get_piece_at(behind_tile) == behind:
 		_hit_tile(ctx, attacker, behind_tile, damage, secondary, true, false)
+	for p: Piece in area_targets:
+		if p.is_alive and attacker.is_alive and ctx.state.get_piece(p.id) != null:
+			_hit_tile(ctx, attacker, p.position, damage, true, false, false)
+	for a: Vector2i in area_tiles:
+		if attacker.is_alive and not ctx.board.is_occupied(a) and ctx.board.get_terrain(a) == TerrainType.ROCK:
+			_hit_tile(ctx, attacker, a, damage, true, false, false)
 	for p: Piece in arc_targets:
 		if p.is_alive and attacker.is_alive and ctx.state.get_piece(p.id) != null:
 			_hit_tile(ctx, attacker, p.position, ctx.config.arc_damage, true, false, false)

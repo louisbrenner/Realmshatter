@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcStormAdept.tres" id="3_deck"]
-[ext_resource type="Resource" path="res://Resources/Cards/Bellringer.tres" id="r_Bellringer"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormHerald.tres" id="r_StormHerald"]
+[ext_resource type="Resource" path="res://Resources/Cards/SparkTinker.tres" id="r_SparkTinker"]
+[ext_resource type="Resource" path="res://Resources/Cards/Overcharge.tres" id="r_Overcharge"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ Position = Vector2(720, 470)
 Greeting = "Every bell I ring echoes twice. Can you keep up?"
 RematchLine = "The bells ring again."
 DefeatLine = "You silenced my bells. Impressive."
-VictoryLine = "The echo always wins."
+VictoryLine = "The echo always wins - and it rings with your coins."
 RewardGold = 75
-RewardCards = Array[ExtResource("2_card")]([ExtResource("r_Bellringer")])
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_StormHerald"), ExtResource("r_StormHerald"), ExtResource("r_SparkTinker"), ExtResource("r_Overcharge"), ExtResource("r_Overcharge")])

@@ -71,6 +71,12 @@ var _from: CamPose = CamPose.new()
 var _to: CamPose = CamPose.new()
 var _current: CamPose = CamPose.new()
 var _switched_projection: bool = false
+## Yaw change of the running tween (shortest way, except flips, which turn in a fixed direction).
+var _yaw_delta: float = 0.0
+## Direction of the next flip turn (+1 / -1), 0 = shortest way.
+var _spin: int = 0
+## True while the view is turned 180 degrees (the board seen from player 1's side, hotseat).
+var flipped: bool = false
 var _shake_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _shake_strength: float = 0.0
 var _shake_duration: float = 0.0
@@ -115,6 +121,10 @@ func set_mode(new_mode: int, animate: bool = true) -> void:
 		_from = _current.copy()
 		_to = target
 		_switched_projection = false
+		_yaw_delta = angle_difference(_from.yaw, _to.yaw)
+		if _spin != 0 and absf(_yaw_delta) > PI - 0.05:
+			# Exactly opposite: turn the way PieceViews turn (BoardAnimator.set_flipped), not by rounding luck.
+			_yaw_delta = _spin * absf(_yaw_delta)
 		_tween = create_tween()
 		_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 		_tween.tween_method(_blend, 0.0, 1.0, tween_duration)
@@ -147,6 +157,17 @@ func _process(delta: float) -> void:
 		_apply_pose(_current)
 
 
+## Turns the view 180 degrees around the board (true = seen from player 1's side), keeping the mode.
+func set_flipped(value: bool, animate: bool = true) -> void:
+	if value == flipped:
+		return
+	flipped = value
+	# Flipping turns counter-clockwise (+yaw), unflipping clockwise, like the piece tokens.
+	_spin = 1 if value else -1
+	set_mode(mode, animate)
+	_spin = 0
+
+
 ## Advances 2D -> 2.5D -> 3D -> 2D and returns the new mode.
 func cycle_mode() -> int:
 	var next: int
@@ -172,7 +193,7 @@ func _on_viewport_size_changed() -> void:
 func _blend(t: float) -> void:
 	var pose := CamPose.new()
 	pose.pitch = lerp_angle(_from.pitch, _to.pitch, t)
-	pose.yaw = lerp_angle(_from.yaw, _to.yaw, t)
+	pose.yaw = _from.yaw + _yaw_delta * t
 	pose.distance = lerpf(_from.distance, _to.distance, t)
 	pose.size = lerpf(_from.size, _to.size, t)
 	pose.fov = lerpf(_from.fov, _to.fov, t)
@@ -203,12 +224,13 @@ func _apply_pose(pose: CamPose) -> void:
 
 func _compute_pose(view_mode: int) -> CamPose:
 	var aspect: float = _get_aspect()
+	var turn: float = PI if flipped else 0.0
 	match view_mode:
 		ViewMode.TWO_POINT_FIVE_D:
-			return _compute_ortho_pose(deg_to_rad(iso_pitch_degrees), deg_to_rad(iso_yaw_degrees), aspect)
+			return _compute_ortho_pose(deg_to_rad(iso_pitch_degrees), deg_to_rad(iso_yaw_degrees) + turn, aspect)
 		ViewMode.THREE_D:
-			return _compute_perspective_pose(deg_to_rad(perspective_pitch_degrees), deg_to_rad(perspective_yaw_degrees), aspect)
-	return _compute_ortho_pose(deg_to_rad(-90.0), 0.0, aspect)
+			return _compute_perspective_pose(deg_to_rad(perspective_pitch_degrees), deg_to_rad(perspective_yaw_degrees) + turn, aspect)
+	return _compute_ortho_pose(deg_to_rad(-90.0), turn, aspect)
 
 
 func _compute_ortho_pose(pitch: float, yaw: float, aspect: float) -> CamPose:

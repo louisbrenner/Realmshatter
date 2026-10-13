@@ -9,12 +9,14 @@ namespace Realmshatter;
 /// Root script of Main.tscn. Wires the pure rules (GameState / TurnController) to the board view,
 /// animator, order overlay, camera, HUD and the AI, and runs the human input state machine (player 0).
 /// User args: --selftest prints the rules and AI self-tests, --autoplay lets a second SimpleAi
-/// play the human side until game over and then quits (debug).
+/// play the human side until game over and then quits (debug), --hotseat starts a local two-player match.
+/// Hotseat (HotseatSession or --hotseat): both sides are human; HumanPlayer follows the player whose turn it
+/// is, and a curtain hides the hand and traps while the device is passed on.
 /// </summary>
 public partial class GameManager : Node
 {
-	private const int HumanPlayer = 0;
 	private const int AiPlayer = 1;
+	private static readonly string[] HotseatNames = { "Player 1", "Player 2" };
 	private const int MaxAutomatedTurns = 1000;
 
 	[ExportGroup("Rules")]
@@ -80,6 +82,16 @@ public partial class GameManager : Node
 	private List<GridPos> _rangeTiles = new List<GridPos>();
 	private bool _returnToTown;
 	private readonly Random _themeRandom = new Random();
+	private bool _hotseat;
+	/// <summary>Player whose view (hand, traps, info) is shown: always 0 outside hotseat matches.</summary>
+	private int _viewPlayer;
+	/// <summary>Hotseat deck selection: which player is choosing (0, then 1).</summary>
+	private int _hotseatPicking;
+	/// <summary>Hotseat: the hand is hidden while the device is handed over.</summary>
+	private bool _concealHand;
+	private HotseatCurtain _curtain;
+
+	private int HumanPlayer => _viewPlayer;
 
 	public override void _Ready()
 	{
@@ -109,7 +121,8 @@ public partial class GameManager : Node
 			GD.Print("GameManager: autoplay enabled (both sides played by SimpleAi).");
 		}
 		bool selftest = Array.IndexOf(userArgs, "--selftest") >= 0;
-		if (!BattleSession.IsActive && StartInOverworld && !_autoplay && !selftest && ResourceLoader.Exists(BattleSession.OverworldScene))
+		_hotseat = !_autoplay && (HotseatSession.IsActive || Array.IndexOf(userArgs, "--hotseat") >= 0);
+		if (!BattleSession.IsActive && !_hotseat && StartInOverworld && !_autoplay && !selftest && ResourceLoader.Exists(BattleSession.OverworldScene))
 		{
 			Callable.From(() => GetTree().ChangeSceneToFile(BattleSession.OverworldScene)).CallDeferred();
 			return;
@@ -141,6 +154,12 @@ public partial class GameManager : Node
 			CameraRig.SetMode(ViewMode.TwoPointFiveD, false);
 		}
 		OnViewModeChanged((int)CameraRig.Mode);
+		if (_hotseat)
+		{
+			_curtain = new HotseatCurtain { Name = "HotseatCurtain" };
+			AddChild(_curtain);
+			Hud.SetViewPlayer(0, HotseatNames);
+		}
 
 		BeginNewGame();
 	}
@@ -158,6 +177,15 @@ public partial class GameManager : Node
 			return;
 		}
 		List<DeckData> themes = ThemeList();
+		if (_hotseat && themes.Count > 0)
+		{
+			// Both players pick their deck one after the other.
+			_hotseatPicking = 0;
+			_viewPlayer = 0;
+			Hud.SetViewPlayer(0, HotseatNames);
+			ShowDeckSelection(themes, $"{HotseatNames[0]}: choose your deck");
+			return;
+		}
 		if (themes.Count == 0)
 		{
 			StartNewGame();
@@ -174,7 +202,7 @@ public partial class GameManager : Node
 	}
 
 	/// <summary>Clears the table and shows the deck selection screen; the game starts in OnDeckChosen.</summary>
-	private void ShowDeckSelection(List<DeckData> themes)
+	private void ShowDeckSelection(List<DeckData> themes, string title = null)
 	{
 		_generation++;
 		UnsubscribeController();
@@ -201,7 +229,7 @@ public partial class GameManager : Node
 		Hud.SetDrawEnabled(false);
 		Hud.SetCancelEnabled(false);
 		Hud.SetHint("");
-		Hud.DeckSelect.Present(themes);
+		Hud.DeckSelect.Present(themes, title);
 	}
 
 	private void OnDeckChosen(int index)
@@ -209,6 +237,19 @@ public partial class GameManager : Node
 		List<DeckData> themes = ThemeList();
 		if (index < 0 || index >= themes.Count)
 		{
+			return;
+		}
+		if (_hotseat)
+		{
+			if (_hotseatPicking == 0)
+			{
+				_playerTheme = themes[index];
+				_hotseatPicking = 1;
+				Callable.From(() => Hud.DeckSelect.Present(ThemeList(), $"{HotseatNames[1]}: choose your deck")).CallDeferred();
+				return;
+			}
+			_aiTheme = themes[index];
+			StartNewGame();
 			return;
 		}
 		_playerTheme = themes[index];
@@ -269,7 +310,7 @@ public partial class GameManager : Node
 		}
 		MapGenerator.MapInfo map = MapGenerator.Generate(_state);
 		_controller = new TurnController(_state);
-		_ai = new SimpleAi(_controller, AiPlayer);
+		_ai = _hotseat ? null : new SimpleAi(_controller, AiPlayer);
 		_autoplayAi = _autoplay ? new SimpleAi(_controller, HumanPlayer) : null;
 		SubscribeController();
 
@@ -282,9 +323,18 @@ public partial class GameManager : Node
 		_hoverTile = null;
 		ResetSelection();
 		_mode = InputMode.Idle;
+		if (_hotseat)
+		{
+			_viewPlayer = 0;
+			_concealHand = true;
+			Hud.SetViewPlayer(0, HotseatNames);
+			CameraRig.SetFlipped(false, false);
+			Animator.SetFlipped(false, 0f);
+			Animator.TrapViewer = -1;
+		}
 		if (playerDeck != null && aiDeck != null)
 		{
-			_pendingLog.Add($"Your deck: {playerDeck.Name}. AI deck: {aiDeck.Name}.");
+			_pendingLog.Add($"{PossessiveLabel(0)} deck: {playerDeck.Name}. {PossessiveLabel(1)} deck: {aiDeck.Name}.");
 		}
 		_pendingLog.Add($"Battlefield: {map.Name}. {map.Description}");
 		Hud.ShowMessage($"{map.Name} - {map.Description}", 4f);
@@ -319,6 +369,11 @@ public partial class GameManager : Node
 		{
 			_mode = InputMode.Busy;
 			Refresh();
+			await HandOverAsync(generation);
+			if (!IsCurrent(generation))
+			{
+				return;
+			}
 			await TurnIntroAsync(generation);
 			if (!IsCurrent(generation))
 			{
@@ -583,6 +638,10 @@ public partial class GameManager : Node
 		CachePieceNames();
 		List<ResolutionEvent> events = _controller.EndTurn();
 		var turnStartEvents = new List<ResolutionEvent>(_controller.LastTurnStartEvents);
+		if (_hotseat)
+		{
+			ConcealView();
+		}
 
 		Overlay.ClearAll();
 		await Animator.PlayEvents(events, _state, turnStartEvents.Count == 0);
@@ -612,6 +671,11 @@ public partial class GameManager : Node
 		FlushPendingLog();
 		Refresh();
 
+		await HandOverAsync(generation);
+		if (!IsCurrent(generation))
+		{
+			return false;
+		}
 		await TurnIntroAsync(generation);
 		if (!IsCurrent(generation))
 		{
@@ -644,6 +708,51 @@ public partial class GameManager : Node
 		_pendingScorePlayer = -1;
 	}
 
+	/// <summary>Hotseat: hides the outgoing player's hand and traps (the board stays visible).</summary>
+	private void ConcealView()
+	{
+		_concealHand = true;
+		Animator.TrapViewer = -1;
+		Board.SyncTraps(_state.Board, -1);
+		Hud.Hand.ShowHand(new List<CardData>(), null, null);
+	}
+
+	/// <summary>Hotseat: switches the view (hand, traps, HUD windows) to 'player'.</summary>
+	private void SetView(int player)
+	{
+		_viewPlayer = player;
+		_concealHand = false;
+		Animator.TrapViewer = player;
+		Board.SyncTraps(_state.Board, player);
+		Hud.SetViewPlayer(player, HotseatNames);
+		// Each player sees the board from their own side.
+		CameraRig.SetFlipped(player == 1);
+		Animator.SetFlipped(player == 1, CameraRig.TweenDuration);
+	}
+
+	/// <summary>
+	/// Hotseat: covers the screen until the player whose turn starts is ready, then shows their view.
+	/// Does nothing outside hotseat matches or once the game is over.
+	/// </summary>
+	private async Task HandOverAsync(int generation)
+	{
+		if (!_hotseat || _curtain == null || _state.Winner >= 0)
+		{
+			return;
+		}
+		int next = _state.CurrentPlayerIndex;
+		ConcealView();
+		Refresh();
+		await _curtain.ShowAsync($"{HotseatNames[next]}'s turn",
+			$"Pass the device to {HotseatNames[next]}.\nThe other player should look away from the hand.", HudStyle.Accent(next));
+		if (!IsCurrent(generation))
+		{
+			return;
+		}
+		SetView(next);
+		Refresh();
+	}
+
 	private void EnterHumanTurnOrGameOver()
 	{
 		ResetSelection();
@@ -656,9 +765,28 @@ public partial class GameManager : Node
 		if (_state.Winner >= 0)
 		{
 			_mode = InputMode.Idle;
+			if (_hotseat)
+			{
+				SetView(_state.Winner);
+			}
 			Refresh();
 			Hud.SetHint("Game over.");
-			if (BattleSession.IsActive)
+			if (_hotseat)
+			{
+				string winnerName = HotseatNames[_state.Winner];
+				string subtitle = $"{winnerName} reached the victory points target!";
+				if (HotseatSession.IsActive)
+				{
+					HotseatSession.Complete($"Hotseat match: {winnerName} won after {_state.TurnNumber} turns.");
+					_returnToTown = true;
+					Hud.ShowWinScreen(_state.Winner, subtitle, "Return to town");
+				}
+				else
+				{
+					Hud.ShowWinScreen(_state.Winner, subtitle, "Play again");
+				}
+			}
+			else if (BattleSession.IsActive)
 			{
 				string result = BattleSession.Complete(_state.Winner == HumanPlayer);
 				_returnToTown = true;
@@ -762,7 +890,7 @@ public partial class GameManager : Node
 			Hud.ShowMessage(_controller.LastError);
 			return;
 		}
-		Log($"You paid {_state.Config.DrawApCost} AP to draw.");
+		Log($"{PlayerLabel(HumanPlayer)} paid {_state.Config.DrawApCost} AP to draw.");
 		Hud.Draft.ShowOffer(_state.CurrentPlayer.DraftOffer, _controller.GetCardCost);
 		UpdateHint();
 		Refresh();
@@ -780,7 +908,7 @@ public partial class GameManager : Node
 			Hud.ShowMessage(_controller.LastError);
 			return;
 		}
-		Log($"You converted 1 VP into 1 AP ({_controller.RemainingVpConversions} conversion(s) left this turn).");
+		Log($"{PlayerLabel(HumanPlayer)} converted 1 VP into 1 AP ({_controller.RemainingVpConversions} conversion(s) left this turn).");
 		Hud.ShowMessage($"+1 AP for 1 VP ({_controller.RemainingVpConversions} left this turn).");
 		UpdateHint();
 		Refresh();
@@ -800,7 +928,7 @@ public partial class GameManager : Node
 			Hud.ShowMessage(_controller.LastError);
 			return;
 		}
-		Log($"You kept {card?.Name ?? "a card"}.");
+		Log($"{PlayerLabel(HumanPlayer)} kept {card?.Name ?? "a card"}.");
 		// Deferred: the popup's cards are freed, and we are inside one of their click signals.
 		Callable.From(AfterDraft).CallDeferred();
 	}
@@ -1047,12 +1175,13 @@ public partial class GameManager : Node
 				Piece piece = _state.Board.GetPieceAt(tile);
 				if (_mode == InputMode.Idle && piece != null && piece.IsBuilding)
 				{
-					tiles = _controller.GetBuildingRangeTiles(piece.Building, piece.Position, piece.EffectiveRange);
+					tiles = _controller.GetBuildingRangeTiles(piece.Building, piece.Position, piece.EffectiveRange, piece.Source.Clan);
 				}
 				else if (_mode == InputMode.ChoosingBuild && _selectedPiece != null && _controller.GetValidBuildTiles(_selectedPiece, _plannedMove).Contains(tile))
 				{
 					BuildingType type = _controller.GetBuildType(_selectedPiece);
-					tiles = _controller.GetBuildingRangeTiles(type, tile, BuildingInfo.GetCard(type).Range);
+					Clan clan = _selectedPiece.Source.Clan;
+					tiles = _controller.GetBuildingRangeTiles(type, tile, BuildingInfo.GetCard(type, clan).Range, clan);
 				}
 			}
 		}
@@ -1060,7 +1189,7 @@ public partial class GameManager : Node
 			&& _controller != null && _state.Winner < 0)
 		{
 			// Buildings can be inspected while waiting for the opponent, too.
-			tiles = _controller.GetBuildingRangeTiles(building.Building, building.Position, building.EffectiveRange);
+			tiles = _controller.GetBuildingRangeTiles(building.Building, building.Position, building.EffectiveRange, building.Source.Clan);
 		}
 		if (tiles.Count == _rangeTiles.Count && tiles.TrueForAll(_rangeTiles.Contains))
 		{
@@ -1087,7 +1216,26 @@ public partial class GameManager : Node
 		IReadOnlyList<GridPos> path = _plannedMove.HasValue ? _controller.GetPlannedPath(_selectedPiece, _plannedMove.Value) : null;
 		bool valid = tile != from && _controller.GetValidAttackTargets(_selectedPiece, from).Contains(tile);
 		Overlay.ShowPreview(_selectedPiece, _plannedMove, valid ? tile : (GridPos?)null, Board, path, _state.Board);
-		if (!valid || !_state.Board.IsOccupied(tile))
+		// Area attackers: show the whole area; predict as soon as anything in it would be hit.
+		bool anyHit = valid && _state.Board.IsOccupied(tile);
+		if (valid && _selectedPiece.AttackArea != AreaShape.Single)
+		{
+			var area = new List<GridPos>();
+			foreach (GridPos a in _state.Board.GetAreaTiles(tile, _selectedPiece.AttackArea))
+			{
+				if (a != from)
+				{
+					area.Add(a);
+					anyHit |= _state.Board.IsOccupied(a) && _state.Board.GetPieceAt(a) != _selectedPiece;
+				}
+			}
+			Overlay.ShowSpellAreaPreview(area, null, Board);
+		}
+		else
+		{
+			Overlay.ClearSpellAreaPreview();
+		}
+		if (!anyHit)
 		{
 			Overlay.ClearAttackPreview();
 			UpdateHint();
@@ -1189,9 +1337,10 @@ public partial class GameManager : Node
 			string reason = piece.ConstructingId >= 0 ? "Already building." :
 				(cost > _state.CurrentPlayer.ActionPoints ? $"Needs {cost} AP." :
 				(_controller.GetValidBuildTiles(piece, from).Count == 0 ? "No free tile next to it." : ""));
-			string what = count > 1 ? $"{count} {BuildingInfo.GetName(build)}s" : BuildingInfo.GetName(build);
-			abilities.Add(new UnitActionBar.Ability(FxIconShape.Hammer, $"Build {BuildingInfo.GetName(build)}", cost, reason.Length == 0,
-				$"Build {what}: {BuildingInfo.GetDescription(build)} ({turns} turn{(turns > 1 ? "s" : "")}, B). Can follow a move instead of an attack." +
+			Clan clan = piece.Source.Clan;
+			string what = count > 1 ? $"{count} {BuildingInfo.GetName(build, clan)}s" : BuildingInfo.GetName(build, clan);
+			abilities.Add(new UnitActionBar.Ability(FxIconShape.Hammer, $"Build {BuildingInfo.GetName(build, clan)}", cost, reason.Length == 0,
+				$"Build {what}: {BuildingInfo.GetDescription(build, clan)} ({turns} turn{(turns > 1 ? "s" : "")}, B). Can follow a move instead of an attack." +
 				(reason.Length > 0 ? $"\n{reason}" : ""), OnBuildPressed));
 		}
 		TrapType? trap = _controller.GetTrapType(piece);
@@ -1343,7 +1492,10 @@ public partial class GameManager : Node
 			return;
 		}
 		TrapType trap = _controller.GetTrapType(piece) ?? TrapType.Spike;
-		Log($"Your {PieceLabel(piece)} {(move.HasValue ? $"moves to {move.Value} and " : "")}hides a {TrapInfo.GetName(trap)} at {pos}.");
+		// Hotseat: the log is shared, so the trap's tile stays secret.
+		Log(_hotseat
+			? $"{PossessiveLabel(HumanPlayer)} {PieceLabel(piece)} {(move.HasValue ? $"moves to {move.Value} and " : "")}hides a trap."
+			: $"Your {PieceLabel(piece)} {(move.HasValue ? $"moves to {move.Value} and " : "")}hides a {TrapInfo.GetName(trap)} at {pos}.");
 		CancelSelection();
 		_ = AnimateSpellEventsAsync(new List<ResolutionEvent>(events), _generation);
 	}
@@ -1357,7 +1509,7 @@ public partial class GameManager : Node
 		}
 		BuildingType type = _controller.GetBuildType(piece);
 		int count = BuildingInfo.GetBuildCount(type);
-		string name = BuildingInfo.GetName(type);
+		string name = BuildingInfo.GetName(type, piece.Source.Clan);
 		string first = count > 1 ? $"click green tiles for your {count} {name}s" : $"click a green tile to build a {name}";
 		Hud.SetHint(_buildTiles.Count == 0
 			? $"{PieceLabel(piece)}: {first} ({BuildingInfo.GetCost(type)} AP). Esc cancels."
@@ -1405,8 +1557,9 @@ public partial class GameManager : Node
 			return;
 		}
 		string where = string.Join(" and ", tiles);
-		string what = tiles.Count > 1 ? $"{tiles.Count} {BuildingInfo.GetName(type)}s" : $"a {BuildingInfo.GetName(type)}";
-		Log($"Your {PieceLabel(piece)} {(move.HasValue ? $"moves to {move.Value} and " : "")}starts building {what} at {where}.");
+		string buildingName = BuildingInfo.GetName(type, piece.Source.Clan);
+		string what = tiles.Count > 1 ? $"{tiles.Count} {buildingName}s" : $"a {buildingName}";
+		Log($"{PossessiveLabel(HumanPlayer)} {PieceLabel(piece)} {(move.HasValue ? $"moves to {move.Value} and " : "")}starts building {what} at {where}.");
 		CancelSelection();
 		_ = AnimateSpellEventsAsync(new List<ResolutionEvent>(events), _generation);
 	}
@@ -1448,7 +1601,7 @@ public partial class GameManager : Node
 			Animator.SpawnView(piece);
 			_ = Animator.PlaySummon(piece.Id);
 			CachePieceNames();
-			Log($"You deployed {card.Name} at {pos}.");
+			Log($"{PlayerLabel(HumanPlayer)} deployed {card.Name} at {pos}.");
 			CancelSelection();
 			Refresh();
 			return;
@@ -1473,7 +1626,7 @@ public partial class GameManager : Node
 			Hud.ShowMessage(_controller.LastError);
 			return;
 		}
-		Log($"You cast {card.Name} on {targetText}.");
+		Log($"{PlayerLabel(HumanPlayer)} cast {card.Name} on {targetText}.");
 		CancelSelection();
 		_ = AnimateSpellEventsAsync(new List<ResolutionEvent>(_controller.LastSpellEvents), _generation);
 	}
@@ -1634,7 +1787,7 @@ public partial class GameManager : Node
 		{
 			text += target != null ? $" and attacks {PieceName(target.Id)}" : $" and attacks {attack.Value}";
 		}
-		Log($"Your {PieceLabel(piece)} {text}.");
+		Log($"{PossessiveLabel(HumanPlayer)} {PieceLabel(piece)} {text}.");
 		CancelSelection();
 		_ = AnimateSpellEventsAsync(new List<ResolutionEvent>(events), _generation);
 	}
@@ -1693,7 +1846,7 @@ public partial class GameManager : Node
 
 		bool canAct = CanHumanAct();
 		PlayerState human = _state.Players[HumanPlayer];
-		Hud.Hand.ShowHand(human.Hand, _controller.GetCardCost,
+		Hud.Hand.ShowHand(_concealHand ? new List<CardData>() : human.Hand, _controller.GetCardCost,
 			card => canAct && _controller.GetCardCost(card) <= human.ActionPoints);
 		if (_mode == InputMode.CardSelected)
 		{
@@ -1868,7 +2021,8 @@ public partial class GameManager : Node
 		}
 	}
 
-	private static string PieceNameFor(Piece p) => $"{(p.OwnerIndex == HumanPlayer ? "your" : "AI")} {p.Source?.Name ?? "piece"}";
+	private string PieceNameFor(Piece p) =>
+		$"{(_hotseat ? $"P{p.OwnerIndex + 1}" : (p.OwnerIndex == HumanPlayer ? "your" : "AI"))} {p.Source?.Name ?? "piece"}";
 
 	private string PieceName(int id)
 	{
@@ -1884,12 +2038,18 @@ public partial class GameManager : Node
 	private static string PieceLabelWithKeywords(Piece piece) =>
 		piece != null && piece.Keywords != Keyword.None ? $"{PieceLabel(piece)} [{KeywordInfo.Format(piece.Keywords)}]" : PieceLabel(piece);
 
-	private static string PlayerLabel(int player) => player == HumanPlayer ? "You" : "AI";
+	private string PlayerLabel(int player) => _hotseat ? HotseatNames[player] : (player == HumanPlayer ? "You" : "AI");
+
+	/// <summary>"Your" / "AI" (hotseat: "Player 1's" / "Player 2's").</summary>
+	private string PossessiveLabel(int player) => _hotseat ? $"{HotseatNames[player]}'s" : (player == HumanPlayer ? "Your" : "AI");
+
+	/// <summary>Owner prefix of a piece seen by the view player: "Your" / "AI" (hotseat: "Your" / "Enemy").</summary>
+	private string OwnerLabel(Piece p) => p.OwnerIndex == HumanPlayer ? "Your" : (_hotseat ? "Enemy" : "AI");
 
 	/// <summary>One-line piece info for the hint ribbon (hover).</summary>
 	private string DescribePieceShort(Piece p)
 	{
-		string text = $"{(p.OwnerIndex == HumanPlayer ? "Your" : "AI")} {PieceLabel(p)}: {p.CurrentHp}/{p.MaxHp} HP, " +
+		string text = $"{OwnerLabel(p)} {PieceLabel(p)}: {p.CurrentHp}/{p.MaxHp} HP, " +
 			$"{p.EffectiveAttack} Atk, {p.EffectiveMovement} Mov, {p.EffectiveRange} Rng";
 		if (p.TotalShield > 0)
 		{
@@ -1914,9 +2074,9 @@ public partial class GameManager : Node
 		return text;
 	}
 
-	private static string DescribePiece(Piece p)
+	private string DescribePiece(Piece p)
 	{
-		string text = $"{(p.OwnerIndex == HumanPlayer ? "Your" : "AI")} {p.Source?.Name}: HP {p.CurrentHp}/{p.MaxHp}, Shield {p.TotalShield}, " +
+		string text = $"{OwnerLabel(p)} {p.Source?.Name}: HP {p.CurrentHp}/{p.MaxHp}, Shield {p.TotalShield}, " +
 			$"Atk {p.EffectiveAttack}, Mov {p.EffectiveMovement}, Rng {p.EffectiveRange}" +
 			(p.ActiveSpells.Count > 0 ? $", {p.ActiveSpells.Count} spell(s)" : "") +
 			(p.IsFrozen ? ", Frozen" : "") +
@@ -1962,10 +2122,10 @@ public partial class GameManager : Node
 			ResolutionEventType.BuildingCompleted => $"{e.SpellName} at {e.To} is finished",
 			ResolutionEventType.AuraPulse => $"{name}'s {e.SpellName} pulses",
 			ResolutionEventType.FirstHitTriggered => $"{name} is hit for the first time: {e.SpellName}",
-			ResolutionEventType.TrapSet => e.PlayerIndex == HumanPlayer ? $"{name} hides a {e.CardName} at {e.To}" : "AI hides a trap somewhere",
-			ResolutionEventType.TrapTriggered => $"{name} steps into {(e.PlayerIndex == HumanPlayer ? "your" : "an enemy")} {e.CardName} at {e.To}!",
+			ResolutionEventType.TrapSet => e.PlayerIndex == HumanPlayer && !_hotseat ? $"{name} hides a {e.CardName} at {e.To}" : $"{PlayerLabel(e.PlayerIndex)} hides a trap somewhere",
+			ResolutionEventType.TrapTriggered => $"{name} steps into {(_hotseat ? PossessiveLabel(e.PlayerIndex) : (e.PlayerIndex == HumanPlayer ? "your" : "an enemy"))} {e.CardName} at {e.To}!",
 			ResolutionEventType.TerrainDamaged => e.RemainingHp <= 0 ? $"The rock at {e.To} crumbles" : $"The rock at {e.To} takes {e.Amount} damage ({e.RemainingHp} HP left)",
-			ResolutionEventType.ApGained => $"{PlayerLabel(e.PlayerIndex)} gain{(e.PlayerIndex == HumanPlayer ? "" : "s")} {e.Amount} AP" +
+			ResolutionEventType.ApGained => $"{PlayerLabel(e.PlayerIndex)} gain{(e.PlayerIndex == HumanPlayer && !_hotseat ? "" : "s")} {e.Amount} AP" +
 				$"{(e.IsSecondary ? " next turn" : "")} ({e.CardName})",
 			_ => e.Type.ToString(),
 		};

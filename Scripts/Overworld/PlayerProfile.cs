@@ -19,7 +19,7 @@ public static class PlayerProfile
 	public const int DeckMax = 40;
 	public const int MaxCopies = 3;
 	/// <summary>Save format / balance version; older saves are discarded (e.g. after a card rebalance).</summary>
-	public const int SaveVersion = 3;
+	public const int SaveVersion = 4;
 
 	private sealed class SaveDto
 	{

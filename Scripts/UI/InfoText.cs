@@ -82,7 +82,7 @@ public static class InfoText
 		{
 			sheet.Subtitle = "Building";
 			AddHealth(sheet, p);
-			sheet.Lines.Add(BuildingInfo.GetDescription(p.Building));
+			sheet.Lines.Add(BuildingInfo.GetDescription(p.Building, clan));
 			if (p.UnderConstruction)
 			{
 				int left = System.Math.Max(1, (p.CompleteTurn - state.TurnNumber + 1) / 2);
@@ -365,6 +365,14 @@ public static class InfoText
 
 	private static void AddKeywordRows(InfoSheet sheet, CardData card, Keyword keywords, int level)
 	{
+		if (card != null && card.AttackArea != AreaShape.Single)
+		{
+			var fire = new Color(1f, 0.55f, 0.2f);
+			sheet.Rows.Add(new InfoSheet.Row(FxIconShape.Burst, fire, new Color(0.42f, 0.14f, 0.05f, 0.97f), $"Area attack: {AttackAreaName(card.AttackArea)}",
+				fire.Lerp(InfoSheet.HeadingColor, 0.5f),
+				"Its attack hits every piece in the area around the target with full damage and effects - friend or foe "
+				+ $"(never itself). [color={InfoSheet.HexMuted}]Ground effects only mark the target tile.[/color]"));
+		}
 		foreach (Keyword k in KeywordInfo.Split(keywords))
 		{
 			string name = KeywordInfo.GetName(k);
@@ -385,8 +393,8 @@ public static class InfoText
 				BuildingType b = BuildingInfo.ForClass(card.Class);
 				if (b != BuildingType.None)
 				{
-					text = $"Builds a [b]{BuildingInfo.GetName(b)}[/b] next to it ({BuildingInfo.GetCost(b)} AP, {BuildingInfo.GetBuildTurns(b)} turn{(BuildingInfo.GetBuildTurns(b) > 1 ? "s" : "")}): " +
-						$"{BuildingInfo.GetDescription(b)} [color={InfoSheet.HexMuted}]Cannot move while building.[/color]";
+					text = $"Builds a [b]{BuildingInfo.GetName(b, card.Clan)}[/b] next to it ({BuildingInfo.GetCost(b)} AP, {BuildingInfo.GetBuildTurns(b)} turn{(BuildingInfo.GetBuildTurns(b) > 1 ? "s" : "")}): " +
+						$"{BuildingInfo.GetDescription(b, card.Clan)} [color={InfoSheet.HexMuted}]Cannot move while building.[/color]";
 				}
 			}
 			else if (k == Keyword.Trapper && card != null)
@@ -532,6 +540,15 @@ public static class InfoText
 	}
 
 	private static string Signed(int value) => value > 0 ? $"+{value}" : value.ToString();
+
+	private static string AttackAreaName(AreaShape shape) => shape switch
+	{
+		AreaShape.Plus => "Cross (target + 4 neighbours)",
+		AreaShape.Row3 => "Row of 3",
+		AreaShape.Column3 => "Column of 3",
+		AreaShape.Square2 => "2x2 square",
+		_ => "single tile",
+	};
 
 	private static string Capitalize(string text) => string.IsNullOrEmpty(text) ? "" : char.ToUpperInvariant(text[0]) + text[1..];
 

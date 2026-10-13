@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Glacier Prospector"
+Description = "Mines blue ice that hums with mana."
+CardType = 0
+Role = 2
+Class = 10
+ApCost = 2
+Movement = 3
+Attack = 1
+Hp = 4
+Range = 1
+Shield = 0
+ApBonus = 1
+Clan = 3
+Rarity = 1
+Keywords = 258
+Tint = Color(0.55, 0.85, 1, 1)

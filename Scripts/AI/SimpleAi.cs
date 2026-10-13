@@ -8,10 +8,13 @@ namespace Realmshatter;
 /// AP is budgeted greedily in priority order, re-evaluated after every action:
 /// 1. finish a pending draft (free), 2. high-value actions (attacks, entering the scoring zone),
 /// 3. one reinforcement per turn while the own army is critically small, 4. draw if the hand has nothing useful,
-/// 5. advance toward the scoring zone (before any further deploys, so the army never camps in its base),
-/// 6. buildings, 7. remaining cards (spells incl. tile spells, units up to a cap),
-/// 8. draw with leftover AP, 9. convert VP into AP for a very valuable action (kills) when the VP lead is safe
+/// 5. strong expensive cards (3+ AP, high value per AP) before low-value moves,
+/// 6. buildings (before the builders walk off), 7. advance toward the scoring zone (before any further deploys,
+/// so the army never camps in its base), 8. remaining cards (spells incl. tile spells, units up to a cap),
+/// 9. draw with leftover AP, 10. convert VP into AP for a very valuable action (kills) when the VP lead is safe
 /// or the opponent is about to win.
+/// AP-gaining spells (Mana Surge) are cast first. Cards are chosen by CardValue with a small knapsack over the hand
+/// (the most valuable set the AP budget allows), and VP may be converted to pay for a strong card of 4+ AP.
 /// Actions resolve immediately (TurnController.Act), so every decision sees the real board. A piece moves toward
 /// a free scoring-zone tile (avoiding lava, friendlies may be passed) and attacks the target whose
 /// TurnController.PredictAttack outcome is best: enemy damage and kills minus friendly fire (Pierce / Arc can
@@ -26,6 +29,7 @@ public sealed class SimpleAi
 	private const int VpOrderValue = 6;
 	private const int LavaPenalty = 25;
 	private const int MaxHandToDraw = 6;
+	private const int MaxBuildings = 4;
 
 	private readonly TurnController _controller;
 
@@ -100,6 +104,10 @@ public sealed class SimpleAi
 			{
 				break;
 			}
+			if (TryAccelerate(actions))
+			{
+				continue;
+			}
 			if (TryCommand(actions, ctx, HighOrderValue, false))
 			{
 				continue;
@@ -113,15 +121,20 @@ public sealed class SimpleAi
 			{
 				continue;
 			}
+			if (TryPlayBestCard(actions, ctx, unitsOnly: false, premiumOnly: true))
+			{
+				continue;
+			}
+			// Builders build before they would walk off toward the zone (where they could not build any more).
+			if (TryBuild(actions))
+			{
+				continue;
+			}
 			if (TryCommand(actions, ctx, 1, false))
 			{
 				continue;
 			}
 			if (TryTrap(actions))
-			{
-				continue;
-			}
-			if (TryBuild(actions))
 			{
 				continue;
 			}
@@ -195,7 +208,7 @@ public sealed class SimpleAi
 		bool haveUnits = myPieces.Count + handUnits > 0;
 		// Units above the AP income are dead weight until Mana Wells / VP conversions pay for them; while no unit in
 		// hand is affordable at all, a cheap unit beats a strong one.
-		int income = State.Config.BaseAp + me.BonusApPerTurn;
+		int income = Income();
 		bool affordableInHand = false;
 		foreach (CardData c in me.Hand)
 		{
@@ -214,7 +227,7 @@ public sealed class SimpleAi
 			double score;
 			if (card.CardType == CardType.Unit)
 			{
-				score = UnitStrength(card);
+				score = CardValue(card);
 				if (card.Role == UnitRole.Resource && early && resourceCount < 2)
 				{
 					score += 10;
@@ -232,7 +245,7 @@ public sealed class SimpleAi
 			else
 			{
 				score = myPieces.Count > 0 || card.TargetsTile
-					? SpellDraftValue(card) * 1.5 + 1 - handSpells * 2
+					? SpellDraftValue(card) * 1.5 + 1 - handSpells * 2 + card.ApGain * 2
 					: -5;
 				if (!haveUnits)
 				{
@@ -367,6 +380,25 @@ public sealed class SimpleAi
 		return safeLead || desperate;
 	}
 
+	/// <summary>
+	/// VP the AI may convert this turn to pay for a strong card (4+ AP): when not behind by more than 2, not about
+	/// to win anyway and holding at least 3 VP - or when the opponent is about to win. 0 otherwise.
+	/// </summary>
+	private int VpForCards()
+	{
+		PlayerState me = State.Players[PlayerIndex];
+		PlayerState opp = State.Players[1 - PlayerIndex];
+		int left = Math.Min(_controller.RemainingVpConversions, me.VictoryPoints);
+		if (left <= 0 || State.Phase != GamePhase.Main)
+		{
+			return 0;
+		}
+		int target = State.Config.PointsTarget;
+		bool desperate = opp.VictoryPoints >= target - 4;
+		bool comfortable = me.VictoryPoints >= 3 && me.VictoryPoints + 2 >= opp.VictoryPoints && me.VictoryPoints < target - 3;
+		return desperate || comfortable ? left : 0;
+	}
+
 	private bool TryConvertVp(List<AiAction> actions, string reason)
 	{
 		if (!ShouldSpendVp() || !_controller.ConvertVpToAp())
@@ -384,26 +416,32 @@ public sealed class SimpleAi
 
 	// ---------------------------------------------------------------- cards
 
-	private bool TryPlayBestCard(List<AiAction> actions, PlanContext ctx, bool unitsOnly)
+	/// <summary>
+	/// Plays one card of the most valuable affordable set: every playable card gets a value (CardValue for units,
+	/// the target score for spells); a small knapsack picks the set with the highest total value within the AP
+	/// budget (incl. VpForCards for 4+ AP cards), and its most valuable card is played now (converting VP if
+	/// needed). premiumOnly: only cards of 3+ AP worth at least 2.5 value per AP.
+	/// </summary>
+	private bool TryPlayBestCard(List<AiAction> actions, PlanContext ctx, bool unitsOnly, bool premiumOnly = false)
 	{
 		PlayerState me = State.Players[PlayerIndex];
-		bool unitsAllowed = unitsOnly || State.GetPiecesOf(PlayerIndex).FindAll(p => !p.IsBuilding).Count < MaxDesiredPieces;
-		CardData bestCard = null;
-		GridPos bestTile = default;
-		Piece bestTarget = null;
-		int bestCost = int.MaxValue;
-		double bestValue = double.MinValue;
+		int unitCount = State.GetPiecesOf(PlayerIndex).FindAll(p => !p.IsBuilding).Count;
+		int unitSlots = unitsOnly ? 1 : Math.Max(0, MaxDesiredPieces - unitCount);
+		int vpBudget = VpForCards();
+		var options = new List<(CardData Card, GridPos Tile, Piece Target, int Cost, double Value)>();
 
 		foreach (CardData card in new List<CardData>(me.Hand))
 		{
 			if (card == null
-				|| (card.CardType == CardType.Unit && !unitsAllowed)
-				|| (card.CardType == CardType.Spell && unitsOnly))
+				|| (card.CardType == CardType.Unit && unitSlots <= 0)
+				|| (card.CardType == CardType.Spell && unitsOnly)
+				|| IsPureAccelerator(card))
 			{
 				continue;
 			}
 			int cost = _controller.GetCardCost(card);
-			if (cost > me.ActionPoints)
+			// VP only pays for strong cards.
+			if (cost > me.ActionPoints && (cost < 4 || cost > me.ActionPoints + vpBudget))
 			{
 				continue;
 			}
@@ -419,7 +457,7 @@ public sealed class SimpleAi
 					continue;
 				}
 				tile = deploy.Value;
-				value = UnitStrength(card);
+				value = CardValue(card);
 			}
 			else if (card.TargetsTile)
 			{
@@ -429,7 +467,7 @@ public sealed class SimpleAi
 					continue;
 				}
 				tile = anchor.Value;
-				value = tileValue;
+				value = tileValue + card.ApGain * 2;
 			}
 			else
 			{
@@ -438,22 +476,78 @@ public sealed class SimpleAi
 				{
 					continue;
 				}
-				value = Math.Max(1, Math.Abs(SpellNet(card)));
+				value = Math.Max(1, Math.Abs(SpellNet(card))) * 1.5 + (card.GrantStatus != StatusEffectType.None ? 2 : 0) + card.ApGain * 2;
 			}
-
-			if (cost < bestCost || (cost == bestCost && value > bestValue))
+			if (premiumOnly && (cost < 3 || value < cost * 2.5))
 			{
-				bestCard = card;
-				bestTile = tile;
-				bestTarget = target;
-				bestCost = cost;
-				bestValue = value;
+				continue;
 			}
+			options.Add((card, tile, target, cost, value));
 		}
-
-		if (bestCard == null)
+		if (options.Count == 0)
 		{
 			return false;
+		}
+
+		// Knapsack over at most 10 options (the hand is small): best total value, ties -> lower total cost.
+		int n = Math.Min(options.Count, 10);
+		int budget = me.ActionPoints + vpBudget;
+		int bestMask = 0;
+		double bestTotal = -1;
+		int bestTotalCost = int.MaxValue;
+		for (int mask = 1; mask < 1 << n; mask++)
+		{
+			int cost = 0;
+			int units = 0;
+			double total = 0;
+			for (int i = 0; i < n; i++)
+			{
+				if ((mask & (1 << i)) == 0)
+				{
+					continue;
+				}
+				cost += options[i].Cost;
+				total += options[i].Value;
+				units += options[i].Card.CardType == CardType.Unit ? 1 : 0;
+			}
+			if (cost > budget || units > unitSlots)
+			{
+				continue;
+			}
+			if (total > bestTotal || (total == bestTotal && cost < bestTotalCost))
+			{
+				bestTotal = total;
+				bestTotalCost = cost;
+				bestMask = mask;
+			}
+		}
+		if (bestMask == 0)
+		{
+			return false;
+		}
+		int pick = -1;
+		for (int i = 0; i < n; i++)
+		{
+			if ((bestMask & (1 << i)) != 0 && (pick < 0 || options[i].Value > options[pick].Value))
+			{
+				pick = i;
+			}
+		}
+		CardData bestCard = options[pick].Card;
+		GridPos bestTile = options[pick].Tile;
+		Piece bestTarget = options[pick].Target;
+		while (options[pick].Cost > me.ActionPoints)
+		{
+			if (!_controller.ConvertVpToAp())
+			{
+				return false;
+			}
+			actions.Add(new AiAction
+			{
+				Kind = AiActionKind.ConvertVp,
+				PlayerIndex = PlayerIndex,
+				Description = $"Converted 1 VP into 1 AP (for {CardName(bestCard)})",
+			});
 		}
 
 		if (bestCard.CardType == CardType.Unit)
@@ -856,6 +950,11 @@ public sealed class SimpleAi
 		{
 			return null;
 		}
+		// A Builder that could build stays and builds (TryBuild) instead of only walking - attacks still go first.
+		if (!attack.HasValue && WantsToBuild(piece))
+		{
+			return null;
+		}
 
 		int value = attack?.Value ?? 0;
 		if (move.HasValue)
@@ -1088,27 +1187,21 @@ public sealed class SimpleAi
 	}
 
 	/// <summary>
-	/// Lets an idle Builder start its building when AP allows (keeping 1 AP spare) and the player has fewer than
-	/// two buildings of that kind. Turrets / Barricades go toward the scoring zone, the rest away from enemies.
+	/// Lets an idle Builder start its building when AP allows (keeping 1 AP spare), the player has fewer than two
+	/// buildings of that kind and at most MaxBuildings in total. Turrets / Barricades go toward the scoring zone, the
+	/// rest away from enemies.
 	/// </summary>
 	private bool TryBuild(List<AiAction> actions)
 	{
 		int ap = State.Players[PlayerIndex].ActionPoints;
+		if (State.GetPiecesOf(PlayerIndex).FindAll(p => p.IsBuilding).Count >= MaxBuildings)
+		{
+			return false;
+		}
 		foreach (Piece piece in State.GetPiecesOf(PlayerIndex))
 		{
 			BuildingType type = _controller.GetBuildType(piece);
-			// A builder in the scoring zone would stop scoring while it builds: keep it scoring instead.
-			if (type == BuildingType.None || piece.ConstructingId >= 0 || !_controller.CanCommand(piece)
-				|| BuildingInfo.GetCost(type) + 1 > ap || Board.IsInScoringZone(piece.Position))
-			{
-				continue;
-			}
-			int same = 0;
-			foreach (Piece p in State.GetPiecesOf(PlayerIndex))
-			{
-				same += p.Building == type ? 1 : 0;
-			}
-			if (same >= 2)
+			if (!WantsToBuild(piece) || !_controller.CanCommand(piece) || BuildingInfo.GetCost(type) > ap)
 			{
 				continue;
 			}
@@ -1145,7 +1238,7 @@ public sealed class SimpleAi
 				Card = piece.Source,
 				PieceId = piece.Id,
 				Target = tiles[0],
-				Description = $"#{piece.Id} {CardName(piece.Source)} builds {(tiles.Count > 1 ? $"{tiles.Count} {BuildingInfo.GetName(type)}s" : $"a {BuildingInfo.GetName(type)}")} " +
+				Description = $"#{piece.Id} {CardName(piece.Source)} builds {(tiles.Count > 1 ? $"{tiles.Count} {BuildingInfo.GetName(type, piece.Source.Clan)}s" : $"a {BuildingInfo.GetName(type, piece.Source.Clan)}")} " +
 					$"at {string.Join(" and ", tiles)} ({BuildingInfo.GetCost(type)} AP)",
 			});
 			return true;
@@ -1198,6 +1291,144 @@ public sealed class SimpleAi
 			return true;
 		}
 		return false;
+	}
+
+	/// <summary>
+	/// True for an idle Builder outside the scoring zone (it would stop scoring while building) whose building is still
+	/// worth raising: fewer than two of that kind, fewer than MaxBuildings in total and a free tile next to it.
+	/// </summary>
+	private bool WantsToBuild(Piece piece)
+	{
+		BuildingType type = _controller.GetBuildType(piece);
+		if (type == BuildingType.None || piece.ConstructingId >= 0 || Board.IsInScoringZone(piece.Position))
+		{
+			return false;
+		}
+		int same = 0;
+		int total = 0;
+		foreach (Piece p in State.GetPiecesOf(PlayerIndex))
+		{
+			same += p.Building == type ? 1 : 0;
+			total += p.IsBuilding ? 1 : 0;
+		}
+		return same < 2 && total < MaxBuildings && _controller.GetValidBuildTiles(piece).Count > 0 && IsBuildingUseful(piece, type);
+	}
+
+	/// <summary>
+	/// Whether the building would pay off where the builder stands: Mana Wells early on, Turrets near the zone or
+	/// enemies, Barricades when enemies approach, Shrines among allies, Obelisks with spells in hand. Clan buildings
+	/// also qualify through their aura: Fire / Frost with enemies close, Healing / Stone / Storm with allies close.
+	/// </summary>
+	private bool IsBuildingUseful(Piece builder, BuildingType type)
+	{
+		GridPos at = builder.Position;
+		int enemyDist = NearestEnemyDistance(at);
+		int alliesNear = State.GetPiecesOf(PlayerIndex).FindAll(p => p != builder && !p.IsBuilding && p.Position.ManhattanDistance(at) <= 2).Count;
+		int spells = State.Players[PlayerIndex].Hand.FindAll(c => c != null && c.CardType == CardType.Spell).Count;
+		bool useful = type switch
+		{
+			BuildingType.ManaWell => State.TurnNumber <= 14,
+			BuildingType.Turret => DistanceToZoneRect(at) <= 2 || enemyDist <= 5,
+			BuildingType.Barricade => enemyDist <= 4,
+			BuildingType.Shrine => alliesNear >= 2,
+			BuildingType.Obelisk => spells >= 2,
+			_ => false,
+		};
+		return useful || (builder.Source.Clan switch
+		{
+			Clan.Fire or Clan.Frost => enemyDist <= 3,
+			Clan.Healing or Clan.Stone or Clan.Storm => alliesNear >= 2,
+			_ => false,
+		});
+	}
+
+	/// <summary>Spells that only gain AP (net gain, no other effect), e.g. Mana Surge.</summary>
+	private bool IsPureAccelerator(CardData card) =>
+		card.CardType == CardType.Spell && card.ApGain > _controller.GetCardCost(card) && SpellNet(card) == 0
+		&& card.GrantStatus == StatusEffectType.None && !card.TargetsTile;
+
+	/// <summary>
+	/// Casts an AP-gaining spell (net AP gain) on any own piece in reach, if the hand holds something else to spend
+	/// the AP on. False otherwise.
+	/// </summary>
+	private bool TryAccelerate(List<AiAction> actions)
+	{
+		PlayerState me = State.Players[PlayerIndex];
+		foreach (CardData card in new List<CardData>(me.Hand))
+		{
+			if (card == null || !IsPureAccelerator(card) || _controller.GetCardCost(card) > me.ActionPoints)
+			{
+				continue;
+			}
+			bool useful = me.Hand.Exists(c => c != null && c != card && !IsPureAccelerator(c));
+			if (!useful)
+			{
+				continue;
+			}
+			foreach (Piece p in State.GetPiecesOf(PlayerIndex))
+			{
+				if (!_controller.CanPlaySpellCard(card, p))
+				{
+					continue;
+				}
+				GridPos at = p.Position;
+				if (!_controller.PlaySpellCard(card, p))
+				{
+					return false;
+				}
+				actions.Add(new AiAction
+				{
+					Kind = AiActionKind.PlaySpell,
+					PlayerIndex = PlayerIndex,
+					Card = card,
+					PieceId = p.Id,
+					Target = at,
+					Description = $"Cast {CardName(card)} on #{p.Id} {CardName(p.Source)} at {at}",
+				});
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/// <summary>AP at the start of the next own turn: base + bonus + AP-producing pieces and Mana Wells.</summary>
+	private int Income()
+	{
+		int income = State.Config.BaseAp + State.Players[PlayerIndex].BonusApPerTurn;
+		foreach (Piece p in State.GetPiecesOf(PlayerIndex))
+		{
+			income += p.IsBuilding
+				? (p.Building == BuildingType.ManaWell && !p.UnderConstruction ? State.Config.ManaWellAp : 0)
+				: p.ApBonus;
+		}
+		return income;
+	}
+
+	/// <summary>
+	/// Rough worth of a unit card in stat points: Attack counts 1.5, HP and Shield 1, plus reach, speed, area attacks,
+	/// AP income (3 per AP), keywords, legend effects and triggers. Planted units that bring no AP lose a little (they
+	/// never score).
+	/// </summary>
+	private static double CardValue(CardData card)
+	{
+		if (card.CardType != CardType.Unit)
+		{
+			return SpellDraftValue(card) + card.ApGain * 2;
+		}
+		double value = card.Attack * 1.5 + card.Hp + card.Shield
+			+ Math.Max(0, card.Range - 1)
+			+ (card.Movement >= 5 ? 1 : card.Movement <= 1 ? -1 : 0)
+			+ (card.AttackArea != AreaShape.Single ? 1.5 : 0)
+			+ card.ApBonus * 3
+			+ KeywordInfo.Split(card.Keywords).Count
+			+ (card.Legend != LegendEffect.None ? 4 : 0)
+			+ (card.Deathrattle != DeathrattleType.None ? 1 : 0)
+			+ (card.OnFirstHit != FirstHitType.None ? 1 : 0);
+		if (card.HasKeyword(Keyword.Planted) && card.ApBonus <= 0)
+		{
+			value -= 1;
+		}
+		return value;
 	}
 
 	private int NearestEnemyDistance(GridPos tile)
@@ -1271,9 +1502,6 @@ public sealed class SimpleAi
 		}
 		return false;
 	}
-
-	private static int UnitStrength(CardData card) =>
-		card.Attack + card.Hp + card.Shield + KeywordInfo.Split(card.Keywords).Count;
 
 	private static int SpellNet(CardData card) =>
 		card.AttackDelta + card.HpDelta + card.ShieldDelta + card.MovementDelta + card.RangeDelta;

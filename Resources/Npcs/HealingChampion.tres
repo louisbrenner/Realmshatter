@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcHealingChampion.tres" id="3_deck"]
-[ext_resource type="Resource" path="res://Resources/Cards/Zealot.tres" id="r_Zealot"]
+[ext_resource type="Resource" path="res://Resources/Cards/Templar.tres" id="r_Templar"]
+[ext_resource type="Resource" path="res://Resources/Cards/Almoner.tres" id="r_Almoner"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archangel.tres" id="r_Archangel"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ Position = Vector2(760, 250)
 Greeting = "Seraphine sees only those who pass my trial of the sun."
 RematchLine = "The sun rises again - and so do I."
 DefeatLine = "Radiant. Go - the High Priestess awaits."
-VictoryLine = "The dawn was not yours today."
+VictoryLine = "The dawn was not yours today. Your offering lights our candles."
 RewardGold = 100
-RewardCards = Array[ExtResource("2_card")]([ExtResource("r_Zealot")])
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_Templar"), ExtResource("r_Templar"), ExtResource("r_Almoner"), ExtResource("r_Almoner"), ExtResource("r_Archangel")])

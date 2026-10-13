@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Rime Warden"
+Description = "Freezes the lane solid with Rime Barricades."
+CardType = 0
+Role = 1
+Class = 3
+ApCost = 2
+Movement = 3
+Attack = 1
+Hp = 5
+Range = 1
+Shield = 1
+ApBonus = 0
+Clan = 3
+Rarity = 1
+Keywords = 258
+Tint = Color(0.6, 0.85, 1, 1)

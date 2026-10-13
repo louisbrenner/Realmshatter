@@ -81,7 +81,7 @@ static func from_events(p_attacker_id: int, p_from: Vector2i, p_target: Vector2i
 					current.effects |= HitEffect.HEALED
 			ResolutionEventType.TILE_EFFECT_APPLIED:
 				preview.new_tile_effects.append(TileEffect.new(e.tile_effect, e.to, attacker_owner,
-					e.expiry_turn - e.amount, e.expiry_turn, e.card_name))
+					e.expiry_turn - e.amount + 1, e.expiry_turn, e.card_name))
 				if current != null and e.tile_effect == TileEffectType.LAVA:
 					current.effects |= HitEffect.LAVA
 			ResolutionEventType.STATUS_APPLIED:

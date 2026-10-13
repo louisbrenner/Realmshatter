@@ -1,29 +1,30 @@
-[gd_resource type="Resource" script_class="DeckData" load_steps=20 format=3]
+[gd_resource type="Resource" script_class="DeckData" load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/DeckData.gd" id="1_deck"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/RimeStalker.tres" id="c_RimeStalker"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostArcher.tres" id="c_FrostArcher"]
 [ext_resource type="Resource" path="res://Resources/Cards/FrostMage.tres" id="c_FrostMage"]
 [ext_resource type="Resource" path="res://Resources/Cards/IceSentinel.tres" id="c_IceSentinel"]
+[ext_resource type="Resource" path="res://Resources/Cards/GlacierGolem.tres" id="c_GlacierGolem"]
+[ext_resource type="Resource" path="res://Resources/Cards/AvalancheShaman.tres" id="c_AvalancheShaman"]
+[ext_resource type="Resource" path="res://Resources/Cards/GlacierProspector.tres" id="c_GlacierProspector"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostWyrm.tres" id="c_FrostWyrm"]
 [ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
 [ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="c_Lancer"]
-[ext_resource type="Resource" path="res://Resources/Cards/FrostArcher.tres" id="c_FrostArcher"]
-[ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
 [ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
 [ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
 [ext_resource type="Resource" path="res://Resources/Cards/Frostbite.tres" id="c_Frostbite"]
 [ext_resource type="Resource" path="res://Resources/Cards/Hailstorm.tres" id="c_Hailstorm"]
 [ext_resource type="Resource" path="res://Resources/Cards/Gale.tres" id="c_Gale"]
-[ext_resource type="Resource" path="res://Resources/Cards/StoneWall.tres" id="c_StoneWall"]
-[ext_resource type="Resource" path="res://Resources/Cards/Weaken.tres" id="c_Weaken"]
-[ext_resource type="Resource" path="res://Resources/Cards/BoneKnight.tres" id="c_BoneKnight"]
-[ext_resource type="Resource" path="res://Resources/Cards/Sanctuary.tres" id="c_Sanctuary"]
-[ext_resource type="Resource" path="res://Resources/Cards/Swordsman.tres" id="c_Swordsman"]
-[ext_resource type="Resource" path="res://Resources/Cards/RimeStalker.tres" id="c_RimeStalker"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaSurge.tres" id="c_ManaSurge"]
+[ext_resource type="Resource" path="res://Resources/Cards/RimeWarden.tres" id="c_RimeWarden"]
+[ext_resource type="Resource" path="res://Resources/Cards/IcebowEngineer.tres" id="c_IcebowEngineer"]
 
 [resource]
 script = ExtResource("1_deck")
 name = "Frostbound"
-cards = Array[ExtResource("2_card")]([ExtResource("c_FrostMage"), ExtResource("c_FrostMage"), ExtResource("c_IceSentinel"), ExtResource("c_IceSentinel"), ExtResource("c_Guardian"), ExtResource("c_RimeStalker"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_FrostArcher"), ExtResource("c_FrostArcher"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Frostbite"), ExtResource("c_Frostbite"), ExtResource("c_Hailstorm"), ExtResource("c_Hailstorm"), ExtResource("c_Gale"), ExtResource("c_Gale"), ExtResource("c_StoneWall"), ExtResource("c_StoneWall"), ExtResource("c_Weaken"), ExtResource("c_Weaken"), ExtResource("c_BoneKnight"), ExtResource("c_BoneKnight"), ExtResource("c_Sanctuary"), ExtResource("c_Sanctuary"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman")])
+cards = Array[ExtResource("2_card")]([ExtResource("c_RimeStalker"), ExtResource("c_RimeStalker"), ExtResource("c_RimeStalker"), ExtResource("c_FrostArcher"), ExtResource("c_FrostArcher"), ExtResource("c_FrostArcher"), ExtResource("c_FrostMage"), ExtResource("c_FrostMage"), ExtResource("c_FrostMage"), ExtResource("c_IceSentinel"), ExtResource("c_GlacierGolem"), ExtResource("c_AvalancheShaman"), ExtResource("c_GlacierProspector"), ExtResource("c_GlacierProspector"), ExtResource("c_FrostWyrm"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Frostbite"), ExtResource("c_Frostbite"), ExtResource("c_Hailstorm"), ExtResource("c_Hailstorm"), ExtResource("c_Gale"), ExtResource("c_ManaSurge"), ExtResource("c_ManaSurge"), ExtResource("c_RimeWarden"), ExtResource("c_IcebowEngineer")])
 description = "Lock the board down. Freeze and weaken enemies, wall off lanes and pierce through the gaps. Splash: a sanctuary."
 accent_color = Color(0.55, 0.85, 1, 1)
 showcase = ExtResource("c_IceSentinel")

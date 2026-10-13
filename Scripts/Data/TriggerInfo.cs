@@ -110,7 +110,7 @@ public static class TriggerInfo
 		}
 		if (card.HasKeyword(Keyword.Builder) && BuildingInfo.ForClass(card.Class) != BuildingType.None)
 		{
-			lines.Add($"Builds: {BuildingInfo.GetName(BuildingInfo.ForClass(card.Class))}");
+			lines.Add($"Builds: {BuildingInfo.GetName(BuildingInfo.ForClass(card.Class), card.Clan)}");
 		}
 		if (card.HasKeyword(Keyword.Aura))
 		{

@@ -461,7 +461,7 @@ func get_spell_range_tiles() -> Array[Vector2i]:
 
 ## Tiles a building standing on 'at' covers: Turret = its shooting range, Shrine = the 8 surrounding tiles,
 ## Obelisk = its spell cast radius. Empty for buildings without a range.
-func get_building_range_tiles(type: int, at: Vector2i, turret_range: int) -> Array[Vector2i]:
+func get_building_range_tiles(type: int, at: Vector2i, turret_range: int, clan: int = Clan.NONE) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	for y: int in range(state.board.height):
 		for x: int in range(state.board.width):
@@ -474,6 +474,8 @@ func get_building_range_tiles(type: int, at: Vector2i, turret_range: int) -> Arr
 					in_range = pos != at and absi(pos.x - at.x) <= 1 and absi(pos.y - at.y) <= 1
 				BuildingType.OBELISK:
 					in_range = GridPos.manhattan_distance(at, pos) <= state.config.obelisk_empower_radius
+			# Clan buildings also cover the 8 tiles their aura pulses onto.
+			in_range = in_range or (clan != Clan.NONE and pos != at and absi(pos.x - at.x) <= 1 and absi(pos.y - at.y) <= 1)
 			if in_range:
 				result.append(pos)
 	return result
@@ -643,7 +645,8 @@ func build(piece: Piece, tiles: Variant, move: Variant = null) -> Variant:
 			if not state.board.is_passable(tile) or state.board.is_occupied(tile) \
 					or absi(tile.x - piece.position.x) > 1 or absi(tile.y - piece.position.y) > 1:
 				continue
-			var building: Piece = state.spawn_building(type, piece.owner_index, tile, state.turn_number + 2 * BuildingInfo.get_build_turns(type), piece.id)
+			var building: Piece = state.spawn_building(type, piece.owner_index, tile, state.turn_number + 2 * BuildingInfo.get_build_turns(type), piece.id,
+					piece.source.clan)
 			if piece.constructing_id < 0:
 				piece.constructing_id = building.id
 			var ev := ResolutionEvent.new()
@@ -653,7 +656,7 @@ func build(piece: Piece, tiles: Variant, move: Variant = null) -> Variant:
 			ev.player_index = piece.owner_index
 			ev.from = piece.position
 			ev.to = tile
-			ev.spell_name = BuildingInfo.display_name(type)
+			ev.spell_name = BuildingInfo.display_name(type, piece.source.clan)
 			ev.expiry_turn = building.complete_turn
 			events.append(ev)
 	_last_action_events = events

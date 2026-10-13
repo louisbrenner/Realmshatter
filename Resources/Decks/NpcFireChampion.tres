@@ -1,27 +1,29 @@
-[gd_resource type="Resource" script_class="DeckData" load_steps=18 format=3]
+[gd_resource type="Resource" script_class="DeckData" load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/DeckData.cs" id="1_deck"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
+[ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="c_Lancer"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaSurge.tres" id="c_ManaSurge"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberStalker.tres" id="c_EmberStalker"]
 [ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="c_FlameArcher"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberImp.tres" id="c_EmberImp"]
 [ext_resource type="Resource" path="res://Resources/Cards/Berserker.tres" id="c_Berserker"]
 [ext_resource type="Resource" path="res://Resources/Cards/CinderWraith.tres" id="c_CinderWraith"]
+[ext_resource type="Resource" path="res://Resources/Cards/AshenRaider.tres" id="c_AshenRaider"]
+[ext_resource type="Resource" path="res://Resources/Cards/CinderMortar.tres" id="c_CinderMortar"]
+[ext_resource type="Resource" path="res://Resources/Cards/PyreOffering.tres" id="c_PyreOffering"]
 [ext_resource type="Resource" path="res://Resources/Cards/Pyromancer.tres" id="c_Pyromancer"]
-[ext_resource type="Resource" path="res://Resources/Cards/PowderKeg.tres" id="c_PowderKeg"]
-[ext_resource type="Resource" path="res://Resources/Cards/EmberImp.tres" id="c_EmberImp"]
-[ext_resource type="Resource" path="res://Resources/Cards/Phoenix.tres" id="c_Phoenix"]
-[ext_resource type="Resource" path="res://Resources/Cards/Raider.tres" id="c_Raider"]
-[ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="c_Lancer"]
-[ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
-[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameWall.tres" id="c_FlameWall"]
 [ext_resource type="Resource" path="res://Resources/Cards/Fireball.tres" id="c_Fireball"]
 [ext_resource type="Resource" path="res://Resources/Cards/Meteor.tres" id="c_Meteor"]
-[ext_resource type="Resource" path="res://Resources/Cards/FlameWall.tres" id="c_FlameWall"]
-[ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
+[ext_resource type="Resource" path="res://Resources/Cards/Phoenix.tres" id="c_Phoenix"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberEngineer.tres" id="c_EmberEngineer"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameWarden.tres" id="c_FlameWarden"]
 
 [resource]
 script = ExtResource("1_deck")
 Name = "Brakk's Pyre"
-Cards = Array[ExtResource("2_card")]([ExtResource("c_FlameArcher"), ExtResource("c_FlameArcher"), ExtResource("c_FlameArcher"), ExtResource("c_Berserker"), ExtResource("c_Berserker"), ExtResource("c_Berserker"), ExtResource("c_CinderWraith"), ExtResource("c_CinderWraith"), ExtResource("c_Pyromancer"), ExtResource("c_Pyromancer"), ExtResource("c_PowderKeg"), ExtResource("c_PowderKeg"), ExtResource("c_EmberImp"), ExtResource("c_EmberImp"), ExtResource("c_Phoenix"), ExtResource("c_Raider"), ExtResource("c_Raider"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Fireball"), ExtResource("c_Fireball"), ExtResource("c_Fireball"), ExtResource("c_Meteor"), ExtResource("c_Meteor"), ExtResource("c_FlameWall"), ExtResource("c_FlameWall"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry")])
+Cards = Array[ExtResource("2_card")]([ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_ManaSurge"), ExtResource("c_EmberStalker"), ExtResource("c_FlameArcher"), ExtResource("c_FlameArcher"), ExtResource("c_EmberImp"), ExtResource("c_EmberImp"), ExtResource("c_Berserker"), ExtResource("c_Berserker"), ExtResource("c_CinderWraith"), ExtResource("c_CinderWraith"), ExtResource("c_AshenRaider"), ExtResource("c_AshenRaider"), ExtResource("c_AshenRaider"), ExtResource("c_CinderMortar"), ExtResource("c_CinderMortar"), ExtResource("c_PyreOffering"), ExtResource("c_PyreOffering"), ExtResource("c_Pyromancer"), ExtResource("c_Pyromancer"), ExtResource("c_FlameWall"), ExtResource("c_FlameWall"), ExtResource("c_Fireball"), ExtResource("c_Meteor"), ExtResource("c_Phoenix"), ExtResource("c_EmberEngineer"), ExtResource("c_EmberEngineer"), ExtResource("c_FlameWarden"), ExtResource("c_FlameWarden")])
 Description = "A champion's deck of the Ember Legion."
 AccentColor = Color(1, 0.45, 0.15, 1)
 Showcase = ExtResource("c_Pyromancer")

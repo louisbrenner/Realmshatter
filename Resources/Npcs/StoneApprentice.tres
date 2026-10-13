@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcStoneApprentice.tres" id="3_deck"]
-[ext_resource type="Resource" path="res://Resources/Cards/RockSlinger.tres" id="r_RockSlinger"]
+[ext_resource type="Resource" path="res://Resources/Cards/QuarryHauler.tres" id="r_QuarryHauler"]
+[ext_resource type="Resource" path="res://Resources/Cards/Thornback.tres" id="r_Thornback"]
+[ext_resource type="Resource" path="res://Resources/Cards/Stonemason.tres" id="r_Stonemason"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -16,6 +18,6 @@ Position = Vector2(1150, 370)
 Greeting = "Oi. Out of my quarry - unless you can push me out of it. Duel?"
 RematchLine = "Back for more rocks to the face?"
 DefeatLine = "Hrmph. Solid play. Here, a Rock Slinger - aim for the knees."
-VictoryLine = "Like pushing a mountain, eh? Better luck next time."
+VictoryLine = "Like pushing a mountain, eh? That'll cost you for the quarry damage."
 RewardGold = 60
-RewardCards = Array[ExtResource("2_card")]([ExtResource("r_RockSlinger")])
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_QuarryHauler"), ExtResource("r_QuarryHauler"), ExtResource("r_Thornback"), ExtResource("r_Stonemason")])

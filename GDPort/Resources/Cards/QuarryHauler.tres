@@ -5,15 +5,15 @@
 [resource]
 script = ExtResource("1")
 name = "Quarry Hauler"
-description = "Digs Mana Wells; its collapse shoves everyone away."
+description = "Hauls ore for +1 AP a turn and digs Mana Wells; its collapse shoves everyone away."
 card_type = 0
 role = 2
 movement = 3
 attack = 0
-hp = 3
+hp = 4
 range = 1
 shield = 0
-ap_bonus = 0
+ap_bonus = 1
 clan = 5
 class_ = 10
 rarity = 1

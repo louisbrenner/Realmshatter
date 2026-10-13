@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
@@ -8,6 +8,9 @@
 [ext_resource type="Resource" path="res://Resources/Cards/Hrimgar.tres" id="l_Hrimgar"]
 [ext_resource type="Resource" path="res://Resources/Cards/Voltaris.tres" id="l_Voltaris"]
 [ext_resource type="Resource" path="res://Resources/Cards/Gorran.tres" id="l_Gorran"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaTotem.tres" id="r_ManaTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/PyreOffering.tres" id="r_PyreOffering"]
+[ext_resource type="Resource" path="res://Resources/Cards/RichVein.tres" id="r_RichVein"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -20,8 +23,9 @@ Position = Vector2(960, 400)
 Greeting = "So you broke all five clans. I broke the realm itself. Their legends kneel before my throne - win one, if you can."
 RematchLine = "Back for another crown? The legends are still mine to give."
 DefeatLine = "Impossible... Take it. A legend should never serve a loser."
-VictoryLine = "Shattered, like everyone before you."
+VictoryLine = "Shattered, like everyone before you. Your gold joins my hoard."
 RewardGold = 500
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_ManaTotem"), ExtResource("r_ManaTotem"), ExtResource("r_PyreOffering"), ExtResource("r_PyreOffering"), ExtResource("r_RichVein"), ExtResource("r_RichVein")])
 BonusApPerTurn = 2
 RewardOneOf = Array[ExtResource("2_card")]([ExtResource("l_Ignis"), ExtResource("l_Solenne"), ExtResource("l_Hrimgar"), ExtResource("l_Voltaris"), ExtResource("l_Gorran")])
 RequiresDefeated = Array[String](["fire_leader", "healing_leader", "frost_leader", "storm_leader", "stone_leader"])

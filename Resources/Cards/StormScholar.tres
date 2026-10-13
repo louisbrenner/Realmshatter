@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Storm Scholar"
+Description = "Erects Storm Obelisks that crackle with borrowed power."
+CardType = 0
+Role = 1
+Class = 6
+ApCost = 2
+Movement = 3
+Attack = 2
+Hp = 3
+Range = 2
+Shield = 0
+ApBonus = 0
+Clan = 4
+Rarity = 1
+Keywords = 288
+Tint = Color(1, 0.95, 0.45, 1)

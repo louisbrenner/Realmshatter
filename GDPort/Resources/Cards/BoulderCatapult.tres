@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Boulder Catapult"
+description = "A siege engine the quarry folk swear by."
+card_type = 0
+rarity = 1
+role = 0
+class_ = 9
+ap_cost = 3
+movement = 0
+attack = 2
+hp = 5
+range = 3
+shield = 0
+ap_bonus = 0
+attack_area = 1
+keywords = 1024
+clan = 5
+tint = Color(0.7, 0.62, 0.5, 1)

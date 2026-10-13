@@ -46,7 +46,7 @@ public partial class GameConfig : Resource
 	/// <summary>Maximum victory points a player may convert into action points per turn (1 VP -> 1 AP).</summary>
 	[Export] public int MaxVpToApPerTurn { get; set; } = 2;
 	/// <summary>Extra AP for the second player (player 1) on its first turn.</summary>
-	[Export] public int SecondPlayerFirstTurnBonusAp { get; set; } = 1;
+	[Export] public int SecondPlayerFirstTurnBonusAp { get; set; } = 0;
 
 	/// <summary>Damage dealt by Lava at the start of the occupant owner's turn.</summary>
 	[ExportGroup("Map Effects & Keywords")]
@@ -76,7 +76,7 @@ public partial class GameConfig : Resource
 	/// <summary>Maximum number of friendlies a single move can push in a row.</summary>
 	[Export] public int MaxPushChain { get; set; } = 3;
 	/// <summary>Movement a unit spends to enter a Water tile (rivers, ponds).</summary>
-	[Export] public int WaterMoveCost { get; set; } = 2;
+	[Export] public int WaterMoveCost { get; set; } = 3;
 	/// <summary>Hit points of a breakable Rock wall.</summary>
 	[Export] public int RockHp { get; set; } = 3;
 	/// <summary>AP cost of setting a trap (Trapper keyword; replaces the attack of the unit's action).</summary>

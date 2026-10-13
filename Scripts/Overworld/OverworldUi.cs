@@ -9,6 +9,8 @@ namespace Realmshatter;
 public partial class OverworldUi : CanvasLayer
 {
 	[Signal] public delegate void DeckButtonPressedEventHandler();
+	/// <summary>The "Local PvP" button was pressed (hotseat match on this device).</summary>
+	[Signal] public delegate void HotseatButtonPressedEventHandler();
 
 	[Export] public Vector2 ReferenceResolution { get; set; } = new Vector2(1152, 648);
 
@@ -62,6 +64,24 @@ public partial class OverworldUi : CanvasLayer
 			EmitSignal(SignalName.DeckButtonPressed);
 		};
 		_root.AddChild(deckButton);
+
+		var hotseatButton = new Button
+		{
+			Text = "Local PvP (2 players)",
+			TooltipText = "Two players take turns on this device. No rewards, your collection is not affected.",
+			FocusMode = Control.FocusModeEnum.None,
+			OffsetLeft = 10,
+			OffsetRight = 200,
+			OffsetTop = 62,
+			OffsetBottom = 98,
+		};
+		hotseatButton.AddThemeFontSizeOverride("font_size", 16);
+		hotseatButton.Pressed += () =>
+		{
+			Sfx.Play(SfxId.ButtonClick);
+			EmitSignal(SignalName.HotseatButtonPressed);
+		};
+		_root.AddChild(hotseatButton);
 
 		var help = new Label
 		{

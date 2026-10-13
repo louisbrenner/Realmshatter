@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcFrostChampion.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/IceSentinel.tres" id="r_IceSentinel"]
 [ext_resource type="Resource" path="res://Resources/Cards/FrostMage.tres" id="r_FrostMage"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostWyrm.tres" id="r_FrostWyrm"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ position = Vector2(760, 250)
 greeting = "Isolde rests behind the glacier. I AM the glacier."
 rematch_line = "The glacier does not tire."
 defeat_line = "Cracked... Go. Isolde will not be so kind."
-victory_line = "Crushed beneath the ice, as all are."
+victory_line = "Crushed beneath the ice. Your gold sinks with you."
 reward_gold = 100
-reward_cards = Array[ExtResource("2_card")]([ExtResource("r_FrostMage")])
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_IceSentinel"), ExtResource("r_IceSentinel"), ExtResource("r_FrostMage"), ExtResource("r_FrostMage"), ExtResource("r_FrostWyrm")])

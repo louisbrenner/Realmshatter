@@ -54,6 +54,10 @@ public partial class CameraRig : Node3D
 	private CamPose _to;
 	private CamPose _current;
 	private bool _switchedProjection;
+	/// <summary>Yaw change of the running tween (shortest way, except flips, which turn in a fixed direction).</summary>
+	private float _yawDelta;
+	/// <summary>Direction of the next flip turn (+1 / -1), 0 = shortest way.</summary>
+	private int _spin;
 	private readonly RandomNumberGenerator _shakeRng = new RandomNumberGenerator();
 	private float _shakeStrength;
 	private float _shakeDuration;
@@ -65,6 +69,9 @@ public partial class CameraRig : Node3D
 
 	/// <summary>The rig's camera.</summary>
 	public Camera3D Camera => _camera;
+
+	/// <summary>True while the view is turned 180 degrees (the board seen from player 1's side, hotseat).</summary>
+	public bool Flipped { get; private set; }
 
 	private struct CamPose
 	{
@@ -118,6 +125,12 @@ public partial class CameraRig : Node3D
 			_from = _current;
 			_to = target;
 			_switchedProjection = false;
+			_yawDelta = Mathf.AngleDifference(_from.Yaw, _to.Yaw);
+			if (_spin != 0 && Mathf.Abs(_yawDelta) > Mathf.Pi - 0.05f)
+			{
+				// Exactly opposite: turn the way PieceViews turn (BoardAnimator.SetFlipped), not by rounding luck.
+				_yawDelta = _spin * Mathf.Abs(_yawDelta);
+			}
 			_tween = CreateTween();
 			_tween.SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.InOut);
 			_tween.TweenMethod(Callable.From<float>(Blend), 0.0f, 1.0f, TweenDuration);
@@ -165,6 +178,20 @@ public partial class CameraRig : Node3D
 		}
 	}
 
+	/// <summary>Turns the view 180 degrees around the board (true = seen from player 1's side), keeping the mode.</summary>
+	public void SetFlipped(bool flipped, bool animate = true)
+	{
+		if (flipped == Flipped)
+		{
+			return;
+		}
+		Flipped = flipped;
+		// Flipping turns counter-clockwise (+yaw), unflipping clockwise, like the piece tokens.
+		_spin = flipped ? 1 : -1;
+		SetMode(Mode, animate);
+		_spin = 0;
+	}
+
 	/// <summary>Advances 2D -> 2.5D -> 3D -> 2D and returns the new mode.</summary>
 	public ViewMode CycleMode()
 	{
@@ -194,7 +221,7 @@ public partial class CameraRig : Node3D
 		var pose = new CamPose
 		{
 			Pitch = Mathf.LerpAngle(_from.Pitch, _to.Pitch, t),
-			Yaw = Mathf.LerpAngle(_from.Yaw, _to.Yaw, t),
+			Yaw = _from.Yaw + _yawDelta * t,
 			Distance = Mathf.Lerp(_from.Distance, _to.Distance, t),
 			Size = Mathf.Lerp(_from.Size, _to.Size, t),
 			Fov = Mathf.Lerp(_from.Fov, _to.Fov, t),
@@ -235,14 +262,15 @@ public partial class CameraRig : Node3D
 	private CamPose ComputePose(ViewMode mode)
 	{
 		float aspect = GetAspect();
+		float turn = Flipped ? Mathf.Pi : 0f;
 		switch (mode)
 		{
 			case ViewMode.TwoPointFiveD:
-				return ComputeOrthoPose(Mathf.DegToRad(IsoPitchDegrees), Mathf.DegToRad(IsoYawDegrees), aspect);
+				return ComputeOrthoPose(Mathf.DegToRad(IsoPitchDegrees), Mathf.DegToRad(IsoYawDegrees) + turn, aspect);
 			case ViewMode.ThreeD:
-				return ComputePerspectivePose(Mathf.DegToRad(PerspectivePitchDegrees), Mathf.DegToRad(PerspectiveYawDegrees), aspect);
+				return ComputePerspectivePose(Mathf.DegToRad(PerspectivePitchDegrees), Mathf.DegToRad(PerspectiveYawDegrees) + turn, aspect);
 			default:
-				return ComputeOrthoPose(Mathf.DegToRad(-90f), 0f, aspect);
+				return ComputeOrthoPose(Mathf.DegToRad(-90f), turn, aspect);
 		}
 	}
 

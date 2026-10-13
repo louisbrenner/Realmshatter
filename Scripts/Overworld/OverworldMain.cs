@@ -103,6 +103,7 @@ public partial class OverworldMain : Node2D
 		_ui = new OverworldUi { Name = "UI" };
 		AddChild(_ui);
 		_ui.DeckButtonPressed += OpenDeckBuilder;
+		_ui.HotseatButtonPressed += StartHotseat;
 		_ui.Shop.Closed += () => _player.InputEnabled = true;
 		_ui.DeckBuilder.Closed += () => _player.InputEnabled = true;
 
@@ -488,6 +489,24 @@ public partial class OverworldMain : Node2D
 		{
 			return "?";
 		}
+		if (npc.BonusApPerTurn > 0)
+		{
+			return "[color=#a02020]Boss[/color]";
+		}
+		// Clan duelists: the rank in the Id matches the measured difficulty ladder (balance simulation).
+		string id = npc.Id ?? "";
+		if (id.EndsWith("_initiate"))
+		{
+			return "Easy";
+		}
+		if (id.EndsWith("_apprentice") || id.EndsWith("_adept"))
+		{
+			return "Medium";
+		}
+		if (id.EndsWith("_champion"))
+		{
+			return "Hard";
+		}
 		float rarity = 0f;
 		foreach (CardData card in npc.Deck.Cards)
 		{
@@ -498,7 +517,7 @@ public partial class OverworldMain : Node2D
 		{
 			return "[color=#a02020]Boss[/color]";
 		}
-		return rarity >= 0.8f ? "Hard" : rarity >= 0.35f ? "Medium" : "Easy";
+		return rarity >= 0.6f ? "Hard" : rarity >= 0.2f ? "Medium" : "Easy";
 	}
 
 	private void EndTalk()
@@ -538,6 +557,22 @@ public partial class OverworldMain : Node2D
 		fade.TweenCallback(Callable.From(() => GetTree().ChangeSceneToFile(BattleSession.BattleScene)));
 	}
 
+	/// <summary>Starts a local two-player (hotseat) match; both players pick a theme deck in the battle scene.</summary>
+	private void StartHotseat()
+	{
+		if (_ui.IsBusy || _transitioning)
+		{
+			return;
+		}
+		_transitioning = true;
+		_player.InputEnabled = false;
+		Sfx.Play(SfxId.TurnEnemy);
+		HotseatSession.Begin(_player.GlobalPosition, _house);
+		Tween fade = CreateTween();
+		fade.TweenProperty(this, "modulate", new Color(0.1f, 0.1f, 0.1f), 0.45f);
+		fade.TweenCallback(Callable.From(() => GetTree().ChangeSceneToFile(BattleSession.BattleScene)));
+	}
+
 	private void OpenDeckBuilder()
 	{
 		EndTalk();
@@ -551,6 +586,12 @@ public partial class OverworldMain : Node2D
 		string message = BattleSession.PendingMessage;
 		BattleSession.LastOpponent = null;
 		BattleSession.PendingMessage = "";
+		if (npc == null && !string.IsNullOrEmpty(message))
+		{
+			// Back from a hotseat match: no NPC to talk to.
+			_ui.ShowToast(message, 5f);
+			return;
+		}
 		if (npc == null || string.IsNullOrEmpty(message))
 		{
 			_ui.ShowToast("Welcome to Realmshatter! Duel the townsfolk, enter the clan halls - or visit the market.", 5f);

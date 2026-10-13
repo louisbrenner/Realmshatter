@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcHealingLeader.tres" id="3_deck"]
 [ext_resource type="Resource" path="res://Resources/Cards/Archangel.tres" id="r_Archangel"]
+[ext_resource type="Resource" path="res://Resources/Cards/MendingRain.tres" id="r_MendingRain"]
+[ext_resource type="Resource" path="res://Resources/Cards/Templar.tres" id="r_Templar"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,9 +19,9 @@ position = Vector2(480, 215)
 greeting = "I am Seraphine, High Priestess of the Dawn Covenant. My pieces simply refuse to fall. Will you test them?"
 rematch_line = "The dawn rises again. Shall we?"
 defeat_line = "Light shines through you. The Archangel will walk at your side now."
-victory_line = "Rest, child. Even the sun must set before it rises."
+victory_line = "Rest, child. The Covenant gratefully accepts your tithe."
 reward_gold = 150
-reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Archangel")])
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Archangel"), ExtResource("r_Archangel"), ExtResource("r_MendingRain"), ExtResource("r_MendingRain"), ExtResource("r_Templar"), ExtResource("r_Templar")])
 bonus_ap_per_turn = 1
 requires_defeated = Array[String](["healing_initiate", "healing_adept", "healing_champion"])
 locked_line = "Prove yourself against the three duelists of this hall first - then I will face you."

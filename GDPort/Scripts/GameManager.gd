@@ -3,10 +3,12 @@ extends Node
 ## Root script of Main.tscn. Wires the pure rules (GameState / TurnController) to the board view,
 ## animator, order overlay, camera, HUD and the AI, and runs the human input state machine (player 0).
 ## User args: --selftest prints the rules and AI self-tests, --autoplay lets a second SimpleAi
-## play the human side until game over and then quits (debug).
+## play the human side until game over and then quits (debug), --hotseat starts a local two-player match.
+## Hotseat (HotseatSession or --hotseat): both sides are human; _human_player follows the player whose turn it
+## is, and a curtain hides the hand and traps while the device is passed on.
 
-const HUMAN_PLAYER := 0
 const AI_PLAYER := 1
+const HOTSEAT_NAMES: Array[String] = ["Player 1", "Player 2"]
 const MAX_AUTOMATED_TURNS := 1000
 
 @export_group("Rules")
@@ -68,6 +70,17 @@ var _hovered_hand_card: CardData
 var _range_tiles: Array[Vector2i] = []
 var _return_to_town: bool = false
 var _theme_random: RandomNumberGenerator = RandomNumberGenerator.new()
+var _hotseat: bool = false
+## Player whose view (hand, traps, info) is shown: always 0 outside hotseat matches.
+var _view_player: int = 0
+## Hotseat deck selection: which player is choosing (0, then 1).
+var _hotseat_picking: int = 0
+## Hotseat: the hand is hidden while the device is handed over.
+var _conceal_hand: bool = false
+var _curtain: HotseatCurtain
+
+var _human_player: int:
+	get: return _view_player
 
 
 func _ready() -> void:
@@ -93,7 +106,8 @@ func _ready() -> void:
 		Engine.time_scale = 8.0
 		print("GameManager: autoplay enabled (both sides played by SimpleAi).")
 	var selftest: bool = user_args.has("--selftest")
-	if not BattleSession.get_is_active() and start_in_overworld and not _autoplay and not selftest \
+	_hotseat = not _autoplay and (HotseatSession.is_active or user_args.has("--hotseat"))
+	if not BattleSession.get_is_active() and not _hotseat and start_in_overworld and not _autoplay and not selftest \
 			and ResourceLoader.exists(BattleSession.OVERWORLD_SCENE):
 		(func() -> void: get_tree().change_scene_to_file(BattleSession.OVERWORLD_SCENE)).call_deferred()
 		return
@@ -120,6 +134,11 @@ func _ready() -> void:
 	elif user_args.has("--view=2.5d"):
 		camera_rig.set_mode(ViewMode.TWO_POINT_FIVE_D, false)
 	_on_view_mode_changed(camera_rig.mode)
+	if _hotseat:
+		_curtain = HotseatCurtain.new()
+		_curtain.name = "HotseatCurtain"
+		add_child(_curtain)
+		hud.set_view_player(0, HOTSEAT_NAMES)
 
 	_begin_new_game()
 
@@ -134,6 +153,13 @@ func _begin_new_game() -> void:
 		start_new_game()
 		return
 	var themes: Array[DeckData] = _theme_list()
+	if _hotseat and themes.size() > 0:
+		# Both players pick their deck one after the other.
+		_hotseat_picking = 0
+		_view_player = 0
+		hud.set_view_player(0, HOTSEAT_NAMES)
+		_show_deck_selection(themes, "%s: choose your deck" % HOTSEAT_NAMES[0])
+		return
 	if themes.size() == 0:
 		start_new_game()
 		return
@@ -146,7 +172,7 @@ func _begin_new_game() -> void:
 
 
 ## Clears the table and shows the deck selection screen; the game starts in OnDeckChosen.
-func _show_deck_selection(themes: Array[DeckData]) -> void:
+func _show_deck_selection(themes: Array[DeckData], title: String = "") -> void:
 	_generation += 1
 	_unsubscribe_controller()
 	_reset_selection()
@@ -171,12 +197,21 @@ func _show_deck_selection(themes: Array[DeckData]) -> void:
 	hud.set_draw_enabled(false)
 	hud.set_cancel_enabled(false)
 	hud.set_hint("")
-	hud.deck_select.present(themes)
+	hud.deck_select.present(themes, title)
 
 
 func _on_deck_chosen(index: int) -> void:
 	var themes: Array[DeckData] = _theme_list()
 	if index < 0 or index >= themes.size():
+		return
+	if _hotseat:
+		if _hotseat_picking == 0:
+			_player_theme = themes[index]
+			_hotseat_picking = 1
+			(func() -> void: hud.deck_select.present(_theme_list(), "%s: choose your deck" % HOTSEAT_NAMES[1])).call_deferred()
+			return
+		_ai_theme = themes[index]
+		start_new_game()
 		return
 	_player_theme = themes[index]
 	_ai_theme = _pick_other_theme(themes, _player_theme)
@@ -229,8 +264,8 @@ func start_new_game() -> void:
 		_state.players[AI_PLAYER].bonus_ap_per_turn = BattleSession.opponent.bonus_ap_per_turn
 	var map: MapGenerator.MapInfo = MapGenerator.generate(_state)
 	_controller = TurnController.new(_state)
-	_ai = SimpleAi.new(_controller, AI_PLAYER)
-	_autoplay_ai = SimpleAi.new(_controller, HUMAN_PLAYER) if _autoplay else null
+	_ai = null if _hotseat else SimpleAi.new(_controller, AI_PLAYER)
+	_autoplay_ai = SimpleAi.new(_controller, _human_player) if _autoplay else null
 	_subscribe_controller()
 
 	_pending_log.clear()
@@ -242,8 +277,15 @@ func start_new_game() -> void:
 	_hover_tile = null
 	_reset_selection()
 	_mode = InputMode.IDLE
+	if _hotseat:
+		_view_player = 0
+		_conceal_hand = true
+		hud.set_view_player(0, HOTSEAT_NAMES)
+		camera_rig.set_flipped(false, false)
+		animator.set_flipped(false, 0.0)
+		animator.trap_viewer = -1
 	if player_deck_res != null and ai_deck_res != null:
-		_pending_log.append("Your deck: %s. AI deck: %s." % [player_deck_res.name, ai_deck_res.name])
+		_pending_log.append("%s deck: %s. %s deck: %s." % [_possessive_label(0), player_deck_res.name, _possessive_label(1), ai_deck_res.name])
 	_pending_log.append("Battlefield: %s. %s" % [map.name, map.description])
 	hud.show_message("%s - %s" % [map.name, map.description], 4.0)
 
@@ -272,6 +314,9 @@ func start_new_game() -> void:
 func _run_game_async(generation: int) -> void:
 	_mode = InputMode.BUSY
 	_refresh()
+	await _hand_over_async(generation)
+	if not _is_current(generation):
+		return
 	await _turn_intro_async(generation)
 	if not _is_current(generation):
 		return
@@ -448,6 +493,8 @@ func _end_turn_async(generation: int) -> bool:
 	_cache_piece_names()
 	var events: Array[ResolutionEvent] = _copy_events(_controller.end_turn())
 	var turn_start_events: Array[ResolutionEvent] = _copy_events(_controller.last_turn_start_events)
+	if _hotseat:
+		_conceal_view()
 
 	overlay.clear_all()
 	await animator.play_events(events, _state, turn_start_events.size() == 0)
@@ -467,6 +514,9 @@ func _end_turn_async(generation: int) -> bool:
 	_flush_pending_log()
 	_refresh()
 
+	await _hand_over_async(generation)
+	if not _is_current(generation):
+		return false
 	await _turn_intro_async(generation)
 	if not _is_current(generation):
 		return false
@@ -490,6 +540,43 @@ func _turn_intro_async(generation: int) -> void:
 	_pending_score_player = -1
 
 
+## Hotseat: hides the outgoing player's hand and traps (the board stays visible).
+func _conceal_view() -> void:
+	_conceal_hand = true
+	animator.trap_viewer = -1
+	board.sync_traps(_state.board, -1)
+	var empty_hand: Array[CardData] = []
+	hud.hand.show_hand(empty_hand, Callable(), Callable())
+
+
+## Hotseat: switches the view (hand, traps, HUD windows) to 'player'.
+func _set_view(player: int) -> void:
+	_view_player = player
+	_conceal_hand = false
+	animator.trap_viewer = player
+	board.sync_traps(_state.board, player)
+	hud.set_view_player(player, HOTSEAT_NAMES)
+	# Each player sees the board from their own side.
+	camera_rig.set_flipped(player == 1)
+	animator.set_flipped(player == 1, camera_rig.tween_duration)
+
+
+## Hotseat: covers the screen until the player whose turn starts is ready, then shows their view.
+## Does nothing outside hotseat matches or once the game is over.
+func _hand_over_async(generation: int) -> void:
+	if not _hotseat or _curtain == null or _state.winner >= 0:
+		return
+	var next: int = _state.current_player_index
+	_conceal_view()
+	_refresh()
+	await _curtain.show_async("%s's turn" % HOTSEAT_NAMES[next],
+		"Pass the device to %s.\nThe other player should look away from the hand." % HOTSEAT_NAMES[next], HudStyle.accent(next))
+	if not _is_current(generation):
+		return
+	_set_view(next)
+	_refresh()
+
+
 func _enter_human_turn_or_game_over() -> void:
 	_reset_selection()
 	_clear_all_highlights()
@@ -500,10 +587,21 @@ func _enter_human_turn_or_game_over() -> void:
 
 	if _state.winner >= 0:
 		_mode = InputMode.IDLE
+		if _hotseat:
+			_set_view(_state.winner)
 		_refresh()
 		hud.set_hint("Game over.")
-		if BattleSession.get_is_active():
-			var result: String = BattleSession.complete(_state.winner == HUMAN_PLAYER)
+		if _hotseat:
+			var winner_name: String = HOTSEAT_NAMES[_state.winner]
+			var subtitle: String = "%s reached the victory points target!" % winner_name
+			if HotseatSession.is_active:
+				HotseatSession.complete("Hotseat match: %s won after %d turns." % [winner_name, _state.turn_number])
+				_return_to_town = true
+				hud.show_win_screen(_state.winner, subtitle, "Return to town")
+			else:
+				hud.show_win_screen(_state.winner, subtitle, "Play again")
+		elif BattleSession.get_is_active():
+			var result: String = BattleSession.complete(_state.winner == _human_player)
 			_return_to_town = true
 			hud.show_win_screen(_state.winner, result, "Return to town")
 		elif not _return_to_town:
@@ -517,7 +615,7 @@ func _enter_human_turn_or_game_over() -> void:
 
 	_mode = InputMode.IDLE
 	# Turns start in Main phase; this only resumes an unfinished (already paid) draw.
-	if _state.current_player_index == HUMAN_PLAYER and _state.phase == GamePhase.DRAFT and not _autoplay:
+	if _state.current_player_index == _human_player and _state.phase == GamePhase.DRAFT and not _autoplay:
 		hud.draft.show_offer(_state.current_player.draft_offer, _controller.get_card_cost)
 	_update_hint()
 	_refresh()
@@ -574,7 +672,7 @@ func _on_draw_pressed() -> void:
 	if not _controller.draw():
 		hud.show_message(_controller.last_error)
 		return
-	_log("You paid %d AP to draw." % _state.config.draw_ap_cost)
+	_log("%s paid %d AP to draw." % [_player_label(_human_player), _state.config.draw_ap_cost])
 	hud.draft.show_offer(_state.current_player.draft_offer, _controller.get_card_cost)
 	_update_hint()
 	_refresh()
@@ -587,21 +685,21 @@ func on_convert_vp_pressed() -> void:
 	if not _controller.convert_vp_to_ap():
 		hud.show_message(_controller.last_error)
 		return
-	_log("You converted 1 VP into 1 AP (%d conversion(s) left this turn)." % _controller.remaining_vp_conversions)
+	_log("%s converted 1 VP into 1 AP (%d conversion(s) left this turn)." % [_player_label(_human_player), _controller.remaining_vp_conversions])
 	hud.show_message("+1 AP for 1 VP (%d left this turn)." % _controller.remaining_vp_conversions)
 	_update_hint()
 	_refresh()
 
 
 func _on_draft_card_chosen(offer_index: int) -> void:
-	if _mode == InputMode.BUSY or _state.current_player_index != HUMAN_PLAYER or _state.phase != GamePhase.DRAFT:
+	if _mode == InputMode.BUSY or _state.current_player_index != _human_player or _state.phase != GamePhase.DRAFT:
 		return
 	var card: CardData = _state.current_player.draft_offer[offer_index] \
 		if offer_index >= 0 and offer_index < _state.current_player.draft_offer.size() else null
 	if not _controller.choose_draft_card(offer_index):
 		hud.show_message(_controller.last_error)
 		return
-	_log("You kept %s." % (card.name if card != null else "a card"))
+	_log("%s kept %s." % [_player_label(_human_player), card.name if card != null else "a card"])
 	# Deferred: the popup's cards are freed, and we are inside one of their click signals.
 	_after_draft.call_deferred()
 
@@ -618,7 +716,7 @@ func _on_hand_card_selected(hand_index: int) -> void:
 		if _mode != InputMode.BUSY and _state != null and _state.winner < 0:
 			hud.show_message("Wait for your main phase.")
 		return
-	var hand: Array[CardData] = _state.players[HUMAN_PLAYER].hand
+	var hand: Array[CardData] = _state.players[_human_player].hand
 	if hand_index < 0 or hand_index >= hand.size():
 		return
 	if _mode == InputMode.CARD_SELECTED and _selected_hand_index == hand_index:
@@ -758,7 +856,7 @@ func _on_hand_card_hover_changed(card: CardView, hovered: bool) -> void:
 func _update_range_highlight() -> void:
 	var tiles: Array[Vector2i] = []
 	var human_main: bool = _state != null and _controller != null and _mode != InputMode.BUSY and _state.winner < 0 \
-		and _state.current_player_index == HUMAN_PLAYER and _state.phase == GamePhase.MAIN
+		and _state.current_player_index == _human_player and _state.phase == GamePhase.MAIN
 	if human_main:
 		var spell: CardData = null
 		if _mode == InputMode.CARD_SELECTED:
@@ -771,16 +869,17 @@ func _update_range_highlight() -> void:
 			var tile: Vector2i = _hover_tile
 			var piece: Piece = _state.board.get_piece_at(tile)
 			if _mode == InputMode.IDLE and piece != null and piece.is_building:
-				tiles = _controller.get_building_range_tiles(piece.building, piece.position, piece.effective_range)
+				tiles = _controller.get_building_range_tiles(piece.building, piece.position, piece.effective_range, piece.source.clan)
 			elif _mode == InputMode.CHOOSING_BUILD and _selected_piece != null \
 					and _controller.get_valid_build_tiles(_selected_piece, _planned_move).has(tile):
 				var type: int = _controller.get_build_type(_selected_piece)
-				tiles = _controller.get_building_range_tiles(type, tile, BuildingInfo.get_card(type).range)
+				var clan: int = _selected_piece.source.clan
+				tiles = _controller.get_building_range_tiles(type, tile, BuildingInfo.get_card(type, clan).range, clan)
 	elif _state != null and _hover_tile != null and _controller != null and _state.winner < 0:
 		var building: Piece = _state.board.get_piece_at(_hover_tile)
 		if building != null and building.is_building:
 			# Buildings can be inspected while waiting for the opponent, too.
-			tiles = _controller.get_building_range_tiles(building.building, building.position, building.effective_range)
+			tiles = _controller.get_building_range_tiles(building.building, building.position, building.effective_range, building.source.clan)
 	if tiles.size() == _range_tiles.size() and tiles.all(func(t: Vector2i) -> bool: return _range_tiles.has(t)):
 		return
 	_range_tiles = tiles
@@ -799,7 +898,19 @@ func _show_attack_plan_preview(tile: Vector2i) -> void:
 		path = _controller.get_planned_path(_selected_piece, _planned_move)
 	var valid: bool = tile != from_pos and _controller.get_valid_attack_targets(_selected_piece, from_pos).has(tile)
 	overlay.show_preview(_selected_piece, _planned_move, tile if valid else null, board, path, _state.board)
-	if not valid or not _state.board.is_occupied(tile):
+	# Area attackers: show the whole area; predict as soon as anything in it would be hit.
+	var any_hit: bool = valid and _state.board.is_occupied(tile)
+	if valid and _selected_piece.attack_area != AreaShape.SINGLE:
+		var area: Array[Vector2i] = []
+		for a: Vector2i in _state.board.get_area_tiles(tile, _selected_piece.attack_area):
+			if a != from_pos:
+				area.append(a)
+				if _state.board.is_occupied(a) and _state.board.get_piece_at(a) != _selected_piece:
+					any_hit = true
+		overlay.show_spell_area_preview(area, null, board)
+	else:
+		overlay.clear_spell_area_preview()
+	if not any_hit:
 		overlay.clear_attack_preview()
 		_update_hint()
 		return
@@ -814,7 +925,7 @@ func _show_attack_plan_preview(tile: Vector2i) -> void:
 
 func _describe_chain_preview(p: ChainPreview, tile: Vector2i) -> String:
 	var target: Piece = _state.board.get_piece_at(tile)
-	var friendly: bool = target != null and target.owner_index == HUMAN_PLAYER and target != _selected_piece
+	var friendly: bool = target != null and target.owner_index == _human_player and target != _selected_piece
 	var parts := PackedStringArray()
 	if friendly and p.friendly_healed <= 0:
 		parts.append("hits your own %s!" % _piece_label(target))
@@ -871,9 +982,10 @@ func _show_unit_actions(piece: Piece, from_tile: Variant = null) -> void:
 			reason = "Needs %d AP." % cost
 		elif _controller.get_valid_build_tiles(piece, from_tile).size() == 0:
 			reason = "No free tile next to it."
-		var what: String = ("%d %ss" % [count, BuildingInfo.display_name(build)]) if count > 1 else BuildingInfo.display_name(build)
-		abilities.append(UnitActionBar.Ability.new(FxIconShape.HAMMER, "Build %s" % BuildingInfo.display_name(build), cost, reason.length() == 0,
-			"Build %s: %s (%d turn%s, B). Can follow a move instead of an attack." % [what, BuildingInfo.get_description(build), turns, "s" if turns > 1 else ""]
+		var clan: int = piece.source.clan
+		var what: String = ("%d %ss" % [count, BuildingInfo.display_name(build, clan)]) if count > 1 else BuildingInfo.display_name(build, clan)
+		abilities.append(UnitActionBar.Ability.new(FxIconShape.HAMMER, "Build %s" % BuildingInfo.display_name(build, clan), cost, reason.length() == 0,
+			"Build %s: %s (%d turn%s, B). Can follow a move instead of an attack." % [what, BuildingInfo.get_description(build, clan), turns, "s" if turns > 1 else ""]
 			+ (("\n%s" % reason) if reason.length() > 0 else ""), _on_build_pressed))
 	var trap: Variant = _controller.get_trap_type(piece)
 	if trap != null:
@@ -989,7 +1101,12 @@ func _handle_trap_click(pos: Vector2i) -> void:
 		return
 	var trap_value: Variant = _controller.get_trap_type(piece)
 	var trap: int = trap_value if trap_value != null else TrapType.SPIKE
-	_log("Your %s %shides a %s at %s." % [_piece_label(piece), ("moves to %s and " % str(move)) if move != null else "", TrapInfo.display_name(trap), str(pos)])
+	# Hotseat: the log is shared, so the trap's tile stays secret.
+	var moved: String = ("moves to %s and " % str(move)) if move != null else ""
+	if _hotseat:
+		_log("%s %s %shides a trap." % [_possessive_label(_human_player), _piece_label(piece), moved])
+	else:
+		_log("Your %s %shides a %s at %s." % [_piece_label(piece), moved, TrapInfo.display_name(trap), str(pos)])
 	_cancel_selection()
 	_animate_spell_events_async(_copy_events(events), _generation)
 
@@ -1000,7 +1117,7 @@ func _update_build_hint() -> void:
 		return
 	var type: int = _controller.get_build_type(piece)
 	var count: int = BuildingInfo.get_build_count(type)
-	var building_name: String = BuildingInfo.display_name(type)
+	var building_name: String = BuildingInfo.display_name(type, piece.source.clan)
 	var first: String = ("click green tiles for your %d %ss" % [count, building_name]) if count > 1 else ("click a green tile to build a %s" % building_name)
 	if _build_tiles.size() == 0:
 		hud.set_hint("%s: %s (%d AP). Esc cancels." % [_piece_label(piece), first, BuildingInfo.get_cost(type)])
@@ -1044,8 +1161,9 @@ func _handle_build_click(pos: Vector2i) -> void:
 	for t: Vector2i in tiles:
 		where_parts.append(str(t))
 	var where: String = " and ".join(where_parts)
-	var what: String = ("%d %ss" % [tiles.size(), BuildingInfo.display_name(type)]) if tiles.size() > 1 else ("a %s" % BuildingInfo.display_name(type))
-	_log("Your %s %sstarts building %s at %s." % [_piece_label(piece), ("moves to %s and " % str(move)) if move != null else "", what, where])
+	var clan_name: String = BuildingInfo.display_name(type, piece.source.clan)
+	var what: String = ("%d %ss" % [tiles.size(), clan_name]) if tiles.size() > 1 else ("a %s" % clan_name)
+	_log("%s %s %sstarts building %s at %s." % [_possessive_label(_human_player), _piece_label(piece), ("moves to %s and " % str(move)) if move != null else "", what, where])
 	_cancel_selection()
 	_animate_spell_events_async(_copy_events(events), _generation)
 
@@ -1054,7 +1172,7 @@ func _handle_idle_click(pos: Vector2i) -> void:
 	var piece: Piece = _state.board.get_piece_at(pos)
 	if piece == null:
 		return
-	if piece.owner_index == HUMAN_PLAYER:
+	if piece.owner_index == _human_player:
 		_select_piece(piece)
 	else:
 		hud.show_message(_describe_piece(piece), 3.5)
@@ -1074,7 +1192,7 @@ func _handle_card_target_click(pos: Vector2i) -> void:
 		animator.spawn_view(piece)
 		animator.play_summon(piece.id)
 		_cache_piece_names()
-		_log("You deployed %s at %s." % [card.name, str(pos)])
+		_log("%s deployed %s at %s." % [_player_label(_human_player), card.name, str(pos)])
 		_cancel_selection()
 		_refresh()
 		return
@@ -1092,7 +1210,7 @@ func _handle_card_target_click(pos: Vector2i) -> void:
 	if not cast:
 		hud.show_message(_controller.last_error)
 		return
-	_log("You cast %s on %s." % [card.name, target_text])
+	_log("%s cast %s on %s." % [_player_label(_human_player), card.name, target_text])
 	_cancel_selection()
 	_animate_spell_events_async(_copy_events(_controller.last_spell_events), _generation)
 
@@ -1128,7 +1246,7 @@ func _handle_move_click(pos: Vector2i) -> void:
 		return
 
 	var other: Piece = _state.board.get_piece_at(pos)
-	if other != null and other.owner_index == HUMAN_PLAYER:
+	if other != null and other.owner_index == _human_player:
 		_select_piece(other)
 	elif other != null:
 		hud.show_message(_describe_piece(other), 3.5)
@@ -1207,7 +1325,7 @@ func _execute_action(piece: Piece, move: Variant, attack: Variant) -> void:
 	var text: String = ("moves to %s" % str(move)) if moves else "stays"
 	if attack != null:
 		text += (" and attacks %s" % _piece_name(target.id)) if target != null else (" and attacks %s" % str(attack))
-	_log("Your %s %s." % [_piece_label(piece), text])
+	_log("%s %s %s." % [_possessive_label(_human_player), _piece_label(piece), text])
 	_cancel_selection()
 	_animate_spell_events_async(_copy_events(events), _generation)
 
@@ -1249,7 +1367,7 @@ func _can_human_act() -> bool:
 		and not _autoplay \
 		and _mode != InputMode.BUSY \
 		and _state.winner < 0 \
-		and _state.current_player_index == HUMAN_PLAYER \
+		and _state.current_player_index == _human_player \
 		and _state.phase == GamePhase.MAIN
 
 
@@ -1260,8 +1378,11 @@ func _refresh() -> void:
 	hud.update_state(_state)
 
 	var can_act: bool = _can_human_act()
-	var human: PlayerState = _state.players[HUMAN_PLAYER]
-	hud.hand.show_hand(human.hand, _controller.get_card_cost,
+	var human: PlayerState = _state.players[_human_player]
+	var shown: Array[CardData] = []
+	if not _conceal_hand:
+		shown = human.hand
+	hud.hand.show_hand(shown, _controller.get_card_cost,
 		func(card: CardData) -> bool: return can_act and _controller.get_card_cost(card) <= human.action_points)
 	if _mode == InputMode.CARD_SELECTED:
 		hud.hand.set_selected_index(_selected_hand_index)
@@ -1280,7 +1401,7 @@ func _update_board_info() -> void:
 		return
 	var tile: Vector2i = _hover_tile
 	var piece: Piece = _state.board.get_piece_at(tile)
-	var sheet: InfoSheet = InfoText.piece(piece, _state, HUMAN_PLAYER) if piece != null else InfoText.tile(tile, _state, HUMAN_PLAYER)
+	var sheet: InfoSheet = InfoText.piece(piece, _state, _human_player) if piece != null else InfoText.tile(tile, _state, _human_player)
 	hud.show_board_info(sheet)
 
 
@@ -1290,12 +1411,12 @@ func _update_can_act() -> void:
 	if animator.is_playing:
 		return
 	var human_main: bool = _can_human_act()
-	var ap: int = _state.players[HUMAN_PLAYER].action_points
+	var ap: int = _state.players[_human_player].action_points
 	for piece: Piece in _state.pieces:
 		var view: PieceView = animator.get_view(piece.id)
 		if view == null:
 			continue
-		var can_act: bool = human_main and piece.owner_index == HUMAN_PLAYER and not piece.has_acted(_state.turn_number) \
+		var can_act: bool = human_main and piece.owner_index == _human_player and not piece.has_acted(_state.turn_number) \
 			and ap >= _state.config.order_ap_cost and _controller.can_command(piece)
 		view.set_can_act(can_act)
 
@@ -1330,7 +1451,7 @@ func _update_hint() -> void:
 			hud.set_hint("%s: click red to attack now (own pieces take damage too), elsewhere = move only." % _piece_label_with_keywords(_selected_piece))
 			return
 
-	if _state.current_player_index != HUMAN_PLAYER or _autoplay:
+	if _state.current_player_index != _human_player or _autoplay:
 		hud.set_hint("%s's turn." % _player_label(_state.current_player_index))
 	elif _state.phase == GamePhase.DRAFT:
 		hud.set_hint("Choose a card to keep.")
@@ -1341,7 +1462,7 @@ func _update_hint() -> void:
 ## Where cards of destroyed pieces fly to: the human's HUD deck pile (projected into the world), AI = default.
 ## Returns a Vector3 or null.
 func _get_deck_world(player: int) -> Variant:
-	if player != HUMAN_PLAYER or hud == null or not is_inside_tree():
+	if player != _human_player or hud == null or not is_inside_tree():
 		return null
 	var camera: Camera3D = null
 	if camera_rig != null:
@@ -1368,7 +1489,7 @@ func _is_current(generation: int) -> bool:
 func _get_ai_for(player: int) -> SimpleAi:
 	if player == AI_PLAYER:
 		return _ai
-	return _autoplay_ai if player == HUMAN_PLAYER else null
+	return _autoplay_ai if player == _human_player else null
 
 
 func _log(line: String) -> void:
@@ -1388,8 +1509,9 @@ func _cache_piece_names() -> void:
 		_piece_names[p.id] = _piece_name_for(p)
 
 
-static func _piece_name_for(p: Piece) -> String:
-	return "%s %s" % ["your" if p.owner_index == HUMAN_PLAYER else "AI", p.source.name if p.source != null else "piece"]
+func _piece_name_for(p: Piece) -> String:
+	var owner_text: String = ("P%d" % (p.owner_index + 1)) if _hotseat else ("your" if p.owner_index == _human_player else "AI")
+	return "%s %s" % [owner_text, p.source.name if p.source != null else "piece"]
 
 
 func _piece_name(id: int) -> String:
@@ -1410,14 +1532,30 @@ static func _piece_label_with_keywords(piece: Piece) -> String:
 	return _piece_label(piece)
 
 
-static func _player_label(player: int) -> String:
-	return "You" if player == HUMAN_PLAYER else "AI"
+func _player_label(player: int) -> String:
+	if _hotseat:
+		return HOTSEAT_NAMES[player]
+	return "You" if player == _human_player else "AI"
+
+
+## "Your" / "AI" (hotseat: "Player 1's" / "Player 2's").
+func _possessive_label(player: int) -> String:
+	if _hotseat:
+		return "%s's" % HOTSEAT_NAMES[player]
+	return "Your" if player == _human_player else "AI"
+
+
+## Owner prefix of a piece seen by the view player: "Your" / "AI" (hotseat: "Your" / "Enemy").
+func _owner_label(p: Piece) -> String:
+	if p.owner_index == _human_player:
+		return "Your"
+	return "Enemy" if _hotseat else "AI"
 
 
 ## One-line piece info for the hint ribbon (hover).
 func _describe_piece_short(p: Piece) -> String:
 	var text: String = "%s %s: %d/%d HP, %d Atk, %d Mov, %d Rng" % [
-		"Your" if p.owner_index == HUMAN_PLAYER else "AI", _piece_label(p), p.current_hp, p.max_hp,
+		_owner_label(p), _piece_label(p), p.current_hp, p.max_hp,
 		p.effective_attack, p.effective_movement, p.effective_range]
 	if p.total_shield > 0:
 		text += ", %d Shield" % p.total_shield
@@ -1432,9 +1570,9 @@ func _describe_piece_short(p: Piece) -> String:
 	return text
 
 
-static func _describe_piece(p: Piece) -> String:
+func _describe_piece(p: Piece) -> String:
 	var text: String = "%s %s: HP %d/%d, Shield %d, Atk %d, Mov %d, Rng %d" % [
-		"Your" if p.owner_index == HUMAN_PLAYER else "AI", p.source.name if p.source != null else "",
+		_owner_label(p), p.source.name if p.source != null else "",
 		p.current_hp, p.max_hp, p.total_shield, p.effective_attack, p.effective_movement, p.effective_range]
 	if p.active_spells.size() > 0:
 		text += ", %d spell(s)" % p.active_spells.size()
@@ -1505,17 +1643,18 @@ func _describe_event(e: ResolutionEvent) -> String:
 		ResolutionEventType.FIRST_HIT_TRIGGERED:
 			return "%s is hit for the first time: %s" % [n, e.spell_name]
 		ResolutionEventType.TRAP_SET:
-			if e.player_index == HUMAN_PLAYER:
+			if e.player_index == _human_player and not _hotseat:
 				return "%s hides a %s at %s" % [n, e.card_name, str(e.to)]
-			return "AI hides a trap somewhere"
+			return "%s hides a trap somewhere" % _player_label(e.player_index)
 		ResolutionEventType.TRAP_TRIGGERED:
-			return "%s steps into %s %s at %s!" % [n, "your" if e.player_index == HUMAN_PLAYER else "an enemy", e.card_name, str(e.to)]
+			var whose: String = _possessive_label(e.player_index) if _hotseat else ("your" if e.player_index == _human_player else "an enemy")
+			return "%s steps into %s %s at %s!" % [n, whose, e.card_name, str(e.to)]
 		ResolutionEventType.TERRAIN_DAMAGED:
 			if e.remaining_hp <= 0:
 				return "The rock at %s crumbles" % str(e.to)
 			return "The rock at %s takes %d damage (%d HP left)" % [str(e.to), e.amount, e.remaining_hp]
 		ResolutionEventType.AP_GAINED:
-			return "%s gain%s %d AP%s (%s)" % [_player_label(e.player_index), "" if e.player_index == HUMAN_PLAYER else "s",
+			return "%s gain%s %d AP%s (%s)" % [_player_label(e.player_index), "" if e.player_index == _human_player and not _hotseat else "s",
 				e.amount, " next turn" if e.is_secondary else "", e.card_name]
 	return ResolutionEventType.name_of(e.type)
 

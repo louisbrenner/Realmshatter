@@ -61,7 +61,7 @@ static func piece(p: Piece, state: GameState, viewer: int) -> InfoSheet:
 	if p.is_building:
 		sheet.subtitle = "Building"
 		_add_health(sheet, p)
-		sheet.lines.append(BuildingInfo.get_description(p.building))
+		sheet.lines.append(BuildingInfo.get_description(p.building, p.source.clan if p.source != null else Clan.NONE))
 		if p.under_construction:
 			var left: int = maxi(1, (p.complete_turn - state.turn_number + 1) / 2)
 			sheet.notes.append("[color=%s]Under construction[/color] - ready in %d turn%s. Collapses if its builder dies." % [InfoSheet.HEX_BAD, left, "s" if left > 1 else ""])
@@ -260,6 +260,12 @@ static func _add_health(sheet: InfoSheet, p: Piece) -> void:
 
 
 static func _add_keyword_rows(sheet: InfoSheet, p_card: CardData, keywords: int, level: int) -> void:
+	if p_card != null and p_card.attack_area != AreaShape.SINGLE:
+		var fire := Color(1.0, 0.55, 0.2)
+		sheet.rows.append(InfoSheet.Row.new(FxIconShape.BURST, fire, Color(0.42, 0.14, 0.05, 0.97),
+			"Area attack: %s" % _attack_area_name(p_card.attack_area), fire.lerp(InfoSheet.HEADING_COLOR, 0.5),
+			"Its attack hits every piece in the area around the target with full damage and effects - friend or foe "
+			+ "(never itself). [color=%s]Ground effects only mark the target tile.[/color]" % InfoSheet.HEX_MUTED))
 	for k: int in KeywordInfo.split(keywords):
 		var kw_name: String = KeywordInfo.display_name(k)
 		if k == Keyword.UNDYING and level > 0:
@@ -273,8 +279,8 @@ static func _add_keyword_rows(sheet: InfoSheet, p_card: CardData, keywords: int,
 		if k == Keyword.BUILDER and p_card != null:
 			var b: int = BuildingInfo.for_class(p_card.class_)
 			if b != BuildingType.NONE:
-				text = "Builds a [b]%s[/b] next to it (%d AP, %d turn%s): " % [BuildingInfo.display_name(b), BuildingInfo.get_cost(b), BuildingInfo.get_build_turns(b), "s" if BuildingInfo.get_build_turns(b) > 1 else ""] \
-					+ "%s [color=%s]Cannot move while building.[/color]" % [BuildingInfo.get_description(b), InfoSheet.HEX_MUTED]
+				text = "Builds a [b]%s[/b] next to it (%d AP, %d turn%s): " % [BuildingInfo.display_name(b, p_card.clan), BuildingInfo.get_cost(b), BuildingInfo.get_build_turns(b), "s" if BuildingInfo.get_build_turns(b) > 1 else ""] \
+					+ "%s [color=%s]Cannot move while building.[/color]" % [BuildingInfo.get_description(b, p_card.clan), InfoSheet.HEX_MUTED]
 		elif k == Keyword.TRAPPER and p_card != null:
 			var trap: int = TrapInfo.for_clan(p_card.clan)
 			text = "Instead of attacking (also after moving), hides a [b]%s[/b] on a free tile next to it " % TrapInfo.display_name(trap) \
@@ -406,6 +412,19 @@ static func _add_delta(parts: Array[String], value: int, label: String) -> void:
 
 static func _signed(value: int) -> String:
 	return "+%d" % value if value > 0 else str(value)
+
+
+static func _attack_area_name(shape: int) -> String:
+	match shape:
+		AreaShape.PLUS:
+			return "Cross (target + 4 neighbours)"
+		AreaShape.ROW3:
+			return "Row of 3"
+		AreaShape.COLUMN3:
+			return "Column of 3"
+		AreaShape.SQUARE2:
+			return "2x2 square"
+	return "single tile"
 
 
 static func _capitalize(text: String) -> String:

@@ -1,29 +1,31 @@
-[gd_resource type="Resource" script_class="DeckData" load_steps=20 format=3]
+[gd_resource type="Resource" script_class="DeckData" load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/DeckData.gd" id="1_deck"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
-[ext_resource type="Resource" path="res://Resources/Cards/SparkTotem.tres" id="c_SparkTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormRunner.tres" id="c_StormRunner"]
 [ext_resource type="Resource" path="res://Resources/Cards/Bellringer.tres" id="c_Bellringer"]
+[ext_resource type="Resource" path="res://Resources/Cards/SparkTotem.tres" id="c_SparkTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormHerald.tres" id="c_StormHerald"]
+[ext_resource type="Resource" path="res://Resources/Cards/ThunderDrummer.tres" id="c_ThunderDrummer"]
 [ext_resource type="Resource" path="res://Resources/Cards/StormCaller.tres" id="c_StormCaller"]
-[ext_resource type="Resource" path="res://Resources/Cards/PowderKeg.tres" id="c_PowderKeg"]
-[ext_resource type="Resource" path="res://Resources/Cards/Archer.tres" id="c_Archer"]
+[ext_resource type="Resource" path="res://Resources/Cards/CapacitorTotem.tres" id="c_CapacitorTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/ThunderTitan.tres" id="c_ThunderTitan"]
 [ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="c_Lancer"]
 [ext_resource type="Resource" path="res://Resources/Cards/Swordsman.tres" id="c_Swordsman"]
-[ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
-[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
 [ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
+[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
 [ext_resource type="Resource" path="res://Resources/Cards/Overcharge.tres" id="c_Overcharge"]
 [ext_resource type="Resource" path="res://Resources/Cards/StaticCharge.tres" id="c_StaticCharge"]
 [ext_resource type="Resource" path="res://Resources/Cards/LightningBolt.tres" id="c_LightningBolt"]
-[ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
-[ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="c_FlameArcher"]
-[ext_resource type="Resource" path="res://Resources/Cards/Cleric.tres" id="c_Cleric"]
-[ext_resource type="Resource" path="res://Resources/Cards/StormRunner.tres" id="c_StormRunner"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaSurge.tres" id="c_ManaSurge"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormScholar.tres" id="c_StormScholar"]
+[ext_resource type="Resource" path="res://Resources/Cards/SparkTinker.tres" id="c_SparkTinker"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archer.tres" id="c_Archer"]
 
 [resource]
 script = ExtResource("1_deck")
 name = "Storm Circuit"
-cards = Array[ExtResource("2_card")]([ExtResource("c_SparkTotem"), ExtResource("c_SparkTotem"), ExtResource("c_Bellringer"), ExtResource("c_Bellringer"), ExtResource("c_StormCaller"), ExtResource("c_StormCaller"), ExtResource("c_PowderKeg"), ExtResource("c_PowderKeg"), ExtResource("c_Archer"), ExtResource("c_StormRunner"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Merchant"), ExtResource("c_Miner"), ExtResource("c_Overcharge"), ExtResource("c_Overcharge"), ExtResource("c_StaticCharge"), ExtResource("c_StaticCharge"), ExtResource("c_LightningBolt"), ExtResource("c_LightningBolt"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_FlameArcher"), ExtResource("c_FlameArcher"), ExtResource("c_Cleric"), ExtResource("c_Cleric")])
+cards = Array[ExtResource("2_card")]([ExtResource("c_StormRunner"), ExtResource("c_StormRunner"), ExtResource("c_Bellringer"), ExtResource("c_Bellringer"), ExtResource("c_SparkTotem"), ExtResource("c_SparkTotem"), ExtResource("c_StormHerald"), ExtResource("c_StormHerald"), ExtResource("c_ThunderDrummer"), ExtResource("c_ThunderDrummer"), ExtResource("c_StormCaller"), ExtResource("c_StormCaller"), ExtResource("c_CapacitorTotem"), ExtResource("c_CapacitorTotem"), ExtResource("c_ThunderTitan"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Swordsman"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Overcharge"), ExtResource("c_Overcharge"), ExtResource("c_StaticCharge"), ExtResource("c_LightningBolt"), ExtResource("c_LightningBolt"), ExtResource("c_ManaSurge"), ExtResource("c_ManaSurge"), ExtResource("c_StormScholar"), ExtResource("c_SparkTinker"), ExtResource("c_Archer")])
 description = "Arcing lightning: bolts jump between pieces, echoes strike twice and overcharges double the damage. Mind your own lines! Splash: fire and healing."
 accent_color = Color(0.68, 0.58, 1, 1)
 showcase = ExtResource("c_StormCaller")

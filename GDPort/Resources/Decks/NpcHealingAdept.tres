@@ -1,26 +1,28 @@
-[gd_resource type="Resource" script_class="DeckData" load_steps=17 format=3]
+[gd_resource type="Resource" script_class="DeckData" load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/DeckData.gd" id="1_deck"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
-[ext_resource type="Resource" path="res://Resources/Cards/Acolyte.tres" id="c_Acolyte"]
-[ext_resource type="Resource" path="res://Resources/Cards/DawnRanger.tres" id="c_DawnRanger"]
-[ext_resource type="Resource" path="res://Resources/Cards/Cleric.tres" id="c_Cleric"]
-[ext_resource type="Resource" path="res://Resources/Cards/Zealot.tres" id="c_Zealot"]
-[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
 [ext_resource type="Resource" path="res://Resources/Cards/Swordsman.tres" id="c_Swordsman"]
+[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
 [ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="c_Lancer"]
-[ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archer.tres" id="c_Archer"]
 [ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
 [ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaSurge.tres" id="c_ManaSurge"]
+[ext_resource type="Resource" path="res://Resources/Cards/DawnRanger.tres" id="c_DawnRanger"]
+[ext_resource type="Resource" path="res://Resources/Cards/Acolyte.tres" id="c_Acolyte"]
+[ext_resource type="Resource" path="res://Resources/Cards/Cleric.tres" id="c_Cleric"]
+[ext_resource type="Resource" path="res://Resources/Cards/Zealot.tres" id="c_Zealot"]
+[ext_resource type="Resource" path="res://Resources/Cards/Almoner.tres" id="c_Almoner"]
 [ext_resource type="Resource" path="res://Resources/Cards/Blessing.tres" id="c_Blessing"]
 [ext_resource type="Resource" path="res://Resources/Cards/Sanctuary.tres" id="c_Sanctuary"]
-[ext_resource type="Resource" path="res://Resources/Cards/Weaken.tres" id="c_Weaken"]
-[ext_resource type="Resource" path="res://Resources/Cards/Archer.tres" id="c_Archer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Shrinekeeper.tres" id="c_Shrinekeeper"]
+[ext_resource type="Resource" path="res://Resources/Cards/Lightwright.tres" id="c_Lightwright"]
 
 [resource]
 script = ExtResource("1_deck")
 name = "Elowen's Vigil"
-cards = Array[ExtResource("2_card")]([ExtResource("c_Acolyte"), ExtResource("c_Acolyte"), ExtResource("c_Acolyte"), ExtResource("c_DawnRanger"), ExtResource("c_DawnRanger"), ExtResource("c_Cleric"), ExtResource("c_Cleric"), ExtResource("c_Cleric"), ExtResource("c_Zealot"), ExtResource("c_Zealot"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Blessing"), ExtResource("c_Blessing"), ExtResource("c_Blessing"), ExtResource("c_Sanctuary"), ExtResource("c_Sanctuary"), ExtResource("c_Weaken"), ExtResource("c_Weaken"), ExtResource("c_Archer"), ExtResource("c_Archer")])
+cards = Array[ExtResource("2_card")]([ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Archer"), ExtResource("c_Miner"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_ManaSurge"), ExtResource("c_ManaSurge"), ExtResource("c_DawnRanger"), ExtResource("c_DawnRanger"), ExtResource("c_Acolyte"), ExtResource("c_Acolyte"), ExtResource("c_Acolyte"), ExtResource("c_Cleric"), ExtResource("c_Cleric"), ExtResource("c_Zealot"), ExtResource("c_Zealot"), ExtResource("c_Almoner"), ExtResource("c_Blessing"), ExtResource("c_Blessing"), ExtResource("c_Sanctuary"), ExtResource("c_Shrinekeeper"), ExtResource("c_Lightwright")])
 description = "A seasoned duelist's deck of the Dawn Covenant."
 accent_color = Color(1, 0.85, 0.4, 1)
 showcase = ExtResource("c_Cleric")

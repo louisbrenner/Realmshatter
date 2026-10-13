@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcStormApprentice.tres" id="3_deck"]
-[ext_resource type="Resource" path="res://Resources/Cards/SparkTotem.tres" id="r_SparkTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/CapacitorTotem.tres" id="r_CapacitorTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/Bellringer.tres" id="r_Bellringer"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormScholar.tres" id="r_StormScholar"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -16,6 +18,6 @@ position = Vector2(1550, 770)
 greeting = "Zap! Ha, sorry - static. Wanna duel? My totems are fully charged!"
 rematch_line = "Recharged and ready! Round two?"
 defeat_line = "Shocking! You beat me fair. Take my Spark Totem."
-victory_line = "Kaboom! Ooh, that was a good one. Again sometime?"
+victory_line = "Kaboom! Ooh, that was a good one. I'll charge you for the fireworks!"
 reward_gold = 60
-reward_cards = Array[ExtResource("2_card")]([ExtResource("r_SparkTotem")])
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_CapacitorTotem"), ExtResource("r_CapacitorTotem"), ExtResource("r_Bellringer"), ExtResource("r_StormScholar")])

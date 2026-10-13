@@ -5,6 +5,7 @@ extends Control
 
 var _turn: int = 1
 var _current: int = 0
+var _labels: Array[String] = ["YOU", "AI"]
 var _phase: String = ""
 var _time: float = 0.0
 var _switch: float = 0.0
@@ -12,6 +13,13 @@ var _switch: float = 0.0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+## Short captions on the two player shields (default "YOU" / "AI").
+func set_labels(player0: String, player1: String) -> void:
+	_labels[0] = player0
+	_labels[1] = player1
+	queue_redraw()
 
 
 ## Updates turn number, current player and the small phase caption.
@@ -53,8 +61,8 @@ func _draw() -> void:
 	if not _phase.is_empty():
 		HudStyle.draw_text_centered(self, _phase, Vector2(c.x, c.y + 11.0), 11, Color(HudStyle.TEXT_LIGHT, 0.85), 3)
 
-	_draw_shield(Vector2(plaque.position.x - 26.0, c.y), 0, "YOU")
-	_draw_shield(Vector2(plaque.end.x + 26.0, c.y), 1, "AI")
+	_draw_shield(Vector2(plaque.position.x - 26.0, c.y), 0, _labels[0])
+	_draw_shield(Vector2(plaque.end.x + 26.0, c.y), 1, _labels[1])
 
 	# Chevron from the active player toward the next one.
 	var dir: float = 1.0 if _current == 0 else -1.0

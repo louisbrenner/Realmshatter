@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Cinder Mortar"
+Description = "Lobs burning pitch over the front line."
+CardType = 0
+Rarity = 1
+Role = 0
+Class = 6
+ApCost = 2
+Movement = 3
+Attack = 1
+Hp = 4
+Range = 3
+Shield = 0
+ApBonus = 0
+AttackArea = 1
+Keywords = 1
+Clan = 1
+Tint = Color(1, 0.45, 0.15, 1)

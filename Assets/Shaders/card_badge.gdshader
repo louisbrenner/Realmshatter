@@ -9,6 +9,8 @@ uniform int shape = 0;
 uniform vec4 fill_color : source_color = vec4(1.0, 0.8, 0.2, 1.0);
 uniform vec4 rim_color : source_color = vec4(0.12, 0.07, 0.03, 1.0);
 uniform vec2 rect_size = vec2(46.0, 46.0);
+// Attack crest only: area of an area attack (0 none, 1 cross, 2 row, 3 column, 4 2x2) -> outward marks + burst.
+uniform int area = 0;
 
 float sd_hex(vec2 p, float r) {
 	const vec3 k = vec3(-0.866025404, 0.5, 0.577350269);
@@ -32,9 +34,15 @@ void fragment() {
 		float inner = pc_sd_crest(p * 1.28) / 1.28;
 		fill = fill_color.rgb * (0.62 + 0.55 * hl);
 		fill *= mix(1.12, 0.78, smoothstep(-0.02, 0.02, inner));
-		float sw = pc_sd_sword(pc_rot(0.785398) * p * 1.35) / 1.35;
+		// Engraving: a sword, or a starburst for area attacks.
+		float sw = area > 0 ? pc_emblem(p * 1.15, 3) / 1.15 : pc_sd_sword(pc_rot(0.785398) * p * 1.35) / 1.35;
 		fill = mix(fill, fill * 0.74, (1.0 - smoothstep(-0.01, 0.02, sw)) * 0.55);
 		fill += vec3(1.0, 0.95, 0.8) * pow(hl, 5.0) * 0.25;
+		if (area > 0) {
+			float marks = pc_sd_area_marks(p, area) * scale;
+			fill = mix(fill, vec3(1.0, 0.42, 0.1) * (0.85 + 0.45 * hl), 1.0 - smoothstep(-0.6, 0.6, marks));
+			d = min(d, marks);
+		}
 	} else if (shape == 1) {
 		// The attack crest in red, with a faintly engraved heart behind the number.
 		d = pc_sd_crest(p) * scale;

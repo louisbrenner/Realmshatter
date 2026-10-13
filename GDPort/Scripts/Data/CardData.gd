@@ -25,6 +25,9 @@ extends Resource
 @export var range: int = 1
 @export var shield: int = 0
 @export var ap_bonus: int = 0
+## Area attack: besides the target tile, every piece in this shape around it (friend or foe, never the attacker)
+## takes the full attack with its effects. SINGLE = a normal attack. Same shapes as area spells.
+@export_enum("Single", "Plus", "Row3", "Column3", "Square2") var attack_area: int = AreaShape.SINGLE
 
 ## Keyword flags of a unit (see Keyword / KeywordInfo).
 @export_group("Keywords")
@@ -135,6 +138,7 @@ func _copy_manually() -> CardData:
 	c.range = range
 	c.shield = shield
 	c.ap_bonus = ap_bonus
+	c.attack_area = attack_area
 	c.keywords = keywords
 	c.level = level
 	c.legend = legend

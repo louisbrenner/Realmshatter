@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcFrostLeader.tres" id="3_deck"]
 [ext_resource type="Resource" path="res://Resources/Cards/FrostWyrm.tres" id="r_FrostWyrm"]
+[ext_resource type="Resource" path="res://Resources/Cards/Hailstorm.tres" id="r_Hailstorm"]
+[ext_resource type="Resource" path="res://Resources/Cards/AvalancheShaman.tres" id="r_AvalancheShaman"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,9 +19,9 @@ position = Vector2(480, 215)
 greeting = "I am Isolde, Winter Queen of the Frostbound. Patience wins every war. Shall I teach you?"
 rematch_line = "Winter returns. It always does."
 defeat_line = "You melted my winter. The Frost Wyrm will answer your call."
-victory_line = "Stillness... and then defeat. That is the way of ice."
+victory_line = "Stillness... and then defeat. Winter always collects its due."
 reward_gold = 150
-reward_cards = Array[ExtResource("2_card")]([ExtResource("r_FrostWyrm")])
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_FrostWyrm"), ExtResource("r_FrostWyrm"), ExtResource("r_Hailstorm"), ExtResource("r_Hailstorm"), ExtResource("r_AvalancheShaman"), ExtResource("r_AvalancheShaman")])
 bonus_ap_per_turn = 1
 requires_defeated = Array[String](["frost_initiate", "frost_adept", "frost_champion"])
 locked_line = "Prove yourself against the three duelists of this hall first - then I will face you."

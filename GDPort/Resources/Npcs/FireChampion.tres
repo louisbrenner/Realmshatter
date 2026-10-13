@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcFireChampion.tres" id="3_deck"]
-[ext_resource type="Resource" path="res://Resources/Cards/Berserker.tres" id="r_Berserker"]
+[ext_resource type="Resource" path="res://Resources/Cards/Pyromancer.tres" id="r_Pyromancer"]
+[ext_resource type="Resource" path="res://Resources/Cards/CinderWraith.tres" id="r_CinderWraith"]
+[ext_resource type="Resource" path="res://Resources/Cards/Phoenix.tres" id="r_Phoenix"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ position = Vector2(760, 250)
 greeting = "Nobody reaches Varkas without passing my pyre first."
 rematch_line = "You again. Good. I need the warm-up."
 defeat_line = "Ha! Go on then - the Pyrelord awaits."
-victory_line = "Ash and cinders. Come back stronger."
+victory_line = "Ash and cinders. Your gold feeds my pyre now. Come back stronger."
 reward_gold = 100
-reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Berserker")])
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Pyromancer"), ExtResource("r_Pyromancer"), ExtResource("r_CinderWraith"), ExtResource("r_CinderWraith"), ExtResource("r_Phoenix")])

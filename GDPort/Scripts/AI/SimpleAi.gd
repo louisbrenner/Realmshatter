@@ -4,10 +4,13 @@ extends RefCounted
 ## AP is budgeted greedily in priority order, re-evaluated after every action:
 ## 1. finish a pending draft (free), 2. high-value actions (attacks, entering the scoring zone),
 ## 3. one reinforcement per turn while the own army is critically small, 4. draw if the hand has nothing useful,
-## 5. advance toward the scoring zone (before any further deploys, so the army never camps in its base),
-## 6. buildings, 7. remaining cards (spells incl. tile spells, units up to a cap),
-## 8. draw with leftover AP, 9. convert VP into AP for a very valuable action (kills) when the VP lead is safe
+## 5. strong expensive cards (3+ AP, high value per AP) before low-value moves,
+## 6. buildings (before the builders walk off), 7. advance toward the scoring zone (before any further deploys,
+## so the army never camps in its base), 8. remaining cards (spells incl. tile spells, units up to a cap),
+## 9. draw with leftover AP, 10. convert VP into AP for a very valuable action (kills) when the VP lead is safe
 ## or the opponent is about to win.
+## AP-gaining spells (Mana Surge) are cast first. Cards are chosen by _card_value with a small knapsack over the hand
+## (the most valuable set the AP budget allows), and VP may be converted to pay for a strong card of 4+ AP.
 ## Actions resolve immediately (TurnController.act), so every decision sees the real board. A piece moves toward
 ## a free scoring-zone tile (avoiding lava, friendlies may be passed) and attacks the target whose
 ## TurnController.predict_attack outcome is best: enemy damage and kills minus friendly fire (Pierce / Arc can
@@ -20,6 +23,7 @@ const MAX_DESIRED_PIECES := 6
 const VP_ORDER_VALUE := 6
 const LAVA_PENALTY := 25
 const MAX_HAND_TO_DRAW := 6
+const MAX_BUILDINGS := 4
 
 const _INT_MAX := 2147483647
 
@@ -112,6 +116,8 @@ func take_turn() -> Array[AiAction]:
 	for _step: int in range(MAX_STEPS):
 		if _state.phase != GamePhase.MAIN or _state.current_player_index != player_index:
 			break
+		if _try_accelerate(actions):
+			continue
 		if _try_command(actions, ctx, HIGH_ORDER_VALUE, false):
 			continue
 		if not reinforced and _is_army_critical() and _try_play_best_card(actions, ctx, true):
@@ -119,11 +125,14 @@ func take_turn() -> Array[AiAction]:
 			continue
 		if _should_draw_early() and _try_draw(actions):
 			continue
+		if _try_play_best_card(actions, ctx, false, true):
+			continue
+		# Builders build before they would walk off toward the zone (where they could not build any more).
+		if _try_build(actions):
+			continue
 		if _try_command(actions, ctx, 1, false):
 			continue
 		if _try_trap(actions):
-			continue
-		if _try_build(actions):
 			continue
 		if _try_play_best_card(actions, ctx, false):
 			continue
@@ -167,7 +176,7 @@ func choose_draft_index(offer: Array[CardData]) -> int:
 	var have_units: bool = my_pieces.size() + hand_units > 0
 	# Units above the AP income are dead weight until Mana Wells / VP conversions pay for them; while no unit in
 	# hand is affordable at all, a cheap unit beats a strong one.
-	var income: int = _state.config.base_ap + me.bonus_ap_per_turn
+	var income: int = _income()
 	var affordable_in_hand: bool = false
 	for c: CardData in me.hand:
 		if c != null and c.card_type == CardType.UNIT and _controller.get_card_cost(c) <= income:
@@ -181,7 +190,7 @@ func choose_draft_index(offer: Array[CardData]) -> int:
 			continue
 		var score: float
 		if card.card_type == CardType.UNIT:
-			score = float(_unit_strength(card))
+			score = _card_value(card)
 			if card.role == UnitRole.RESOURCE and early and resource_count < 2:
 				score += 10
 			var over: int = _controller.get_card_cost(card) - income
@@ -191,7 +200,7 @@ func choose_draft_index(offer: Array[CardData]) -> int:
 				score += 6
 		else:
 			if my_pieces.size() > 0 or card.targets_tile:
-				score = _spell_draft_value(card) * 1.5 + 1 - hand_spells * 2
+				score = _spell_draft_value(card) * 1.5 + 1 - hand_spells * 2 + card.ap_gain * 2
 			else:
 				score = -5.0
 			if not have_units:
@@ -287,6 +296,20 @@ func _should_spend_vp() -> bool:
 	return safe_lead or desperate
 
 
+## VP the AI may convert this turn to pay for a strong card (4+ AP): when not behind by more than 2, not about
+## to win anyway and holding at least 3 VP - or when the opponent is about to win. 0 otherwise.
+func _vp_for_cards() -> int:
+	var me: PlayerState = _state.players[player_index]
+	var opp: PlayerState = _state.players[1 - player_index]
+	var left: int = mini(_controller.remaining_vp_conversions, me.victory_points)
+	if left <= 0 or _state.phase != GamePhase.MAIN:
+		return 0
+	var target: int = _state.config.points_target
+	var desperate: bool = opp.victory_points >= target - 4
+	var comfortable: bool = me.victory_points >= 3 and me.victory_points + 2 >= opp.victory_points and me.victory_points < target - 3
+	return left if desperate or comfortable else 0
+
+
 func _try_convert_vp(actions: Array[AiAction], reason: String) -> bool:
 	if not _should_spend_vp() or not _controller.convert_vp_to_ap():
 		return false
@@ -300,22 +323,26 @@ func _try_convert_vp(actions: Array[AiAction], reason: String) -> bool:
 
 # ---------------------------------------------------------------- cards
 
-func _try_play_best_card(actions: Array[AiAction], ctx: PlanContext, units_only: bool) -> bool:
+## Plays one card of the most valuable affordable set: every playable card gets a value (_card_value for units,
+## the target score for spells); a small knapsack picks the set with the highest total value within the AP
+## budget (incl. _vp_for_cards for 4+ AP cards), and its most valuable card is played now (converting VP if
+## needed). premium_only: only cards of 3+ AP worth at least 2.5 value per AP.
+func _try_play_best_card(actions: Array[AiAction], ctx: PlanContext, units_only: bool, premium_only: bool = false) -> bool:
 	var me: PlayerState = _state.players[player_index]
-	var units_allowed: bool = units_only or _count_units(_state.get_pieces_of(player_index)) < MAX_DESIRED_PIECES
-	var best_card: CardData = null
-	var best_tile: Vector2i = Vector2i.ZERO
-	var best_target: Piece = null
-	var best_cost: int = _INT_MAX
-	var best_value: float = -INF
+	var unit_count: int = _count_units(_state.get_pieces_of(player_index))
+	var unit_slots: int = 1 if units_only else maxi(0, MAX_DESIRED_PIECES - unit_count)
+	var vp_budget: int = _vp_for_cards()
+	var options: Array[Dictionary] = []
 
 	for card: CardData in me.hand.duplicate():
 		if (card == null
-				or (card.card_type == CardType.UNIT and not units_allowed)
-				or (card.card_type == CardType.SPELL and units_only)):
+				or (card.card_type == CardType.UNIT and unit_slots <= 0)
+				or (card.card_type == CardType.SPELL and units_only)
+				or _is_pure_accelerator(card)):
 			continue
 		var cost: int = _controller.get_card_cost(card)
-		if cost > me.action_points:
+		# VP only pays for strong cards.
+		if cost > me.action_points and (cost < 4 or cost > me.action_points + vp_budget):
 			continue
 
 		var tile: Vector2i = Vector2i.ZERO
@@ -326,29 +353,64 @@ func _try_play_best_card(actions: Array[AiAction], ctx: PlanContext, units_only:
 			if deploy == null:
 				continue
 			tile = deploy
-			value = float(_unit_strength(card))
+			value = _card_value(card)
 		elif card.targets_tile:
 			var found: Dictionary = _find_tile_spell_target(card, ctx)
 			var anchor: Variant = found.result
 			if anchor == null:
 				continue
 			tile = anchor
-			value = float(found.best_value)
+			value = float(found.best_value) + card.ap_gain * 2
 		else:
 			target = _find_spell_target(card)
 			if target == null:
 				continue
-			value = float(maxi(1, absi(_spell_net(card))))
-
-		if cost < best_cost or (cost == best_cost and value > best_value):
-			best_card = card
-			best_tile = tile
-			best_target = target
-			best_cost = cost
-			best_value = value
-
-	if best_card == null:
+			value = maxi(1, absi(_spell_net(card))) * 1.5 + (2.0 if card.grant_status != StatusEffectType.NONE else 0.0) + card.ap_gain * 2
+		if premium_only and (cost < 3 or value < cost * 2.5):
+			continue
+		options.append({"card": card, "tile": tile, "target": target, "cost": cost, "value": value})
+	if options.is_empty():
 		return false
+
+	# Knapsack over at most 10 options (the hand is small): best total value, ties -> lower total cost.
+	var n: int = mini(options.size(), 10)
+	var budget: int = me.action_points + vp_budget
+	var best_mask: int = 0
+	var best_total: float = -1.0
+	var best_total_cost: int = _INT_MAX
+	for mask: int in range(1, 1 << n):
+		var cost_sum: int = 0
+		var units: int = 0
+		var total: float = 0.0
+		for i: int in range(n):
+			if (mask & (1 << i)) == 0:
+				continue
+			cost_sum += int(options[i].cost)
+			total += float(options[i].value)
+			units += 1 if (options[i].card as CardData).card_type == CardType.UNIT else 0
+		if cost_sum > budget or units > unit_slots:
+			continue
+		if total > best_total or (total == best_total and cost_sum < best_total_cost):
+			best_total = total
+			best_total_cost = cost_sum
+			best_mask = mask
+	if best_mask == 0:
+		return false
+	var pick: int = -1
+	for i: int in range(n):
+		if (best_mask & (1 << i)) != 0 and (pick < 0 or float(options[i].value) > float(options[pick].value)):
+			pick = i
+	var best_card: CardData = options[pick].card
+	var best_tile: Vector2i = options[pick].tile
+	var best_target: Piece = options[pick].target
+	while int(options[pick].cost) > me.action_points:
+		if not _controller.convert_vp_to_ap():
+			return false
+		var conv := AiAction.new()
+		conv.kind = AiActionKind.CONVERT_VP
+		conv.player_index = player_index
+		conv.description = "Converted 1 VP into 1 AP (for %s)" % _card_name(best_card)
+		actions.append(conv)
 
 	if best_card.card_type == CardType.UNIT:
 		var piece: Piece = _controller.play_unit_card(best_card, best_tile)
@@ -615,6 +677,9 @@ func _evaluate_order(piece: Piece, ctx: PlanContext) -> OrderCandidate:
 		attack = null
 	if move == null and attack == null:
 		return null
+	# A Builder that could build stays and builds (_try_build) instead of only walking - attacks still go first.
+	if attack == null and _wants_to_build(piece):
+		return null
 
 	var value: int = attack.value if attack != null else 0
 	if move != null:
@@ -770,20 +835,19 @@ func _score_preview(preview: ChainPreview, ctx: PlanContext, tile: Vector2i) -> 
 	return plan
 
 
-## Lets an idle Builder start its building when AP allows (keeping 1 AP spare) and the player has fewer than
-## two buildings of that kind. Turrets / Barricades go toward the scoring zone, the rest away from enemies.
+## Lets an idle Builder start its building when AP allows, the player has fewer than two buildings of that kind
+## and at most MAX_BUILDINGS in total (_wants_to_build). Turrets / Barricades go toward the scoring zone, the rest
+## away from enemies.
 func _try_build(actions: Array[AiAction]) -> bool:
 	var ap: int = _state.players[player_index].action_points
+	var total: int = 0
+	for p: Piece in _state.get_pieces_of(player_index):
+		total += 1 if p.is_building else 0
+	if total >= MAX_BUILDINGS:
+		return false
 	for piece: Piece in _state.get_pieces_of(player_index):
 		var type: int = _controller.get_build_type(piece)
-		# A builder in the scoring zone would stop scoring while it builds: keep it scoring instead.
-		if (type == BuildingType.NONE or piece.constructing_id >= 0 or not _controller.can_command(piece)
-				or BuildingInfo.get_cost(type) + 1 > ap or _board.is_in_scoring_zone(piece.position)):
-			continue
-		var same: int = 0
-		for p: Piece in _state.get_pieces_of(player_index):
-			same += 1 if p.building == type else 0
-		if same >= 2:
+		if not _wants_to_build(piece) or not _controller.can_command(piece) or BuildingInfo.get_cost(type) > ap:
 			continue
 		# Best tiles first (Barricades: the two best).
 		var forward: bool = type == BuildingType.TURRET or type == BuildingType.BARRICADE
@@ -808,9 +872,9 @@ func _try_build(actions: Array[AiAction]) -> bool:
 			tile_texts.append(str(t))
 		var what: String
 		if tiles.size() > 1:
-			what = "%d %ss" % [tiles.size(), BuildingInfo.display_name(type)]
+			what = "%d %ss" % [tiles.size(), BuildingInfo.display_name(type, piece.source.clan)]
 		else:
-			what = "a %s" % BuildingInfo.display_name(type)
+			what = "a %s" % BuildingInfo.display_name(type, piece.source.clan)
 		var a := AiAction.new()
 		a.kind = AiActionKind.BUILD
 		a.player_index = player_index
@@ -853,6 +917,124 @@ func _try_trap(actions: Array[AiAction]) -> bool:
 		actions.append(a)
 		return true
 	return false
+
+
+## True for an idle Builder outside the scoring zone (it would stop scoring while building) whose building is still
+## worth raising: fewer than two of that kind, fewer than MAX_BUILDINGS in total and a free tile next to it.
+func _wants_to_build(piece: Piece) -> bool:
+	var type: int = _controller.get_build_type(piece)
+	if type == BuildingType.NONE or piece.constructing_id >= 0 or _board.is_in_scoring_zone(piece.position):
+		return false
+	var same: int = 0
+	var total: int = 0
+	for p: Piece in _state.get_pieces_of(player_index):
+		same += 1 if p.building == type else 0
+		total += 1 if p.is_building else 0
+	return same < 2 and total < MAX_BUILDINGS and _controller.get_valid_build_tiles(piece).size() > 0 and _is_building_useful(piece, type)
+
+
+## Whether the building would pay off where the builder stands: Mana Wells early on, Turrets near the zone or
+## enemies, Barricades when enemies approach, Shrines among allies, Obelisks with spells in hand. Clan buildings
+## also qualify through their aura: Fire / Frost with enemies close, Healing / Stone / Storm with allies close.
+func _is_building_useful(builder: Piece, type: int) -> bool:
+	var at: Vector2i = builder.position
+	var enemy_dist: int = _nearest_enemy_distance(at)
+	var allies_near: int = 0
+	for p: Piece in _state.get_pieces_of(player_index):
+		if p != builder and not p.is_building and GridPos.manhattan_distance(p.position, at) <= 2:
+			allies_near += 1
+	var spells: int = 0
+	for c: CardData in _state.players[player_index].hand:
+		if c != null and c.card_type == CardType.SPELL:
+			spells += 1
+	var useful: bool = false
+	match type:
+		BuildingType.MANA_WELL:
+			useful = _state.turn_number <= 14
+		BuildingType.TURRET:
+			useful = _distance_to_zone_rect(at) <= 2 or enemy_dist <= 5
+		BuildingType.BARRICADE:
+			useful = enemy_dist <= 4
+		BuildingType.SHRINE:
+			useful = allies_near >= 2
+		BuildingType.OBELISK:
+			useful = spells >= 2
+	if useful:
+		return true
+	match builder.source.clan:
+		Clan.FIRE, Clan.FROST:
+			return enemy_dist <= 3
+		Clan.HEALING, Clan.STONE, Clan.STORM:
+			return allies_near >= 2
+	return false
+
+
+## Spells that only gain AP (net gain, no other effect), e.g. Mana Surge.
+func _is_pure_accelerator(card: CardData) -> bool:
+	return (card.card_type == CardType.SPELL and card.ap_gain > _controller.get_card_cost(card) and _spell_net(card) == 0
+		and card.grant_status == StatusEffectType.NONE and not card.targets_tile)
+
+
+## Casts an AP-gaining spell (net AP gain) on any own piece in reach, if the hand holds something else to spend
+## the AP on. False otherwise.
+func _try_accelerate(actions: Array[AiAction]) -> bool:
+	var me: PlayerState = _state.players[player_index]
+	for card: CardData in me.hand.duplicate():
+		if card == null or not _is_pure_accelerator(card) or _controller.get_card_cost(card) > me.action_points:
+			continue
+		var useful: bool = false
+		for c: CardData in me.hand:
+			if c != null and c != card and not _is_pure_accelerator(c):
+				useful = true
+		if not useful:
+			continue
+		for p: Piece in _state.get_pieces_of(player_index):
+			if not _controller.can_play_spell_card(card, p):
+				continue
+			var at: Vector2i = p.position
+			if not _controller.play_spell_card(card, p):
+				return false
+			var a := AiAction.new()
+			a.kind = AiActionKind.PLAY_SPELL
+			a.player_index = player_index
+			a.card = card
+			a.piece_id = p.id
+			a.target = at
+			a.description = "Cast %s on #%d %s at %s" % [_card_name(card), p.id, _card_name(p.source), str(at)]
+			actions.append(a)
+			return true
+	return false
+
+
+## AP at the start of the next own turn: base + bonus + AP-producing pieces and Mana Wells.
+func _income() -> int:
+	var income: int = _state.config.base_ap + _state.players[player_index].bonus_ap_per_turn
+	for p: Piece in _state.get_pieces_of(player_index):
+		if p.is_building:
+			income += _state.config.mana_well_ap if p.building == BuildingType.MANA_WELL and not p.under_construction else 0
+		else:
+			income += p.ap_bonus
+	return income
+
+
+## Rough worth of a unit card in stat points: Attack counts 1.5, HP and Shield 1, plus reach, speed, area attacks,
+## AP income (3 per AP), keywords, legend effects and triggers. Planted units that bring no AP lose a little (they
+## never score).
+static func _card_value(card: CardData) -> float:
+	if card.card_type != CardType.UNIT:
+		return _spell_draft_value(card) + card.ap_gain * 2.0
+	var value: float = (card.attack * 1.5 + card.hp + card.shield
+		+ maxi(0, card.range - 1)
+		+ (1 if card.movement >= 5 else (-1 if card.movement <= 1 else 0))
+		+ (1.5 if card.attack_area != AreaShape.SINGLE else 0.0)
+		+ card.ap_bonus * 3
+		+ KeywordInfo.split(card.keywords).size()
+		+ (4 if card.legend != LegendEffect.NONE else 0)
+		+ (1 if card.deathrattle != DeathrattleType.NONE else 0)
+		+ (1 if card.on_first_hit != FirstHitType.NONE else 0))
+	if card.has_keyword(Keyword.PLANTED) and card.ap_bonus <= 0:
+		value -= 1.0
+	return value
 
 
 func _nearest_enemy_distance(tile: Vector2i) -> int:
@@ -918,10 +1100,6 @@ static func _has_spell(piece: Piece, card: CardData) -> bool:
 		if s.source == card:
 			return true
 	return false
-
-
-static func _unit_strength(card: CardData) -> int:
-	return card.attack + card.hp + card.shield + KeywordInfo.split(card.keywords).size()
 
 
 static func _spell_net(card: CardData) -> int:

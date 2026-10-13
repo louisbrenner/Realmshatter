@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcFireLeader.tres" id="3_deck"]
 [ext_resource type="Resource" path="res://Resources/Cards/Phoenix.tres" id="r_Phoenix"]
+[ext_resource type="Resource" path="res://Resources/Cards/Meteor.tres" id="r_Meteor"]
+[ext_resource type="Resource" path="res://Resources/Cards/Pyromancer.tres" id="r_Pyromancer"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,9 +19,9 @@ position = Vector2(480, 215)
 greeting = "I am Varkas, Pyrelord of the Ember Legion. Few leave my table unburnt. Do you dare?"
 rematch_line = "The flames remember you. Shall we dance again?"
 defeat_line = "Impressive... The Phoenix chooses its own master. Today it chose you."
-victory_line = "Ashes. As expected. Train harder, little spark."
+victory_line = "Ashes. As expected. Your tribute is accepted, little spark."
 reward_gold = 150
-reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Phoenix")])
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Phoenix"), ExtResource("r_Phoenix"), ExtResource("r_Meteor"), ExtResource("r_Meteor"), ExtResource("r_Pyromancer"), ExtResource("r_Pyromancer")])
 bonus_ap_per_turn = 1
 requires_defeated = Array[String](["fire_initiate", "fire_adept", "fire_champion"])
 locked_line = "Prove yourself against the three duelists of this hall first - then I will face you."

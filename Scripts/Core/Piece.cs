@@ -130,6 +130,9 @@ public sealed class Piece
 
 	public int EffectiveMovement => IsFrozen ? 0 : Math.Max(0, BaseStats.Movement + SumDelta(e => e.MovementDelta));
 	public int EffectiveAttack => Math.Max(0, BaseStats.Attack + BonusAttack + SumDelta(e => e.AttackDelta));
+	/// <summary>Area of its attacks (CardData.AttackArea; Single = a normal attack).</summary>
+	public AreaShape AttackArea => Source?.AttackArea ?? AreaShape.Single;
+
 	public int EffectiveRange => Math.Max(0, BaseStats.Range + SumDelta(e => e.RangeDelta));
 	public int MaxHp => Math.Max(1, BaseStats.Hp + SumDelta(e => e.HpDelta));
 

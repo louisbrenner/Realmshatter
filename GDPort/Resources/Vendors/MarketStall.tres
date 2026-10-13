@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="VendorData" load_steps=26 format=3]
+[gd_resource type="Resource" script_class="VendorData" load_steps=34 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/VendorData.gd" id="1_vendor"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
@@ -25,6 +25,14 @@
 [ext_resource type="Resource" path="res://Resources/Cards/ManaSurge.tres" id="s_ManaSurge"]
 [ext_resource type="Resource" path="res://Resources/Cards/Raider.tres" id="s_Raider"]
 [ext_resource type="Resource" path="res://Resources/Cards/Pilgrim.tres" id="s_Pilgrim"]
+[ext_resource type="Resource" path="res://Resources/Cards/Bombardier.tres" id="s_Bombardier"]
+[ext_resource type="Resource" path="res://Resources/Cards/PyreOffering.tres" id="s_PyreOffering"]
+[ext_resource type="Resource" path="res://Resources/Cards/RichVein.tres" id="s_RichVein"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameWarden.tres" id="s_FlameWarden"]
+[ext_resource type="Resource" path="res://Resources/Cards/IcebowEngineer.tres" id="s_IcebowEngineer"]
+[ext_resource type="Resource" path="res://Resources/Cards/SparkTinker.tres" id="s_SparkTinker"]
+[ext_resource type="Resource" path="res://Resources/Cards/Stonemason.tres" id="s_Stonemason"]
+[ext_resource type="Resource" path="res://Resources/Cards/Shrinekeeper.tres" id="s_Shrinekeeper"]
 
 [resource]
 script = ExtResource("1_vendor")
@@ -34,4 +42,4 @@ title = "Market Stall"
 greeting = "Fresh recruits and handy tricks, cheap as bread! Have a look."
 position = Vector2(700, 820)
 color = Color(0.85, 0.3, 0.25, 1)
-stock = Array[ExtResource("2_card")]([ExtResource("s_Swordsman"), ExtResource("s_Archer"), ExtResource("s_Guardian"), ExtResource("s_Scout"), ExtResource("s_Miner"), ExtResource("s_Merchant"), ExtResource("s_BoneKnight"), ExtResource("s_EmberImp"), ExtResource("s_Acolyte"), ExtResource("s_BattleCry"), ExtResource("s_Weaken"), ExtResource("s_Blessing"), ExtResource("s_Stoneskin"), ExtResource("s_Gale"), ExtResource("s_Frostbite"), ExtResource("s_LightningBolt"), ExtResource("s_Overcharge"), ExtResource("s_StoneWall"), ExtResource("s_ArcaneApprentice"), ExtResource("s_Lancer"), ExtResource("s_ManaSurge"), ExtResource("s_Raider"), ExtResource("s_Pilgrim")])
+stock = Array[ExtResource("2_card")]([ExtResource("s_Swordsman"), ExtResource("s_Archer"), ExtResource("s_Guardian"), ExtResource("s_Scout"), ExtResource("s_Miner"), ExtResource("s_Merchant"), ExtResource("s_BoneKnight"), ExtResource("s_EmberImp"), ExtResource("s_Acolyte"), ExtResource("s_BattleCry"), ExtResource("s_Weaken"), ExtResource("s_Blessing"), ExtResource("s_Stoneskin"), ExtResource("s_Gale"), ExtResource("s_Frostbite"), ExtResource("s_LightningBolt"), ExtResource("s_Overcharge"), ExtResource("s_StoneWall"), ExtResource("s_ArcaneApprentice"), ExtResource("s_Lancer"), ExtResource("s_ManaSurge"), ExtResource("s_Raider"), ExtResource("s_Pilgrim"), ExtResource("s_Bombardier"), ExtResource("s_PyreOffering"), ExtResource("s_RichVein"), ExtResource("s_FlameWarden"), ExtResource("s_IcebowEngineer"), ExtResource("s_SparkTinker"), ExtResource("s_Stonemason"), ExtResource("s_Shrinekeeper")])

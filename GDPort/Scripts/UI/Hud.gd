@@ -18,8 +18,6 @@ signal convert_vp_pressed()
 ## Internal: a turn banner finished (replaces the C# shared banner Task).
 signal _banner_finished()
 
-const HUMAN_PLAYER := 0
-const AI_PLAYER := 1
 const HINT_SIDE_MARGIN := 236.0
 const HINT_FONT_SIZE := 15
 const HINT_MIN_FONT_SIZE := 13
@@ -30,6 +28,16 @@ const HINT_MIN_FONT_SIZE := 13
 @export var min_scale: float = 0.7
 ## Plays a turn banner automatically when update_state sees a new turn.
 @export var auto_turn_banner: bool = true
+
+## Player index whose hand, AP and points fill the own window (0 except in hotseat matches).
+var view_player: int = 0
+## Display names of both players for hotseat matches; empty = the default "You" / "AI" wording.
+var player_names: Array[String] = []
+## Player shown in the own (bottom) window; the other one fills the opponent window.
+var _human_player: int:
+	get: return view_player
+var _ai_player: int:
+	get: return 1 - view_player
 
 var _root: Control
 var _turn_indicator: TurnIndicator
@@ -244,12 +252,12 @@ func update_state(state: GameState) -> void:
 		_last_banner_key = ""
 
 	var target: int = state.config.points_target
-	var human: PlayerState = state.players[HUMAN_PLAYER]
-	var ai: PlayerState = state.players[AI_PLAYER]
+	var human: PlayerState = state.players[_human_player]
+	var ai: PlayerState = state.players[_ai_player]
 	_player_coins.target = target
 	_ai_coins.target = target
-	_update_vp(HUMAN_PLAYER, human.victory_points, target, not new_game)
-	_update_vp(AI_PLAYER, ai.victory_points, target, not new_game)
+	_update_vp(_human_player, human.victory_points, target, not new_game)
+	_update_vp(_ai_player, ai.victory_points, target, not new_game)
 
 	if new_turn and current >= 0 and current < _turn_max_ap.size():
 		_turn_max_ap[current] = state.current_player.action_points
@@ -257,17 +265,17 @@ func update_state(state: GameState) -> void:
 		_turn_max_ap[p] = maxi(maxi(_turn_max_ap[p], state.players[p].action_points), state.config.base_ap)
 	_player_mana.min_slots = state.config.base_ap
 	_ai_mana.min_slots = state.config.base_ap
-	_player_mana.set_values(human.action_points, _turn_max_ap[HUMAN_PLAYER], not new_game)
-	_ai_mana.set_values(ai.action_points, _turn_max_ap[AI_PLAYER], not new_game)
+	_player_mana.set_values(human.action_points, _turn_max_ap[_human_player], not new_game)
+	_ai_mana.set_values(ai.action_points, _turn_max_ap[_ai_player], not new_game)
 
-	var human_main: bool = current == HUMAN_PLAYER and state.phase == GamePhase.MAIN and state.winner < 0
+	var human_main: bool = current == _human_player and state.phase == GamePhase.MAIN and state.winner < 0
 	var max_convert: int = state.config.max_vp_to_ap_per_turn
 	_vp_convert.set_state(human.vp_converted_this_turn, max_convert,
 		human_main and human.victory_points > 0 and human.vp_converted_this_turn < max_convert)
 
 	_deck_pile.set_deck(human.deck.size(), state.config.draw_ap_cost)
 	_enemy_hand.set_count(ai.hand.size() + ai.draft_offer.size())
-	_end_turn_button.set_player_turn(current == HUMAN_PLAYER)
+	_end_turn_button.set_player_turn(current == _human_player)
 	_end_turn_button.set_nothing_left(human_main and human.action_points <= 0)
 	_turn_indicator.set_turn(state.turn_number, current, _phase_caption(state))
 
@@ -281,8 +289,8 @@ func update_state(state: GameState) -> void:
 
 ## Sets the human player's AP crystals explicitly (current / maximum this turn).
 func set_action_points(current: int, max_ap: int) -> void:
-	_turn_max_ap[HUMAN_PLAYER] = maxi(max_ap, current)
-	_player_mana.set_values(current, _turn_max_ap[HUMAN_PLAYER])
+	_turn_max_ap[_human_player] = maxi(max_ap, current)
+	_player_mana.set_values(current, _turn_max_ap[_human_player])
 
 
 ## Updates the VP-to-AP conversion slots (used this turn, maximum per turn, clickable).
@@ -310,11 +318,12 @@ func show_turn_banner(player: int, turn_number: int) -> void:
 			await _banner_finished
 		return
 	_last_banner_key = key
-	var human: bool = player == HUMAN_PLAYER
+	var human: bool = player == _human_player
 	Sfx.play(SfxId.TURN_START if human else SfxId.TURN_ENEMY)
 	_banner_serial += 1
 	var serial: int = _banner_serial
-	await _turn_banner.play("YOUR TURN" if human else "ENEMY TURN", "Turn %d" % turn_number, HudStyle.accent(player))
+	var title: String = ("%s'S TURN" % player_names[player].to_upper()) if not player_names.is_empty() else ("YOUR TURN" if human else "ENEMY TURN")
+	await _turn_banner.play(title, "Turn %d" % turn_number, HudStyle.accent(player))
 	_banner_done_serial = maxi(_banner_done_serial, serial)
 	_banner_finished.emit()
 
@@ -414,13 +423,13 @@ func clear_log() -> void:
 ## (e.g. rewards) and button caption ("" = default; merges both C# overloads).
 func show_win_screen(winner: int, subtitle_override: String = "", button_text: String = "") -> void:
 	draft.hide_popup()
-	var victory: bool = winner == HUMAN_PLAYER
+	var victory: bool = winner == _human_player
 	Sfx.play(SfxId.VICTORY if victory else SfxId.DEFEAT)
 	var subtitle: String = subtitle_override
 	if subtitle.is_empty():
-		if winner == HUMAN_PLAYER:
+		if winner == _human_player:
 			subtitle = "You reached the victory points target!"
-		elif winner == AI_PLAYER:
+		elif winner == _ai_player:
 			subtitle = "The AI reached the victory points target."
 		else:
 			subtitle = "Game over"
@@ -452,8 +461,8 @@ func _place_log_below(panel: Control) -> void:
 
 
 func _update_vp(player: int, vp: int, target: int, animate: bool) -> void:
-	var coins: VictoryCoinStack = _player_coins if player == HUMAN_PLAYER else _ai_coins
-	var label: Label = _player_vp_label if player == HUMAN_PLAYER else _ai_vp_label
+	var coins: VictoryCoinStack = _player_coins if player == _human_player else _ai_coins
+	var label: Label = _player_vp_label if player == _human_player else _ai_vp_label
 	coins.set_points(vp, animate and _last_vp[player] >= 0)
 	label.text = "%d / %d" % [vp, target]
 	if animate and _last_vp[player] >= 0 and vp != _last_vp[player]:
@@ -464,13 +473,14 @@ func _update_vp(player: int, vp: int, target: int, animate: bool) -> void:
 	_last_vp[player] = vp
 
 
-static func _phase_caption(state: GameState) -> String:
-	var human: bool = state.current_player_index == HUMAN_PLAYER
+func _phase_caption(state: GameState) -> String:
+	var human: bool = state.current_player_index == _human_player
+	var other: String = player_names[_ai_player] if not player_names.is_empty() else "AI"
 	match state.phase:
 		GamePhase.DRAFT:
-			return "Choose a card" if human else "AI drafts"
+			return "Choose a card" if human else "%s drafts" % other
 		GamePhase.MAIN:
-			return "Your move" if human else "AI is planning"
+			return "Your move" if human else "%s is planning" % other
 		GamePhase.RESOLVING:
 			return "Ending turn"
 		GamePhase.GAME_OVER:
@@ -521,16 +531,42 @@ func _apply_styles() -> void:
 	_ticker_label.add_theme_font_size_override("font_size", 15)
 	_ticker_label.add_theme_constant_override("outline_size", 4)
 
-	(get_node("Root/AiPanel") as PanelContainer).add_theme_stylebox_override("panel", HudStyle.wood_panel(HudStyle.ENEMY_RED, 8))
-	(get_node("Root/PlayerPanel") as PanelContainer).add_theme_stylebox_override("panel", HudStyle.wood_panel(HudStyle.PLAYER_BLUE, 8))
-	_style_header(get_node("Root/AiPanel/VBox/Header/NameLabel") as Label, HudStyle.ENEMY_RED)
-	_style_header(get_node("Root/PlayerPanel/VBox/Header/NameLabel") as Label, HudStyle.PLAYER_BLUE)
+	_style_panels()
 	_style_vp(_ai_vp_label)
 	_style_vp(_player_vp_label)
 
 	_view_button.add_theme_font_size_override("font_size", 14)
 	_cancel_button.add_theme_font_size_override("font_size", 14)
 	_restart_button.add_theme_font_size_override("font_size", 20)
+
+
+## Hotseat: shows 'player' in the own window (hand, AP, points, VP conversion) and the other player in the opponent
+## window, both in their own colours and with the given names (index 0 / 1).
+func set_view_player(player: int, names: Array[String]) -> void:
+	view_player = clampi(player, 0, 1)
+	player_names = names
+	_last_vp[0] = -1
+	_last_vp[1] = -1
+	_style_panels()
+	_turn_indicator.set_labels("P1" if not names.is_empty() else "YOU", "P2" if not names.is_empty() else "AI")
+	if not names.is_empty():
+		(get_node("Root/PlayerPanel/VBox/Header/NameLabel") as Label).text = names[view_player].to_upper()
+		(get_node("Root/AiPanel/VBox/Header/NameLabel") as Label).text = names[1 - view_player].to_upper()
+	_last_state = null
+
+
+## Own window in the view player's colour, opponent window in the other player's.
+func _style_panels() -> void:
+	var own: Color = HudStyle.accent(_human_player)
+	var enemy: Color = HudStyle.accent(_ai_player)
+	(get_node("Root/AiPanel") as PanelContainer).add_theme_stylebox_override("panel", HudStyle.wood_panel(enemy, 8))
+	(get_node("Root/PlayerPanel") as PanelContainer).add_theme_stylebox_override("panel", HudStyle.wood_panel(own, 8))
+	_style_header(get_node("Root/AiPanel/VBox/Header/NameLabel") as Label, enemy)
+	_style_header(get_node("Root/PlayerPanel/VBox/Header/NameLabel") as Label, own)
+	_player_coins.accent = own
+	_ai_coins.accent = enemy
+	_player_coins.queue_redraw()
+	_ai_coins.queue_redraw()
 
 
 static func _style_header(label: Label, accent: Color) -> void:

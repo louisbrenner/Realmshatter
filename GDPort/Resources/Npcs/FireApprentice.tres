@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcFireApprentice.tres" id="3_deck"]
-[ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="r_FlameArcher"]
+[ext_resource type="Resource" path="res://Resources/Cards/AshenRaider.tres" id="r_AshenRaider"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberImp.tres" id="r_EmberImp"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberEngineer.tres" id="r_EmberEngineer"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -16,6 +18,6 @@ position = Vector2(270, 430)
 greeting = "Hey, you! I bet my embers burn hotter than anything in your deck. Wanna find out?"
 rematch_line = "Back for another scorching? I have been practising!"
 defeat_line = "Ow, ow, ow... fine, you win. Take this - you earned it."
-victory_line = "Ha! Too hot to handle? Come back when you have cooled down."
+victory_line = "Ha! Too hot to handle? Your coin purse melted - I'll take what dripped out."
 reward_gold = 60
-reward_cards = Array[ExtResource("2_card")]([ExtResource("r_FlameArcher")])
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_AshenRaider"), ExtResource("r_AshenRaider"), ExtResource("r_EmberImp"), ExtResource("r_EmberEngineer")])

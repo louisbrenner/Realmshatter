@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Lightwright"
+Description = "Raises Dawn Obelisks that amplify prayers and soothe the wounded."
+CardType = 0
+Role = 1
+Class = 6
+ApCost = 2
+Movement = 3
+Attack = 2
+Hp = 4
+Range = 2
+Shield = 0
+ApBonus = 0
+Clan = 2
+Rarity = 1
+Keywords = 272
+Tint = Color(1, 0.85, 0.5, 1)

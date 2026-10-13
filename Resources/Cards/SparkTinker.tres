@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Spark Tinker"
+Description = "Taps Storm Wells for mana and charges every ally beside them."
+CardType = 0
+Role = 2
+Class = 10
+ApCost = 2
+Movement = 3
+Attack = 0
+Hp = 3
+Range = 1
+Shield = 0
+ApBonus = 1
+Clan = 4
+Rarity = 0
+Keywords = 256
+Tint = Color(0.95, 0.85, 0.35, 1)

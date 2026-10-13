@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcStoneLeader.tres" id="3_deck"]
 [ext_resource type="Resource" path="res://Resources/Cards/MountainColossus.tres" id="r_MountainColossus"]
+[ext_resource type="Resource" path="res://Resources/Cards/Rockslide.tres" id="r_Rockslide"]
+[ext_resource type="Resource" path="res://Resources/Cards/BoulderCatapult.tres" id="r_BoulderCatapult"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,9 +19,9 @@ Position = Vector2(480, 215)
 Greeting = "I am Dur, Mountain King of the Stone Bastion. Nothing moves my line. Show me otherwise."
 RematchLine = "The mountain stands. Try again if you like."
 DefeatLine = "You moved the mountain. The Colossus is yours - keep it standing."
-VictoryLine = "The line holds. It always holds."
+VictoryLine = "The line holds. It always holds. Your gold reinforces it."
 RewardGold = 150
-RewardCards = Array[ExtResource("2_card")]([ExtResource("r_MountainColossus")])
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_MountainColossus"), ExtResource("r_MountainColossus"), ExtResource("r_Rockslide"), ExtResource("r_Rockslide"), ExtResource("r_BoulderCatapult"), ExtResource("r_BoulderCatapult")])
 BonusApPerTurn = 1
 RequiresDefeated = Array[String](["stone_initiate", "stone_adept", "stone_champion"])
 LockedLine = "Prove yourself against the three duelists of this hall first - then I will face you."

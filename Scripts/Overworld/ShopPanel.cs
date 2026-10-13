@@ -4,8 +4,9 @@ using Godot;
 namespace Realmshatter;
 
 /// <summary>
-/// Vendor window: "Buy" lists the vendor's stock with prices (affordable cards glow), "Sell" lists every owned
-/// card with its sell price and how many copies are owned / in the deck. Hover a card for its full rules.
+/// Vendor window: "Buy" lists the vendor's unlocked stock (ShopUnlocks) with prices (affordable cards glow), "Sell"
+/// lists every owned card with its sell price and how many copies are owned / in the deck. Hover a card for its full
+/// rules.
 /// </summary>
 public partial class ShopPanel : OverlayWindow
 {
@@ -76,7 +77,7 @@ public partial class ShopPanel : OverlayWindow
 		SubtitleLabel.Text = _sellMode ? "Sell cards you don't need." : (_vendor?.Title ?? "");
 		_message.Text = _sellMode
 			? "Selling a card used in your deck removes it from the deck."
-			: (_vendor?.Greeting ?? "");
+			: (_vendor?.Greeting ?? "") + LockedHint();
 		CardInfo.HidePanel();
 		ClearChildren(_grid);
 
@@ -89,7 +90,7 @@ public partial class ShopPanel : OverlayWindow
 		{
 			foreach (CardData c in _vendor.Stock)
 			{
-				if (c != null && !cards.Contains(c))
+				if (c != null && !cards.Contains(c) && ShopUnlocks.IsAvailable(c))
 				{
 					cards.Add(c);
 				}
@@ -119,6 +120,24 @@ public partial class ShopPanel : OverlayWindow
 			}
 			slot.Activated += OnSlotActivated;
 		}
+	}
+
+	/// <summary>"" or a line telling how many cards of this vendor are still locked and how to unlock them.</summary>
+	private string LockedHint()
+	{
+		if (_vendor == null)
+		{
+			return "";
+		}
+		var locked = new HashSet<CardData>();
+		foreach (CardData c in _vendor.Stock)
+		{
+			if (c != null && !ShopUnlocks.IsAvailable(c))
+			{
+				locked.Add(c);
+			}
+		}
+		return locked.Count == 0 ? "" : $"\n({locked.Count} more card{(locked.Count > 1 ? "s" : "")} unlock as you beat clan duelists.)";
 	}
 
 	private void OnSlotActivated(CardSlot slot)

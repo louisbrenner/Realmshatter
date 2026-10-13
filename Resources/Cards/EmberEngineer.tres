@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Ember Engineer"
+Description = "Raises Ember Turrets whose braziers scorch anyone who comes close."
+CardType = 0
+Role = 1
+Class = 2
+ApCost = 1
+Movement = 3
+Attack = 1
+Hp = 2
+Range = 3
+Shield = 0
+ApBonus = 0
+Clan = 1
+Rarity = 1
+Keywords = 257
+Tint = Color(1, 0.5, 0.25, 1)

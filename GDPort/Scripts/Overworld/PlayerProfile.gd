@@ -11,7 +11,7 @@ const DECK_MIN := 25
 const DECK_MAX := 40
 const MAX_COPIES := 3
 ## Save format / balance version; older saves are discarded (e.g. after a card rebalance).
-const SAVE_VERSION := 3
+const SAVE_VERSION := 4
 
 static var _owned: Dictionary = {}
 static var _deck_paths: Array[String] = []

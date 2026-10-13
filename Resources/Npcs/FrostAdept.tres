@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcFrostAdept.tres" id="3_deck"]
-[ext_resource type="Resource" path="res://Resources/Cards/FrostArcher.tres" id="r_FrostArcher"]
+[ext_resource type="Resource" path="res://Resources/Cards/GlacierProspector.tres" id="r_GlacierProspector"]
+[ext_resource type="Resource" path="res://Resources/Cards/IcebowEngineer.tres" id="r_IcebowEngineer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Hailstorm.tres" id="r_Hailstorm"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ Position = Vector2(720, 470)
 Greeting = "Patience is the first lesson of the ice. Let us see yours."
 RematchLine = "Once more, then. The ice is patient."
 DefeatLine = "You melted my defence. Well done."
-VictoryLine = "Still. Cold. Patient. That is how one wins."
+VictoryLine = "Still. Cold. Patient. That is how one wins - and how one gets paid."
 RewardGold = 75
-RewardCards = Array[ExtResource("2_card")]([ExtResource("r_FrostArcher")])
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_GlacierProspector"), ExtResource("r_GlacierProspector"), ExtResource("r_IcebowEngineer"), ExtResource("r_Hailstorm"), ExtResource("r_Hailstorm")])

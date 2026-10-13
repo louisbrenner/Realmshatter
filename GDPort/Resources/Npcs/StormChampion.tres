@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcStormChampion.tres" id="3_deck"]
-[ext_resource type="Resource" path="res://Resources/Cards/StormHerald.tres" id="r_StormHerald"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormCaller.tres" id="r_StormCaller"]
+[ext_resource type="Resource" path="res://Resources/Cards/SparkTotem.tres" id="r_SparkTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/ThunderTitan.tres" id="r_ThunderTitan"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ position = Vector2(760, 250)
 greeting = "Raijin only fights those who survive my tempest."
 rematch_line = "Another storm, then."
 defeat_line = "You rode out the storm. Raijin awaits."
-victory_line = "Swept away. Like leaves."
+victory_line = "Swept away. Like leaves. And your gold with them."
 reward_gold = 100
-reward_cards = Array[ExtResource("2_card")]([ExtResource("r_StormHerald")])
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_StormCaller"), ExtResource("r_StormCaller"), ExtResource("r_SparkTotem"), ExtResource("r_SparkTotem"), ExtResource("r_ThunderTitan")])

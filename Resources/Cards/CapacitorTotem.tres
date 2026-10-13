@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Capacitor Totem"
+Description = "Stores lightning by day and lends it out by night."
+CardType = 0
+Role = 2
+Class = 9
+ApCost = 2
+Movement = 0
+Attack = 1
+Hp = 3
+Range = 2
+Shield = 0
+ApBonus = 1
+Clan = 4
+Rarity = 1
+Keywords = 1056
+Tint = Color(0.95, 0.9, 0.4, 1)

@@ -35,10 +35,11 @@ public partial class DeckSelectScreen : Control
 		EnsureBuilt();
 	}
 
-	/// <summary>Shows the screen with one plaque per deck.</summary>
-	public void Present(IReadOnlyList<DeckData> decks)
+	/// <summary>Shows the screen with one plaque per deck; 'title' replaces "Choose your deck" (e.g. hotseat).</summary>
+	public void Present(IReadOnlyList<DeckData> decks, string title = null)
 	{
 		EnsureBuilt();
+		_title.Text = string.IsNullOrEmpty(title) ? "Choose your deck" : title;
 		ClearPlaques();
 		_decks = decks ?? new List<DeckData>();
 		_choosing = false;

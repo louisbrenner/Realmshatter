@@ -4,6 +4,8 @@ extends CanvasLayer
 ## a Deck button, the interaction prompt, a toast line, the dialogue box, the shop and the deck builder.
 
 signal deck_button_pressed
+## The "Local PvP" button was pressed (hotseat match on this device).
+signal hotseat_button_pressed
 
 @export var reference_resolution: Vector2 = Vector2(1152, 648)
 
@@ -62,6 +64,21 @@ func _ready() -> void:
 		deck_button_pressed.emit()
 	)
 	_root.add_child(deck_button)
+
+	var hotseat_button := Button.new()
+	hotseat_button.text = "Local PvP (2 players)"
+	hotseat_button.tooltip_text = "Two players take turns on this device. No rewards, your collection is not affected."
+	hotseat_button.focus_mode = Control.FOCUS_NONE
+	hotseat_button.offset_left = 10
+	hotseat_button.offset_right = 200
+	hotseat_button.offset_top = 62
+	hotseat_button.offset_bottom = 98
+	hotseat_button.add_theme_font_size_override("font_size", 16)
+	hotseat_button.pressed.connect(func() -> void:
+		Sfx.play(SfxId.BUTTON_CLICK)
+		hotseat_button_pressed.emit()
+	)
+	_root.add_child(hotseat_button)
 
 	var help := Label.new()
 	help.text = "WASD / arrows: walk   E / Space: talk   Tab: deck builder"

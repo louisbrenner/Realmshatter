@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="VendorData" load_steps=26 format=3]
+[gd_resource type="Resource" script_class="VendorData" load_steps=45 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/VendorData.cs" id="1_vendor"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
@@ -25,6 +25,25 @@
 [ext_resource type="Resource" path="res://Resources/Cards/RimeStalker.tres" id="s_RimeStalker"]
 [ext_resource type="Resource" path="res://Resources/Cards/StormRunner.tres" id="s_StormRunner"]
 [ext_resource type="Resource" path="res://Resources/Cards/StonePathfinder.tres" id="s_StonePathfinder"]
+[ext_resource type="Resource" path="res://Resources/Cards/CinderMortar.tres" id="s_CinderMortar"]
+[ext_resource type="Resource" path="res://Resources/Cards/RadiantCenser.tres" id="s_RadiantCenser"]
+[ext_resource type="Resource" path="res://Resources/Cards/AvalancheShaman.tres" id="s_AvalancheShaman"]
+[ext_resource type="Resource" path="res://Resources/Cards/ThunderDrummer.tres" id="s_ThunderDrummer"]
+[ext_resource type="Resource" path="res://Resources/Cards/BoulderCatapult.tres" id="s_BoulderCatapult"]
+[ext_resource type="Resource" path="res://Resources/Cards/AshenRaider.tres" id="s_AshenRaider"]
+[ext_resource type="Resource" path="res://Resources/Cards/GlacierProspector.tres" id="s_GlacierProspector"]
+[ext_resource type="Resource" path="res://Resources/Cards/CapacitorTotem.tres" id="s_CapacitorTotem"]
+[ext_resource type="Resource" path="res://Resources/Cards/Almoner.tres" id="s_Almoner"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberEngineer.tres" id="s_EmberEngineer"]
+[ext_resource type="Resource" path="res://Resources/Cards/RimeWarden.tres" id="s_RimeWarden"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormScholar.tres" id="s_StormScholar"]
+[ext_resource type="Resource" path="res://Resources/Cards/SiegeEngineer.tres" id="s_SiegeEngineer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Lightwright.tres" id="s_Lightwright"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archangel.tres" id="s_Archangel"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostWyrm.tres" id="s_FrostWyrm"]
+[ext_resource type="Resource" path="res://Resources/Cards/MountainColossus.tres" id="s_MountainColossus"]
+[ext_resource type="Resource" path="res://Resources/Cards/Phoenix.tres" id="s_Phoenix"]
+[ext_resource type="Resource" path="res://Resources/Cards/ThunderTitan.tres" id="s_ThunderTitan"]
 
 [resource]
 script = ExtResource("1_vendor")
@@ -34,4 +53,4 @@ Title = "Wandering Trader"
 Greeting = "Rare fighters from every clan - for the right price, friend."
 Position = Vector2(700, 1040)
 Color = Color(0.25, 0.55, 0.4, 1)
-Stock = Array[ExtResource("2_card")]([ExtResource("s_Lancer"), ExtResource("s_BatteringRam"), ExtResource("s_Bellringer"), ExtResource("s_Berserker"), ExtResource("s_FlameArcher"), ExtResource("s_FrostArcher"), ExtResource("s_IceSentinel"), ExtResource("s_PowderKeg"), ExtResource("s_RockSlinger"), ExtResource("s_StoneGolem"), ExtResource("s_StormCaller"), ExtResource("s_Templar"), ExtResource("s_Thornback"), ExtResource("s_CinderWraith"), ExtResource("s_Zealot"), ExtResource("s_GlacierGolem"), ExtResource("s_StormHerald"), ExtResource("s_QuarryHauler"), ExtResource("s_EmberStalker"), ExtResource("s_DawnRanger"), ExtResource("s_RimeStalker"), ExtResource("s_StormRunner"), ExtResource("s_StonePathfinder")])
+Stock = Array[ExtResource("2_card")]([ExtResource("s_Lancer"), ExtResource("s_BatteringRam"), ExtResource("s_Bellringer"), ExtResource("s_Berserker"), ExtResource("s_FlameArcher"), ExtResource("s_FrostArcher"), ExtResource("s_IceSentinel"), ExtResource("s_PowderKeg"), ExtResource("s_RockSlinger"), ExtResource("s_StoneGolem"), ExtResource("s_StormCaller"), ExtResource("s_Templar"), ExtResource("s_Thornback"), ExtResource("s_CinderWraith"), ExtResource("s_Zealot"), ExtResource("s_GlacierGolem"), ExtResource("s_StormHerald"), ExtResource("s_QuarryHauler"), ExtResource("s_EmberStalker"), ExtResource("s_DawnRanger"), ExtResource("s_RimeStalker"), ExtResource("s_StormRunner"), ExtResource("s_StonePathfinder"), ExtResource("s_CinderMortar"), ExtResource("s_RadiantCenser"), ExtResource("s_AvalancheShaman"), ExtResource("s_ThunderDrummer"), ExtResource("s_BoulderCatapult"), ExtResource("s_AshenRaider"), ExtResource("s_GlacierProspector"), ExtResource("s_CapacitorTotem"), ExtResource("s_Almoner"), ExtResource("s_EmberEngineer"), ExtResource("s_RimeWarden"), ExtResource("s_StormScholar"), ExtResource("s_SiegeEngineer"), ExtResource("s_Lightwright"), ExtResource("s_Archangel"), ExtResource("s_FrostWyrm"), ExtResource("s_MountainColossus"), ExtResource("s_Phoenix"), ExtResource("s_ThunderTitan")])

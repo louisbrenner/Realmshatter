@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcHealingAdept.tres" id="3_deck"]
-[ext_resource type="Resource" path="res://Resources/Cards/Cleric.tres" id="r_Cleric"]
+[ext_resource type="Resource" path="res://Resources/Cards/Zealot.tres" id="r_Zealot"]
+[ext_resource type="Resource" path="res://Resources/Cards/Lightwright.tres" id="r_Lightwright"]
+[ext_resource type="Resource" path="res://Resources/Cards/Sanctuary.tres" id="r_Sanctuary"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ Position = Vector2(720, 470)
 Greeting = "Mercy is strength. Let me show you how it endures."
 RematchLine = "Again? My vigil never ends."
 DefeatLine = "Your light burns brighter than mine today."
-VictoryLine = "Endurance wins. Always."
+VictoryLine = "Endurance wins. Always. Your coins will mend many wounds."
 RewardGold = 75
-RewardCards = Array[ExtResource("2_card")]([ExtResource("r_Cleric")])
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_Zealot"), ExtResource("r_Zealot"), ExtResource("r_Lightwright"), ExtResource("r_Sanctuary"), ExtResource("r_Sanctuary")])

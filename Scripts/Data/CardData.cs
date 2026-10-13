@@ -30,6 +30,11 @@ public partial class CardData : Resource
 	[Export] public int Range { get; set; } = 1;
 	[Export] public int Shield { get; set; } = 0;
 	[Export] public int ApBonus { get; set; } = 0;
+	/// <summary>
+	/// Area attack: besides the target tile, every piece in this shape around it (friend or foe, never the attacker)
+	/// takes the full attack with its effects. Single = a normal attack. Same shapes as area spells.
+	/// </summary>
+	[Export] public AreaShape AttackArea { get; set; } = AreaShape.Single;
 
 	/// <summary>Keyword flags of a unit (see Keyword / KeywordInfo).</summary>
 	[ExportGroup("Keywords")]
@@ -66,7 +71,7 @@ public partial class CardData : Resource
 	[Export] public AreaShape AreaShape { get; set; } = AreaShape.Single;
 	/// <summary>Tile effect placed on every tile of the area (None = no tile effect).</summary>
 	[Export] public TileEffectType TileEffect { get; set; } = TileEffectType.None;
-	/// <summary>Duration in global turns (2 = until the end of the caster's next turn, like piece spells).</summary>
+	/// <summary>Duration in global turns, counting the cast turn (4 = two turns of each player).</summary>
 	[Export] public int TileEffectDuration { get; set; } = 2;
 	/// <summary>Immediate damage to every ENEMY piece in the area.</summary>
 	[Export] public int SpellDamage { get; set; } = 0;
@@ -116,7 +121,7 @@ public partial class CardData : Resource
 	private CardData CopyManually() => new CardData
 	{
 		Name = Name, Description = Description, CardType = CardType, Role = Role, Clan = Clan, Rarity = Rarity, Class = Class, ApCost = ApCost,
-		Movement = Movement, Attack = Attack, Hp = Hp, Range = Range, Shield = Shield, ApBonus = ApBonus,
+		Movement = Movement, Attack = Attack, Hp = Hp, Range = Range, Shield = Shield, ApBonus = ApBonus, AttackArea = AttackArea,
 		Keywords = Keywords, Level = Level, Legend = Legend,
 		Deathrattle = Deathrattle, DeathrattleAmount = DeathrattleAmount, OnFirstHit = OnFirstHit, OnFirstHitAmount = OnFirstHitAmount,
 		AttackDelta = AttackDelta, HpDelta = HpDelta, ShieldDelta = ShieldDelta, MovementDelta = MovementDelta,

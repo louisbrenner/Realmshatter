@@ -81,6 +81,7 @@ public partial class CardView : Control
 	private ShaderMaterial _artMat;
 	private ShaderMaterial _bannerMat;
 	private ShaderMaterial _plateMat;
+	private ShaderMaterial _attackMat;
 	private ShaderMaterial _overlayMat;
 	private ColorRect _overlay;
 	private StyleBoxFlat _glowStyle;
@@ -164,7 +165,7 @@ public partial class CardView : Control
 		CreateBadgeMaterial(_gem, 3, new Color(0.22f, 0.5f, 1f));
 		CreateBadgeMaterial(_apBadge, 6, new Color(0.2f, 0.65f, 0.25f));
 		CreateBadgeMaterial(_shieldBadge, 2, new Color(0.78f, 0.8f, 0.86f));
-		CreateBadgeMaterial(_attackBadge, 0, new Color(1f, 0.78f, 0.18f));
+		_attackMat = CreateBadgeMaterial(_attackBadge, 0, new Color(1f, 0.78f, 0.18f));
 		CreateBadgeMaterial(_healthBadge, 1, new Color(0.92f, 0.13f, 0.1f));
 
 		_glowStyle = new StyleBoxFlat
@@ -413,6 +414,8 @@ public partial class CardView : Control
 		TooltipText = "";
 
 		_attackBadge.Visible = unit;
+		// Area attackers: outward marks in the area's shape around the attack crest.
+		_attackMat?.SetShaderParameter("area", unit ? (int)Card.AttackArea : 0);
 		_attackLabel.Visible = unit;
 		_healthBadge.Visible = unit;
 		_healthLabel.Visible = unit;
@@ -556,9 +559,9 @@ public partial class CardView : Control
 	/// <summary>
 	/// One entry of the rules panel: a keyword emblem (Glyph = FxIconShape) or a card badge (Badge = card_badge shape:
 	/// 0 attack, 1 health, 2 shield), its colours, an optional value / name next to it and an optional small overlay
-	/// (Undying level). Glyph and Badge both -1 = plain text.
+	/// (Undying level). Glyph and Badge both -1 = plain text. Area = area-attack marks on an attack crest badge.
 	/// </summary>
-	private readonly record struct RuleItem(int Glyph, int Badge, Color Fg, Color Bg, string Label, string Overlay = "");
+	private readonly record struct RuleItem(int Glyph, int Badge, Color Fg, Color Bg, string Label, string Overlay = "", int Area = 0);
 
 	private static RuleItem Emblem(FxIconShape shape, Color fg, Color bg, string label = "") => new RuleItem((int)shape, -1, fg, bg, label);
 	private static RuleItem StatBadge(int badge, Color fill, string label) => new RuleItem(-1, badge, fill, fill, label);
@@ -571,6 +574,10 @@ public partial class CardView : Control
 	private static List<RuleItem> UnitRuleItems(CardData card)
 	{
 		var items = new List<RuleItem>();
+		if (card.AttackArea != AreaShape.Single)
+		{
+			items.Add(new RuleItem(-1, 0, AttackFill, AttackFill, AreaName(card.AttackArea), "", (int)card.AttackArea));
+		}
 		foreach (Keyword k in KeywordInfo.Split(card.Keywords))
 		{
 			Color fg = KeywordVisuals.GetForeground(k);
@@ -581,7 +588,7 @@ public partial class CardView : Control
 				bg = ClanInfo.GetColor(card.Clan).Darkened(0.65f);
 			}
 			string label = k == Keyword.Builder && BuildingInfo.ForClass(card.Class) != BuildingType.None
-				? BuildingInfo.GetName(BuildingInfo.ForClass(card.Class))
+				? BuildingInfo.GetName(BuildingInfo.ForClass(card.Class), card.Clan)
 				: (k == Keyword.Trapper ? TrapInfo.GetName(TrapInfo.ForClan(card.Clan)) : "");
 			string overlay = k == Keyword.Undying && card.Level > 0 ? $"+{card.Level}" : "";
 			items.Add(new RuleItem((int)KeywordVisuals.GetShape(k), -1, fg, bg, label, overlay));
@@ -744,7 +751,7 @@ public partial class CardView : Control
 				}
 				else
 				{
-					CreateBadgeMaterial(icon, rule.Badge, rule.Fg);
+					CreateBadgeMaterial(icon, rule.Badge, rule.Fg).SetShaderParameter("area", rule.Area);
 				}
 				if (rule.Overlay.Length > 0)
 				{

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DeckData" load_steps=16 format=3]
+[gd_resource type="Resource" script_class="DeckData" load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/DeckData.gd" id="1_deck"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
@@ -7,19 +7,20 @@
 [ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
 [ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
 [ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
-[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
 [ext_resource type="Resource" path="res://Resources/Cards/Pilgrim.tres" id="c_Pilgrim"]
 [ext_resource type="Resource" path="res://Resources/Cards/BoneKnight.tres" id="c_BoneKnight"]
-[ext_resource type="Resource" path="res://Resources/Cards/RimeStalker.tres" id="c_RimeStalker"]
-[ext_resource type="Resource" path="res://Resources/Cards/Frostbite.tres" id="c_Frostbite"]
-[ext_resource type="Resource" path="res://Resources/Cards/Weaken.tres" id="c_Weaken"]
 [ext_resource type="Resource" path="res://Resources/Cards/ArcaneApprentice.tres" id="c_ArcaneApprentice"]
 [ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
+[ext_resource type="Resource" path="res://Resources/Cards/Weaken.tres" id="c_Weaken"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaSurge.tres" id="c_ManaSurge"]
+[ext_resource type="Resource" path="res://Resources/Cards/RimeStalker.tres" id="c_RimeStalker"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostArcher.tres" id="c_FrostArcher"]
+[ext_resource type="Resource" path="res://Resources/Cards/Frostbite.tres" id="c_Frostbite"]
 
 [resource]
 script = ExtResource("1_deck")
 name = "Nils' Snowdrift"
-cards = Array[ExtResource("2_card")]([ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Pilgrim"), ExtResource("c_Pilgrim"), ExtResource("c_BoneKnight"), ExtResource("c_BoneKnight"), ExtResource("c_RimeStalker"), ExtResource("c_RimeStalker"), ExtResource("c_RimeStalker"), ExtResource("c_Frostbite"), ExtResource("c_Frostbite"), ExtResource("c_Frostbite"), ExtResource("c_Weaken"), ExtResource("c_Weaken"), ExtResource("c_ArcaneApprentice"), ExtResource("c_ArcaneApprentice"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry")])
+cards = Array[ExtResource("2_card")]([ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Miner"), ExtResource("c_Pilgrim"), ExtResource("c_Pilgrim"), ExtResource("c_BoneKnight"), ExtResource("c_BoneKnight"), ExtResource("c_ArcaneApprentice"), ExtResource("c_ArcaneApprentice"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_Weaken"), ExtResource("c_ManaSurge"), ExtResource("c_RimeStalker"), ExtResource("c_RimeStalker"), ExtResource("c_RimeStalker"), ExtResource("c_FrostArcher"), ExtResource("c_FrostArcher"), ExtResource("c_FrostArcher"), ExtResource("c_Frostbite"), ExtResource("c_Frostbite"), ExtResource("c_Frostbite")])
 description = "A beginner's deck of the Frostbound."
 accent_color = Color(0.5, 0.82, 1, 1)
 showcase = ExtResource("c_RimeStalker")

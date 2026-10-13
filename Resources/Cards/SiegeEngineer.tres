@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Siege Engineer"
+Description = "Builds Granite Turrets and knocks intruders back."
+CardType = 0
+Role = 1
+Class = 2
+ApCost = 1
+Movement = 3
+Attack = 1
+Hp = 2
+Range = 3
+Shield = 0
+ApBonus = 0
+Clan = 5
+Rarity = 1
+Keywords = 260
+Tint = Color(0.6, 0.5, 0.4, 1)

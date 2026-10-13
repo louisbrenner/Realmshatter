@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Avalanche Shaman"
+Description = "One shout, and the mountainside comes down."
+CardType = 0
+Rarity = 1
+Role = 0
+Class = 6
+ApCost = 3
+Movement = 3
+Attack = 2
+Hp = 4
+Range = 2
+Shield = 0
+ApBonus = 0
+AttackArea = 2
+Keywords = 2
+Clan = 3
+Tint = Color(0.6, 0.85, 1, 1)

@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcStoneAdept.tres" id="3_deck"]
-[ext_resource type="Resource" path="res://Resources/Cards/RockSlinger.tres" id="r_RockSlinger"]
+[ext_resource type="Resource" path="res://Resources/Cards/BatteringRam.tres" id="r_BatteringRam"]
+[ext_resource type="Resource" path="res://Resources/Cards/SiegeEngineer.tres" id="r_SiegeEngineer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Gale.tres" id="r_Gale"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ position = Vector2(720, 470)
 greeting = "Walls first, questions later. Shall we?"
 rematch_line = "The quarry is open again."
 defeat_line = "You broke through. Respect."
-victory_line = "Stone outlasts everything."
+victory_line = "Stone outlasts everything. So does my claim on your gold."
 reward_gold = 75
-reward_cards = Array[ExtResource("2_card")]([ExtResource("r_RockSlinger")])
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_BatteringRam"), ExtResource("r_BatteringRam"), ExtResource("r_SiegeEngineer"), ExtResource("r_Gale"), ExtResource("r_Gale")])

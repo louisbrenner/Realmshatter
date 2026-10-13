@@ -1,7 +1,8 @@
 class_name ShopPanel
 extends OverlayWindow
-## Vendor window: "Buy" lists the vendor's stock with prices (affordable cards glow), "Sell" lists every owned
-## card with its sell price and how many copies are owned / in the deck. Hover a card for its full rules.
+## Vendor window: "Buy" lists the vendor's unlocked stock (ShopUnlocks) with prices (affordable cards glow), "Sell"
+## lists every owned card with its sell price and how many copies are owned / in the deck. Hover a card for its full
+## rules.
 
 const CARD_SCALE := 0.62
 
@@ -70,7 +71,7 @@ func _rebuild() -> void:
 		_message.text = "Selling a card used in your deck removes it from the deck."
 	else:
 		subtitle_label.text = _vendor.title if _vendor != null else ""
-		_message.text = _vendor.greeting if _vendor != null else ""
+		_message.text = (_vendor.greeting if _vendor != null else "") + _locked_hint()
 	card_info.hide_panel()
 	clear_children(_grid)
 
@@ -79,7 +80,7 @@ func _rebuild() -> void:
 		cards.append_array(PlayerProfile.get_owned_cards())
 	elif _vendor != null:
 		for c: CardData in _vendor.stock:
-			if c != null and not cards.has(c):
+			if c != null and not cards.has(c) and ShopUnlocks.is_available(c):
 				cards.append(c)
 	cards.sort_custom(func(a: CardData, b: CardData) -> bool: return DeckBuilderPanel.compare_cards(a, b) < 0)
 	for card: CardData in cards:
@@ -101,6 +102,19 @@ func _rebuild() -> void:
 			slot.set_highlight(affordable)
 			slot.set_dimmed(not affordable)
 		slot.activated.connect(_on_slot_activated)
+
+
+## "" or a line telling how many cards of this vendor are still locked and how to unlock them.
+func _locked_hint() -> String:
+	if _vendor == null:
+		return ""
+	var locked: Dictionary = {}
+	for c: CardData in _vendor.stock:
+		if c != null and not ShopUnlocks.is_available(c):
+			locked[c] = true
+	if locked.is_empty():
+		return ""
+	return "\n(%d more card%s unlock as you beat clan duelists.)" % [locked.size(), "s" if locked.size() > 1 else ""]
 
 
 func _on_slot_activated(slot: CardSlot) -> void:

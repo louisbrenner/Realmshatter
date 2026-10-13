@@ -101,7 +101,7 @@ public sealed class ChainPreview
 					}
 					break;
 				case ResolutionEventType.TileEffectApplied:
-					preview.NewTileEffects.Add(new TileEffect(e.TileEffect, e.To, attackerOwner, e.ExpiryTurn - e.Amount, e.ExpiryTurn, e.CardName));
+					preview.NewTileEffects.Add(new TileEffect(e.TileEffect, e.To, attackerOwner, e.ExpiryTurn - e.Amount + 1, e.ExpiryTurn, e.CardName));
 					if (current != null && e.TileEffect == TileEffectType.Lava)
 					{
 						current.Effects |= HitEffect.Lava;

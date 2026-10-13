@@ -29,9 +29,10 @@ func _ready() -> void:
 	_ensure_built()
 
 
-## Shows the screen with one plaque per deck.
-func present(decks: Array) -> void:
+## Shows the screen with one plaque per deck; 'title' replaces "Choose your deck" (e.g. hotseat).
+func present(decks: Array, title: String = "") -> void:
 	_ensure_built()
+	_title.text = "Choose your deck" if title.is_empty() else title
 	_clear_plaques()
 	_decks = decks
 	_choosing = false

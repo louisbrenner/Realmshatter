@@ -6,10 +6,13 @@ namespace Realmshatter;
 /// <summary>
 /// Stats and texts of the buildings, which class builds what, and the runtime CardData each building piece uses
 /// (CardType.Building, never in a deck). Construction time is counted in the owner's turns.
+/// Clan versions: a building raised by a clan unit carries that clan ("Ember Turret", "Rime Barricade", ...). It works
+/// like the plain building and additionally pulses its clan's aura onto the 8 surrounding tiles at the start of every
+/// owner turn (OrderResolver.ResolveBuildingsTurnStart).
 /// </summary>
 public static class BuildingInfo
 {
-	private static readonly Dictionary<BuildingType, CardData> Cards = new Dictionary<BuildingType, CardData>();
+	private static readonly Dictionary<(BuildingType, Clan), CardData> Cards = new Dictionary<(BuildingType, Clan), CardData>();
 
 	/// <summary>Building a Builder of this class constructs (None = this class cannot build).</summary>
 	public static BuildingType ForClass(UnitClass unitClass) => unitClass switch
@@ -33,6 +36,27 @@ public static class BuildingInfo
 		_ => "",
 	};
 
+	/// <summary>Name prefix of a clan's buildings ("" for neutral ones).</summary>
+	public static string ClanPrefix(Clan clan) => clan switch
+	{
+		Clan.Fire => "Ember",
+		Clan.Frost => "Rime",
+		Clan.Storm => "Storm",
+		Clan.Stone => "Granite",
+		Clan.Healing => "Dawn",
+		_ => "",
+	};
+
+	/// <summary>Name of a building raised by a unit of 'clan' (e.g. "Ember Turret"; neutral = plain name).</summary>
+	public static string GetName(BuildingType type, Clan clan) =>
+		clan == Clan.None || type == BuildingType.None ? GetName(type) : $"{ClanPrefix(clan)} {GetName(type)}";
+
+	/// <summary>Rule text of a clan building: the plain text plus its turn-start aura pulse.</summary>
+	public static string GetDescription(BuildingType type, Clan clan) =>
+		clan == Clan.None || type == BuildingType.None
+			? GetDescription(type)
+			: $"{GetDescription(type)} At the start of your turn it also {TriggerInfo.AuraText(clan)}";
+
 	/// <summary>Rule text of a building.</summary>
 	public static string GetDescription(BuildingType type) => type switch
 	{
@@ -47,21 +71,24 @@ public static class BuildingInfo
 	/// <summary>AP the build action costs.</summary>
 	public static int GetCost(BuildingType type) => type switch
 	{
-		BuildingType.Barricade => 1,
+		BuildingType.ManaWell => 2,
 		BuildingType.None => 0,
-		_ => 2,
+		_ => 1,
 	};
 
 	/// <summary>How many buildings one build action places (Barricades come in pairs).</summary>
 	public static int GetBuildCount(BuildingType type) => type == BuildingType.Barricade ? 2 : 1;
 
 	/// <summary>Own turns until the building is finished.</summary>
-	public static int GetBuildTurns(BuildingType type) => type == BuildingType.Barricade ? 1 : 2;
+	public static int GetBuildTurns(BuildingType type) => type == BuildingType.ManaWell ? 2 : 1;
 
-	/// <summary>The (shared, runtime) card describing a building piece.</summary>
-	public static CardData GetCard(BuildingType type)
+	/// <summary>The (shared, runtime) card describing a neutral building piece.</summary>
+	public static CardData GetCard(BuildingType type) => GetCard(type, Clan.None);
+
+	/// <summary>The (shared, runtime) card describing a building piece raised by a unit of 'clan'.</summary>
+	public static CardData GetCard(BuildingType type, Clan clan)
 	{
-		if (Cards.TryGetValue(type, out CardData card))
+		if (Cards.TryGetValue((type, clan), out CardData card))
 		{
 			return card;
 		}
@@ -74,10 +101,17 @@ public static class BuildingInfo
 			BuildingType.Obelisk => (3, 0, 1, 0, new Color(0.65f, 0.45f, 1f)),
 			_ => (1, 0, 1, 0, Colors.Gray),
 		};
+		if (clan != Clan.None)
+		{
+			// Clan buildings are a little sturdier than plain ones.
+			tint = tint.Lerp(ClanInfo.GetColor(clan), 0.6f);
+			hp += 1;
+		}
 		card = new CardData
 		{
-			Name = GetName(type),
-			Description = GetDescription(type),
+			Name = GetName(type, clan),
+			Description = GetDescription(type, clan),
+			Clan = clan,
 			CardType = CardType.Building,
 			Role = UnitRole.Utility,
 			Movement = 0,
@@ -88,7 +122,7 @@ public static class BuildingInfo
 			Tint = tint,
 			Building = type,
 		};
-		Cards[type] = card;
+		Cards[(type, clan)] = card;
 		return card;
 	}
 }

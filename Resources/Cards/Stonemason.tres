@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Stonemason"
+Description = "Lays Granite Barricades that harden the soldiers behind them."
+CardType = 0
+Role = 1
+Class = 3
+ApCost = 2
+Movement = 3
+Attack = 2
+Hp = 4
+Range = 1
+Shield = 1
+ApBonus = 0
+Clan = 5
+Rarity = 0
+Keywords = 260
+Tint = Color(0.65, 0.55, 0.45, 1)

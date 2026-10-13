@@ -1,25 +1,27 @@
-[gd_resource type="Resource" script_class="DeckData" load_steps=16 format=3]
+[gd_resource type="Resource" script_class="DeckData" load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/DeckData.cs" id="1_deck"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
-[ext_resource type="Resource" path="res://Resources/Cards/SparkTotem.tres" id="c_SparkTotem"]
-[ext_resource type="Resource" path="res://Resources/Cards/Bellringer.tres" id="c_Bellringer"]
-[ext_resource type="Resource" path="res://Resources/Cards/Archer.tres" id="c_Archer"]
 [ext_resource type="Resource" path="res://Resources/Cards/Swordsman.tres" id="c_Swordsman"]
+[ext_resource type="Resource" path="res://Resources/Cards/Archer.tres" id="c_Archer"]
+[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
 [ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
 [ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
 [ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/Pilgrim.tres" id="c_Pilgrim"]
+[ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaSurge.tres" id="c_ManaSurge"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormRunner.tres" id="c_StormRunner"]
+[ext_resource type="Resource" path="res://Resources/Cards/Bellringer.tres" id="c_Bellringer"]
+[ext_resource type="Resource" path="res://Resources/Cards/CapacitorTotem.tres" id="c_CapacitorTotem"]
 [ext_resource type="Resource" path="res://Resources/Cards/LightningBolt.tres" id="c_LightningBolt"]
 [ext_resource type="Resource" path="res://Resources/Cards/Overcharge.tres" id="c_Overcharge"]
-[ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
-[ext_resource type="Resource" path="res://Resources/Cards/PowderKeg.tres" id="c_PowderKeg"]
-[ext_resource type="Resource" path="res://Resources/Cards/StormRunner.tres" id="c_StormRunner"]
-[ext_resource type="Resource" path="res://Resources/Cards/Pilgrim.tres" id="c_Pilgrim"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormScholar.tres" id="c_StormScholar"]
 
 [resource]
 script = ExtResource("1_deck")
 Name = "Tavi's Sparks"
-Cards = Array[ExtResource("2_card")]([ExtResource("c_SparkTotem"), ExtResource("c_SparkTotem"), ExtResource("c_SparkTotem"), ExtResource("c_Pilgrim"), ExtResource("c_Bellringer"), ExtResource("c_Bellringer"), ExtResource("c_Bellringer"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_StormRunner"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_LightningBolt"), ExtResource("c_LightningBolt"), ExtResource("c_LightningBolt"), ExtResource("c_Overcharge"), ExtResource("c_Overcharge"), ExtResource("c_Overcharge"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_PowderKeg"), ExtResource("c_PowderKeg"), ExtResource("c_PowderKeg")])
+Cards = Array[ExtResource("2_card")]([ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Pilgrim"), ExtResource("c_Pilgrim"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_ManaSurge"), ExtResource("c_StormRunner"), ExtResource("c_StormRunner"), ExtResource("c_StormRunner"), ExtResource("c_Bellringer"), ExtResource("c_Bellringer"), ExtResource("c_CapacitorTotem"), ExtResource("c_CapacitorTotem"), ExtResource("c_LightningBolt"), ExtResource("c_LightningBolt"), ExtResource("c_LightningBolt"), ExtResource("c_Overcharge"), ExtResource("c_Overcharge"), ExtResource("c_StormScholar")])
 Description = "Crackling Storm Circuit experiments."
 AccentColor = Color(0.68, 0.58, 1, 1)
-Showcase = ExtResource("c_SparkTotem")
+Showcase = ExtResource("c_Bellringer")

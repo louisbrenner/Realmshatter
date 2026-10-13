@@ -1,25 +1,27 @@
-[gd_resource type="Resource" script_class="DeckData" load_steps=16 format=3]
+[gd_resource type="Resource" script_class="DeckData" load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/DeckData.gd" id="1_deck"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Cards/Swordsman.tres" id="c_Swordsman"]
 [ext_resource type="Resource" path="res://Resources/Cards/Archer.tres" id="c_Archer"]
-[ext_resource type="Resource" path="res://Resources/Cards/EmberImp.tres" id="c_EmberImp"]
-[ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="c_FlameArcher"]
+[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
 [ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
 [ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
 [ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/Pilgrim.tres" id="c_Pilgrim"]
 [ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
-[ext_resource type="Resource" path="res://Resources/Cards/Fireball.tres" id="c_Fireball"]
-[ext_resource type="Resource" path="res://Resources/Cards/FlameWall.tres" id="c_FlameWall"]
-[ext_resource type="Resource" path="res://Resources/Cards/Weaken.tres" id="c_Weaken"]
-[ext_resource type="Resource" path="res://Resources/Cards/PowderKeg.tres" id="c_PowderKeg"]
 [ext_resource type="Resource" path="res://Resources/Cards/EmberStalker.tres" id="c_EmberStalker"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="c_FlameArcher"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberImp.tres" id="c_EmberImp"]
+[ext_resource type="Resource" path="res://Resources/Cards/AshenRaider.tres" id="c_AshenRaider"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameWall.tres" id="c_FlameWall"]
+[ext_resource type="Resource" path="res://Resources/Cards/Fireball.tres" id="c_Fireball"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberEngineer.tres" id="c_EmberEngineer"]
 
 [resource]
 script = ExtResource("1_deck")
 name = "Kira's Embers"
-cards = Array[ExtResource("2_card")]([ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_EmberStalker"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_EmberImp"), ExtResource("c_EmberImp"), ExtResource("c_EmberImp"), ExtResource("c_FlameArcher"), ExtResource("c_FlameArcher"), ExtResource("c_FlameArcher"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_Fireball"), ExtResource("c_Fireball"), ExtResource("c_Fireball"), ExtResource("c_FlameWall"), ExtResource("c_FlameWall"), ExtResource("c_FlameWall"), ExtResource("c_Weaken"), ExtResource("c_Weaken"), ExtResource("c_PowderKeg"), ExtResource("c_PowderKeg")])
+cards = Array[ExtResource("2_card")]([ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Pilgrim"), ExtResource("c_Pilgrim"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_EmberStalker"), ExtResource("c_EmberStalker"), ExtResource("c_FlameArcher"), ExtResource("c_FlameArcher"), ExtResource("c_FlameArcher"), ExtResource("c_EmberImp"), ExtResource("c_EmberImp"), ExtResource("c_AshenRaider"), ExtResource("c_AshenRaider"), ExtResource("c_FlameWall"), ExtResource("c_FlameWall"), ExtResource("c_FlameWall"), ExtResource("c_Fireball"), ExtResource("c_Fireball"), ExtResource("c_EmberEngineer")])
 description = "Hot-headed starter deck of the Ember Legion."
 accent_color = Color(1, 0.45, 0.15, 1)
 showcase = ExtResource("c_EmberImp")

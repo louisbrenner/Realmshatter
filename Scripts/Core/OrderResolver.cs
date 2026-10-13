@@ -288,7 +288,8 @@ public static class OrderResolver
 
 	/// <summary>
 	/// Turn start of a player's buildings: unfinished buildings whose time has come are finished (builder freed),
-	/// finished Shrines heal the owner's pieces on the 8 surrounding tiles.
+	/// finished Shrines heal the owner's pieces on the 8 surrounding tiles, and finished clan buildings pulse their
+	/// clan's aura (PulseAura).
 	/// </summary>
 	public static List<ResolutionEvent> ResolveBuildingsTurnStart(GameState state, int playerIndex)
 	{
@@ -314,7 +315,7 @@ public static class OrderResolver
 					PlayerIndex = playerIndex,
 					From = b.Position,
 					To = b.Position,
-					SpellName = BuildingInfo.GetName(b.Building),
+					SpellName = BuildingInfo.GetName(b.Building, b.Source.Clan),
 				});
 			}
 			else if (!b.UnderConstruction && b.Building == BuildingType.Shrine)
@@ -326,6 +327,10 @@ public static class OrderResolver
 						ApplyHeal(state, ally, 1, b.Id, events);
 					}
 				}
+			}
+			if (!b.UnderConstruction && b.Source.Clan != Clan.None && b.IsAlive && state.GetPiece(b.Id) != null)
+			{
+				PulseAura(state, b, b.Source.Clan, playerIndex, events);
 			}
 		}
 		return events;
@@ -425,56 +430,65 @@ public static class OrderResolver
 			{
 				continue;
 			}
-			Clan clan = source.Source?.Clan ?? Clan.None;
-			events.Add(new ResolutionEvent
-			{
-				Type = ResolutionEventType.AuraPulse,
-				PieceId = source.Id,
-				PlayerIndex = playerIndex,
-				From = source.Position,
-				To = source.Position,
-				SpellName = TriggerInfo.AuraName(clan),
-				CardName = clan.ToString(),
-			});
-			foreach (Piece p in Around(state, source.Position))
-			{
-				bool ally = p.OwnerIndex == playerIndex;
-				switch (clan)
-				{
-					case Clan.Fire:
-						if (!ally)
-						{
-							ApplyDamage(state, p, 1, source.Id, events);
-						}
-						break;
-					case Clan.Healing:
-						if (ally)
-						{
-							ApplyHeal(state, p, 1, source.Id, events);
-						}
-						break;
-					case Clan.Frost:
-						if (!ally && !p.IsBuilding)
-						{
-							ApplyStatus(state, p, StatusEffectType.Frozen, state.Config.FrostDuration, TriggerInfo.AuraName(clan), source.Id, events);
-						}
-						break;
-					case Clan.Storm:
-						if (ally && !p.IsBuilding)
-						{
-							p.ActiveSpells.Add(new ActiveSpell(source.Source, new SpellEffect { AttackDelta = 1 }, playerIndex, state.TurnNumber, state.TurnNumber));
-						}
-						break;
-					case Clan.Stone:
-						if (ally && p.CurrentShield < 2)
-						{
-							p.CurrentShield += 1;
-						}
-						break;
-				}
-			}
+			PulseAura(state, source, source.Source?.Clan ?? Clan.None, playerIndex, events);
 		}
 		return events;
+	}
+
+	/// <summary>
+	/// One aura pulse of 'source' (an Aura unit or a clan building): an AuraPulse event, then the clan effect on the
+	/// 8 surrounding tiles - Fire burns enemies, Healing heals allies, Frost freezes enemies, Storm gives allies +1
+	/// Attack this turn, Stone gives allies +1 Shield (up to 2).
+	/// </summary>
+	private static void PulseAura(GameState state, Piece source, Clan clan, int playerIndex, List<ResolutionEvent> events)
+	{
+		events.Add(new ResolutionEvent
+		{
+			Type = ResolutionEventType.AuraPulse,
+			PieceId = source.Id,
+			PlayerIndex = playerIndex,
+			From = source.Position,
+			To = source.Position,
+			SpellName = TriggerInfo.AuraName(clan),
+			CardName = clan.ToString(),
+		});
+		foreach (Piece p in Around(state, source.Position))
+		{
+			bool ally = p.OwnerIndex == playerIndex;
+			switch (clan)
+			{
+				case Clan.Fire:
+					if (!ally)
+					{
+						ApplyDamage(state, p, 1, source.Id, events);
+					}
+					break;
+				case Clan.Healing:
+					if (ally)
+					{
+						ApplyHeal(state, p, 1, source.Id, events);
+					}
+					break;
+				case Clan.Frost:
+					if (!ally && !p.IsBuilding)
+					{
+						ApplyStatus(state, p, StatusEffectType.Frozen, state.Config.FrostDuration, TriggerInfo.AuraName(clan), source.Id, events);
+					}
+					break;
+				case Clan.Storm:
+					if (ally && !p.IsBuilding)
+					{
+						p.ActiveSpells.Add(new ActiveSpell(source.Source, new SpellEffect { AttackDelta = 1 }, playerIndex, state.TurnNumber, state.TurnNumber));
+					}
+					break;
+				case Clan.Stone:
+					if (ally && p.CurrentShield < 2)
+					{
+						p.CurrentShield += 1;
+					}
+					break;
+			}
+		}
 	}
 
 	/// <summary>Living pieces on the 8 tiles around a position.</summary>
@@ -718,7 +732,7 @@ public static class OrderResolver
 
 	/// <summary>
 	/// Places a tile effect (no rule checks besides: on the board, and a Wall only on an empty tile).
-	/// Replaces an existing effect on that tile. ExpiryTurn = TurnNumber + max(1, durationTurns).
+	/// Replaces an existing effect on that tile. ExpiryTurn = TurnNumber + max(1, durationTurns) - 1 (the creation turn counts).
 	/// </summary>
 	public static bool ApplyTileEffect(GameState state, TileEffectType type, GridPos pos, int durationTurns,
 		int creatorIndex, string sourceName, int sourcePieceId, List<ResolutionEvent> events)
@@ -738,7 +752,7 @@ public static class OrderResolver
 			return false;
 		}
 		int duration = Math.Max(1, durationTurns);
-		int expiry = state.TurnNumber + duration;
+		int expiry = state.TurnNumber + duration - 1;
 		state.Board.SetTileEffect(new TileEffect(type, pos, creatorIndex, state.TurnNumber, expiry, sourceName));
 		events?.Add(new ResolutionEvent
 		{
@@ -1108,7 +1122,7 @@ public static class OrderResolver
 		return true;
 	}
 
-	/// <summary>One declared attack: Overcharge multiplier, the main hit (with Pierce / Arc), then the Echo strike.</summary>
+	/// <summary>One declared attack: Overcharge multiplier, the main hit (with Pierce / Arc / area), then the Echo strike.</summary>
 	private static void Strike(Context ctx, Piece attacker, GridPos tile)
 	{
 		int damage = attacker.EffectiveAttack;
@@ -1167,13 +1181,36 @@ public static class OrderResolver
 				behind = null;
 			}
 		}
+		// Area attacks: every other piece (or rock) in the area takes the full hit - collected before the main hit
+		// pushes anything around.
+		var areaTiles = new List<GridPos>();
+		var areaTargets = new List<Piece>();
+		if (primary && attacker.AttackArea != AreaShape.Single)
+		{
+			foreach (GridPos a in ctx.Board.GetAreaTiles(tile, attacker.AttackArea))
+			{
+				if (a == tile || a == attacker.Position)
+				{
+					continue;
+				}
+				Piece p = ctx.Board.GetPieceAt(a);
+				if (p != null && p != behind)
+				{
+					areaTargets.Add(p);
+				}
+				else if (p == null && ctx.Board.GetTerrain(a) == TerrainType.Rock)
+				{
+					areaTiles.Add(a);
+				}
+			}
+		}
 		var arcTargets = new List<Piece>();
 		if (primary && attacker.HasKeyword(Keyword.Arc) && ctx.Config.ArcDamage > 0)
 		{
 			foreach (GridPos n in tile.Neighbors())
 			{
 				Piece p = ctx.Board.GetPieceAt(n);
-				if (p != null && p != attacker && p != behind)
+				if (p != null && p != attacker && p != behind && !areaTargets.Contains(p))
 				{
 					arcTargets.Add(p);
 				}
@@ -1195,6 +1232,20 @@ public static class OrderResolver
 		if (behind != null && behind.IsAlive && attacker.IsAlive && ctx.Board.GetPieceAt(behindTile) == behind)
 		{
 			HitTile(ctx, attacker, behindTile, damage, secondary, true, false);
+		}
+		foreach (Piece p in areaTargets)
+		{
+			if (p.IsAlive && attacker.IsAlive && ctx.State.GetPiece(p.Id) != null)
+			{
+				HitTile(ctx, attacker, p.Position, damage, true, false, false);
+			}
+		}
+		foreach (GridPos a in areaTiles)
+		{
+			if (attacker.IsAlive && !ctx.Board.IsOccupied(a) && ctx.Board.GetTerrain(a) == TerrainType.Rock)
+			{
+				HitTile(ctx, attacker, a, damage, true, false, false);
+			}
 		}
 		foreach (Piece p in arcTargets)
 		{

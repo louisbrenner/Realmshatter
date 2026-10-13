@@ -1,8 +1,10 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcStormInitiate.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormRunner.tres" id="r_StormRunner"]
+[ext_resource type="Resource" path="res://Resources/Cards/LightningBolt.tres" id="r_LightningBolt"]
 [ext_resource type="Resource" path="res://Resources/Cards/StormRunner.tres" id="r_StormRunner"]
 
 [resource]
@@ -17,6 +19,6 @@ Position = Vector2(240, 470)
 Greeting = "Zzzap! Wanna duel? I am super charged! Mostly!"
 RematchLine = "Recharged and ready!"
 DefeatLine = "Bzzt... short circuit. You win!"
-VictoryLine = "Ha! Shocking, right?"
+VictoryLine = "Ha! Shocking, right? Zap - your coins are mine!"
 RewardGold = 50
-RewardCards = Array[ExtResource("2_card")]([ExtResource("r_StormRunner")])
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_StormRunner"), ExtResource("r_StormRunner"), ExtResource("r_LightningBolt"), ExtResource("r_StormRunner")])

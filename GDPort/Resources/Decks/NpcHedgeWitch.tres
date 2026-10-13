@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DeckData" load_steps=19 format=3]
+[gd_resource type="Resource" script_class="DeckData" load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/DeckData.gd" id="1_deck"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
@@ -11,8 +11,7 @@
 [ext_resource type="Resource" path="res://Resources/Cards/Raider.tres" id="c_Raider"]
 [ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="c_Lancer"]
 [ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
-[ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
-[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/Almoner.tres" id="c_Almoner"]
 [ext_resource type="Resource" path="res://Resources/Cards/Fireball.tres" id="c_Fireball"]
 [ext_resource type="Resource" path="res://Resources/Cards/Hailstorm.tres" id="c_Hailstorm"]
 [ext_resource type="Resource" path="res://Resources/Cards/LightningBolt.tres" id="c_LightningBolt"]
@@ -22,7 +21,7 @@
 [resource]
 script = ExtResource("1_deck")
 name = "Maud's Cauldron"
-cards = Array[ExtResource("2_card")]([ExtResource("c_Pyromancer"), ExtResource("c_Pyromancer"), ExtResource("c_FrostMage"), ExtResource("c_FrostMage"), ExtResource("c_StormCaller"), ExtResource("c_StormCaller"), ExtResource("c_Cleric"), ExtResource("c_Cleric"), ExtResource("c_StoneGolem"), ExtResource("c_StoneGolem"), ExtResource("c_ManaTotem"), ExtResource("c_ManaTotem"), ExtResource("c_Raider"), ExtResource("c_Raider"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Fireball"), ExtResource("c_Fireball"), ExtResource("c_Hailstorm"), ExtResource("c_Hailstorm"), ExtResource("c_LightningBolt"), ExtResource("c_LightningBolt"), ExtResource("c_MendingRain"), ExtResource("c_MendingRain"), ExtResource("c_ManaSurge"), ExtResource("c_ManaSurge")])
+cards = Array[ExtResource("2_card")]([ExtResource("c_Pyromancer"), ExtResource("c_Pyromancer"), ExtResource("c_FrostMage"), ExtResource("c_FrostMage"), ExtResource("c_StormCaller"), ExtResource("c_StormCaller"), ExtResource("c_Cleric"), ExtResource("c_Cleric"), ExtResource("c_StoneGolem"), ExtResource("c_StoneGolem"), ExtResource("c_ManaTotem"), ExtResource("c_ManaTotem"), ExtResource("c_Raider"), ExtResource("c_Raider"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Almoner"), ExtResource("c_Almoner"), ExtResource("c_Fireball"), ExtResource("c_Fireball"), ExtResource("c_Hailstorm"), ExtResource("c_Hailstorm"), ExtResource("c_LightningBolt"), ExtResource("c_LightningBolt"), ExtResource("c_MendingRain"), ExtResource("c_MendingRain"), ExtResource("c_ManaSurge"), ExtResource("c_ManaSurge")])
 description = "A bit of every clan's magic, brewed together."
 accent_color = Color(0.55, 0.8, 0.45, 1)
 showcase = ExtResource("c_ManaTotem")

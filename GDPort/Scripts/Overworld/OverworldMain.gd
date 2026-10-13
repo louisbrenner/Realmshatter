@@ -89,6 +89,7 @@ func _ready() -> void:
 	_ui.name = "UI"
 	add_child(_ui)
 	_ui.deck_button_pressed.connect(_open_deck_builder)
+	_ui.hotseat_button_pressed.connect(_start_hotseat)
 	_ui.shop.closed.connect(func() -> void: _player.input_enabled = true)
 	_ui.deck_builder.closed.connect(func() -> void: _player.input_enabled = true)
 
@@ -357,15 +358,24 @@ func _talk(person: OverworldNpc) -> void:
 static func _describe_strength(npc: NpcData) -> String:
 	if npc.deck == null or npc.deck.cards.size() == 0:
 		return "?"
+	if npc.bonus_ap_per_turn > 0:
+		return "[color=#a02020]Boss[/color]"
+	# Clan duelists: the rank in the id matches the measured difficulty ladder (balance simulation).
+	if npc.id.ends_with("_initiate"):
+		return "Easy"
+	if npc.id.ends_with("_apprentice") or npc.id.ends_with("_adept"):
+		return "Medium"
+	if npc.id.ends_with("_champion"):
+		return "Hard"
 	var rarity: float = 0.0
 	for card: CardData in npc.deck.cards:
 		rarity += card.rarity if card != null else 0
 	rarity /= npc.deck.cards.size()
 	if npc.bonus_ap_per_turn > 0 or rarity >= 1.2:
 		return "[color=#a02020]Boss[/color]"
-	if rarity >= 0.8:
+	if rarity >= 0.6:
 		return "Hard"
-	return "Medium" if rarity >= 0.35 else "Easy"
+	return "Medium" if rarity >= 0.2 else "Easy"
 
 
 func _end_talk() -> void:
@@ -397,6 +407,19 @@ func _start_battle(npc: NpcData) -> void:
 	fade.tween_callback(func() -> void: get_tree().change_scene_to_file(BattleSession.BATTLE_SCENE))
 
 
+## Starts a local two-player (hotseat) match; both players pick a theme deck in the battle scene.
+func _start_hotseat() -> void:
+	if _ui.is_busy or _transitioning:
+		return
+	_transitioning = true
+	_player.input_enabled = false
+	Sfx.play(SfxId.TURN_ENEMY)
+	HotseatSession.begin(_player.global_position, _house)
+	var fade: Tween = create_tween()
+	fade.tween_property(self, "modulate", Color(0.1, 0.1, 0.1), 0.45)
+	fade.tween_callback(func() -> void: get_tree().change_scene_to_file(BattleSession.BATTLE_SCENE))
+
+
 func _open_deck_builder() -> void:
 	_end_talk()
 	_player.input_enabled = false
@@ -408,6 +431,10 @@ func _greet_after_battle() -> void:
 	var message: String = BattleSession.pending_message
 	BattleSession.last_opponent = null
 	BattleSession.pending_message = ""
+	if npc == null and not message.is_empty():
+		# Back from a hotseat match: no NPC to talk to.
+		_ui.show_toast(message, 5.0)
+		return
 	if npc == null or message.is_empty():
 		_ui.show_toast("Welcome to Realmshatter! Duel the townsfolk, enter the clan halls - or visit the market.", 5.0)
 		return

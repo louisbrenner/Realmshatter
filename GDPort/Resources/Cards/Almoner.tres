@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+name = "Almoner"
+description = "Gathers the faithful's gifts and turns them into miracles."
+card_type = 0
+role = 2
+class_ = 7
+ap_cost = 2
+movement = 4
+attack = 1
+hp = 2
+range = 2
+shield = 0
+ap_bonus = 1
+clan = 2
+rarity = 1
+keywords = 16
+tint = Color(1, 0.9, 0.6, 1)

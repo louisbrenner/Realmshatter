@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DeckData" load_steps=21 format=3]
+[gd_resource type="Resource" script_class="DeckData" load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/DeckData.gd" id="1_deck"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
@@ -18,13 +18,15 @@
 [ext_resource type="Resource" path="res://Resources/Cards/IceSentinel.tres" id="c_IceSentinel"]
 [ext_resource type="Resource" path="res://Resources/Cards/Templar.tres" id="c_Templar"]
 [ext_resource type="Resource" path="res://Resources/Cards/Meteor.tres" id="c_Meteor"]
-[ext_resource type="Resource" path="res://Resources/Cards/Hailstorm.tres" id="c_Hailstorm"]
 [ext_resource type="Resource" path="res://Resources/Cards/StaticCharge.tres" id="c_StaticCharge"]
+[ext_resource type="Resource" path="res://Resources/Cards/PyreOffering.tres" id="c_PyreOffering"]
+[ext_resource type="Resource" path="res://Resources/Cards/RichVein.tres" id="c_RichVein"]
+[ext_resource type="Resource" path="res://Resources/Cards/Hailstorm.tres" id="c_Hailstorm"]
 
 [resource]
 script = ExtResource("1_deck")
 name = "The Shattered Court"
-cards = Array[ExtResource("2_card")]([ExtResource("c_Ignis"), ExtResource("c_Solenne"), ExtResource("c_Hrimgar"), ExtResource("c_Voltaris"), ExtResource("c_Gorran"), ExtResource("c_Phoenix"), ExtResource("c_Phoenix"), ExtResource("c_Archangel"), ExtResource("c_Archangel"), ExtResource("c_FrostWyrm"), ExtResource("c_FrostWyrm"), ExtResource("c_ThunderTitan"), ExtResource("c_ThunderTitan"), ExtResource("c_MountainColossus"), ExtResource("c_MountainColossus"), ExtResource("c_ManaTotem"), ExtResource("c_ManaTotem"), ExtResource("c_Pyromancer"), ExtResource("c_Pyromancer"), ExtResource("c_StormCaller"), ExtResource("c_StormCaller"), ExtResource("c_IceSentinel"), ExtResource("c_IceSentinel"), ExtResource("c_Templar"), ExtResource("c_Templar"), ExtResource("c_Meteor"), ExtResource("c_Meteor"), ExtResource("c_Hailstorm"), ExtResource("c_StaticCharge"), ExtResource("c_StaticCharge")])
+cards = Array[ExtResource("2_card")]([ExtResource("c_Ignis"), ExtResource("c_Solenne"), ExtResource("c_Hrimgar"), ExtResource("c_Voltaris"), ExtResource("c_Gorran"), ExtResource("c_Phoenix"), ExtResource("c_Phoenix"), ExtResource("c_Archangel"), ExtResource("c_Archangel"), ExtResource("c_FrostWyrm"), ExtResource("c_FrostWyrm"), ExtResource("c_ThunderTitan"), ExtResource("c_ThunderTitan"), ExtResource("c_MountainColossus"), ExtResource("c_MountainColossus"), ExtResource("c_ManaTotem"), ExtResource("c_ManaTotem"), ExtResource("c_Pyromancer"), ExtResource("c_Pyromancer"), ExtResource("c_StormCaller"), ExtResource("c_StormCaller"), ExtResource("c_IceSentinel"), ExtResource("c_IceSentinel"), ExtResource("c_Templar"), ExtResource("c_Templar"), ExtResource("c_Meteor"), ExtResource("c_StaticCharge"), ExtResource("c_PyreOffering"), ExtResource("c_RichVein"), ExtResource("c_Hailstorm")])
 description = "Every clan's legend, bound to one throne."
 accent_color = Color(0.7, 0.3, 0.95, 1)
 showcase = ExtResource("c_Ignis")

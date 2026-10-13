@@ -140,3 +140,27 @@ float pc_sd_crest(vec2 p) {
 	vec2 q = pc_rot(0.785398) * p;
 	return pc_sd_round_box(q, vec2(0.5), 0.14);
 }
+
+// Area-attack marks around the attack crest: arrowheads beyond its outline pointing outward, one per direction of
+// the attack's area. area: 0 = none, 1 = cross (4 tips), 2 = row (left + right), 3 = column (top + bottom),
+// 4 = 2x2 square (the 4 diagonal edges). Same frame as pc_sd_crest (p in [-1, 1], y up).
+float pc_sd_area_marks(vec2 p, int area) {
+	float d = 1e5;
+	if (area <= 0) {
+		return d;
+	}
+	for (int i = 0; i < 4; i++) {
+		bool on = area == 1 || area == 4 || (area == 2 && (i == 0 || i == 2)) || (area == 3 && (i == 1 || i == 3));
+		if (!on) {
+			continue;
+		}
+		float ang = float(i) * 1.5707963 + (area == 4 ? 0.785398 : 0.0);
+		vec2 dir = vec2(cos(ang), sin(ang));
+		float along = dot(p, dir);
+		float across = abs(dot(p, vec2(-dir.y, dir.x)));
+		float base = area == 4 ? 0.5 : 0.6;
+		float tip = base + 0.27;
+		d = min(d, max((across - (tip - along) * 0.6) * 0.86, base - along));
+	}
+	return d;
+}

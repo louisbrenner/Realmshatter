@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcFrostInitiate.tres" id="3_deck"]
 [ext_resource type="Resource" path="res://Resources/Cards/RimeStalker.tres" id="r_RimeStalker"]
+[ext_resource type="Resource" path="res://Resources/Cards/Frostbite.tres" id="r_Frostbite"]
+[ext_resource type="Resource" path="res://Resources/Cards/FrostArcher.tres" id="r_FrostArcher"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ Position = Vector2(240, 470)
 Greeting = "Brr, close the door! ...Unless you want a duel? Then leave it open."
 RematchLine = "Back for a snowball fight?"
 DefeatLine = "Frozen solid. Nice moves."
-VictoryLine = "Cold, huh? You get used to it."
+VictoryLine = "Cold, huh? You get used to it. I'll keep these coins warm for you."
 RewardGold = 50
-RewardCards = Array[ExtResource("2_card")]([ExtResource("r_RimeStalker")])
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_RimeStalker"), ExtResource("r_RimeStalker"), ExtResource("r_Frostbite"), ExtResource("r_FrostArcher")])

@@ -38,7 +38,7 @@ extends Resource
 ## Maximum victory points a player may convert into action points per turn (1 VP -> 1 AP).
 @export var max_vp_to_ap_per_turn: int = 2
 ## Extra AP for the second player (player 1) on its first turn.
-@export var second_player_first_turn_bonus_ap: int = 1
+@export var second_player_first_turn_bonus_ap: int = 0
 
 ## Damage dealt by Lava at the start of the occupant owner's turn.
 @export_group("Map Effects & Keywords")
@@ -68,7 +68,7 @@ extends Resource
 ## Maximum number of friendlies a single move can push in a row.
 @export var max_push_chain: int = 3
 ## Movement a unit spends to enter a Water tile (rivers, ponds).
-@export var water_move_cost: int = 2
+@export var water_move_cost: int = 3
 ## Hit points of a breakable Rock wall.
 @export var rock_hp: int = 3
 ## AP cost of setting a trap (Trapper keyword; replaces the attack of the unit's action).

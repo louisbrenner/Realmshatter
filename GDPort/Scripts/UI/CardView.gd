@@ -72,6 +72,7 @@ var _frame_mat: ShaderMaterial
 var _art_mat: ShaderMaterial
 var _banner_mat: ShaderMaterial
 var _plate_mat: ShaderMaterial
+var _attack_mat: ShaderMaterial
 var _overlay_mat: ShaderMaterial
 var _overlay: ColorRect
 var _glow_style: StyleBoxFlat
@@ -169,7 +170,7 @@ func _ready() -> void:
 	_create_badge_material(_gem, 3, Color(0.22, 0.5, 1.0))
 	_create_badge_material(_ap_badge, 6, Color(0.2, 0.65, 0.25))
 	_create_badge_material(_shield_badge, 2, Color(0.78, 0.8, 0.86))
-	_create_badge_material(_attack_badge, 0, Color(1.0, 0.78, 0.18))
+	_attack_mat = _create_badge_material(_attack_badge, 0, Color(1.0, 0.78, 0.18))
 	_create_badge_material(_health_badge, 1, Color(0.92, 0.13, 0.1))
 
 	_glow_style = StyleBoxFlat.new()
@@ -371,6 +372,9 @@ func _refresh() -> void:
 	tooltip_text = ""
 
 	_attack_badge.visible = unit
+	# Area attackers: outward marks in the area's shape around the attack crest.
+	if _attack_mat != null:
+		_attack_mat.set_shader_parameter("area", card.attack_area if unit else 0)
 	_attack_label.visible = unit
 	_health_badge.visible = unit
 	_health_label.visible = unit
@@ -498,8 +502,10 @@ class RuleItem:
 	var bg: Color
 	var label: String
 	var overlay: String
+	var area: int
 
-	func _init(p_glyph: int = -1, p_badge: int = -1, p_fg: Color = Color.WHITE, p_bg: Color = Color.WHITE, p_label: String = "", p_overlay: String = "") -> void:
+	func _init(p_glyph: int = -1, p_badge: int = -1, p_fg: Color = Color.WHITE, p_bg: Color = Color.WHITE, p_label: String = "", p_overlay: String = "", p_area: int = 0) -> void:
+		area = p_area
 		glyph = p_glyph
 		badge = p_badge
 		fg = p_fg
@@ -524,6 +530,8 @@ const SHIELD_FILL := Color(0.78, 0.8, 0.86)
 ## Unit rules: one emblem per keyword (the icon replaces the name; Builder adds its building, Undying its level), then triggers.
 static func _unit_rule_items(c: CardData) -> Array[RuleItem]:
 	var items: Array[RuleItem] = []
+	if c.attack_area != AreaShape.SINGLE:
+		items.append(RuleItem.new(-1, 0, ATTACK_FILL, ATTACK_FILL, _area_name(c.attack_area), "", c.attack_area))
 	for k: int in KeywordInfo.split(c.keywords):
 		var fg: Color = KeywordVisuals.get_foreground(k)
 		var bg: Color = KeywordVisuals.get_background(k)
@@ -532,7 +540,7 @@ static func _unit_rule_items(c: CardData) -> Array[RuleItem]:
 			bg = ClanInfo.get_color(c.clan).darkened(0.65)
 		var label: String = ""
 		if k == Keyword.BUILDER and BuildingInfo.for_class(c.class_) != BuildingType.NONE:
-			label = BuildingInfo.display_name(BuildingInfo.for_class(c.class_))
+			label = BuildingInfo.display_name(BuildingInfo.for_class(c.class_), c.clan)
 		elif k == Keyword.TRAPPER:
 			label = TrapInfo.display_name(TrapInfo.for_clan(c.clan))
 		var overlay: String = "+%d" % c.level if k == Keyword.UNDYING and c.level > 0 else ""
@@ -652,7 +660,7 @@ func _build_rule_icons(items: Array[RuleItem], rule_scale: float = 1.0) -> int:
 				mat.set_shader_parameter("bg_color", rule.bg)
 				icon.material = mat
 			else:
-				_create_badge_material(icon, rule.badge, rule.fg)
+				_create_badge_material(icon, rule.badge, rule.fg).set_shader_parameter("area", rule.area)
 			if rule.overlay.length() > 0:
 				var lv := Label.new()
 				lv.text = rule.overlay

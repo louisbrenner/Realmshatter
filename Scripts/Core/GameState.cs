@@ -111,10 +111,13 @@ public sealed class GameState
 		return piece;
 	}
 
-	/// <summary>Places an unfinished building (finished at the start of turn completeTurn) for its builder.</summary>
-	public Piece SpawnBuilding(BuildingType type, int ownerIndex, GridPos pos, int completeTurn, int builderId)
+	/// <summary>
+	/// Places an unfinished building (finished at the start of turn completeTurn) for its builder; 'clan' makes it the
+	/// clan version (BuildingInfo.GetCard).
+	/// </summary>
+	public Piece SpawnBuilding(BuildingType type, int ownerIndex, GridPos pos, int completeTurn, int builderId, Clan clan = Clan.None)
 	{
-		Piece b = SpawnPiece(BuildingInfo.GetCard(type), ownerIndex, pos);
+		Piece b = SpawnPiece(BuildingInfo.GetCard(type, clan), ownerIndex, pos);
 		if (b != null)
 		{
 			b.UnderConstruction = completeTurn > TurnNumber;

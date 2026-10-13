@@ -12,7 +12,9 @@ public static class BattleSession
 {
 	public const string BattleScene = "res://Scenes/Main.tscn";
 	public const string OverworldScene = "res://Scenes/Overworld.tscn";
-	public const int ConsolationGold = 10;
+	/// <summary>Share of an NPC's gold reward the player loses on a defeat (at least MinLossGold).</summary>
+	public const int LossDivisor = 4;
+	public const int MinLossGold = 5;
 
 	/// <summary>The NPC being fought, or null outside a town battle.</summary>
 	public static NpcData Opponent { get; private set; }
@@ -61,23 +63,42 @@ public static class BattleSession
 		{
 			return "";
 		}
+		string stake = $" Defeat costs {LossGold(npc)} gold.";
 		if (PlayerProfile.HasDefeated(npc.Id))
 		{
-			return $"Rematch reward: {npc.RewardGold / 2} gold.";
+			return $"Rematch reward: {npc.RewardGold / 2} gold.{stake}";
 		}
-		var names = new List<string>();
-		foreach (CardData card in npc.RewardCards)
-		{
-			if (card != null)
-			{
-				names.Add(card.Name);
-			}
-		}
+		var names = new List<string>(CountedNames(npc.RewardCards));
 		if (npc.RewardOneOf.Count > 0)
 		{
 			names.Add("one Legendary card you do not own yet");
 		}
-		return names.Count > 0 ? $"Reward: {npc.RewardGold} gold + {string.Join(", ", names)}." : $"Reward: {npc.RewardGold} gold.";
+		string reward = names.Count > 0 ? $"Reward: {npc.RewardGold} gold + {string.Join(", ", names)}." : $"Reward: {npc.RewardGold} gold.";
+		return reward + stake;
+	}
+
+	/// <summary>Gold the player loses when this NPC wins: a quarter of its reward, at least MinLossGold.</summary>
+	public static int LossGold(NpcData npc) => npc == null ? 0 : System.Math.Max(MinLossGold, npc.RewardGold / LossDivisor);
+
+	/// <summary>"Ember Imp x2, Fireball" - card names with their copy counts, in list order.</summary>
+	private static List<string> CountedNames(IEnumerable<CardData> cards)
+	{
+		var order = new List<string>();
+		var counts = new Dictionary<string, int>();
+		foreach (CardData card in cards)
+		{
+			if (card == null)
+			{
+				continue;
+			}
+			if (!counts.ContainsKey(card.Name))
+			{
+				order.Add(card.Name);
+				counts[card.Name] = 0;
+			}
+			counts[card.Name]++;
+		}
+		return order.ConvertAll(n => counts[n] > 1 ? $"{n} x{counts[n]}" : n);
 	}
 
 	/// <summary>A random card of the NPC's RewardOneOf list that the player does not own yet (any, if all are owned).</summary>
@@ -137,31 +158,40 @@ public static class BattleSession
 			bool first = !PlayerProfile.HasDefeated(npc.Id);
 			int gold = first ? npc.RewardGold : npc.RewardGold / 2;
 			PlayerProfile.AddGold(gold);
-			var cards = new List<string>();
+			var gained = new List<CardData>();
+			string unlock = "";
 			if (first)
 			{
+				// RewardCards may list a card several times: one copy per entry.
 				foreach (CardData card in npc.RewardCards)
 				{
 					if (card != null)
 					{
 						PlayerProfile.AddCard(card);
-						cards.Add(card.Name);
+						gained.Add(card);
 					}
 				}
 				CardData pick = PickOneOf(npc);
 				if (pick != null)
 				{
 					PlayerProfile.AddCard(pick);
-					cards.Add(pick.Name);
+					gained.Add(pick);
 				}
 				PlayerProfile.MarkDefeated(npc.Id);
+				if (npc.Clan != Clan.None && ShopUnlocks.IdPrefix(npc.Clan) != "" && npc.Id.StartsWith(ShopUnlocks.IdPrefix(npc.Clan)))
+				{
+					unlock = ShopUnlocks.LeaderDefeated(npc.Clan)
+						? $" Every {ClanInfo.GetName(npc.Clan)} card is now sold in the shops!"
+						: $" New {ClanInfo.GetName(npc.Clan)} cards are now sold in the shops.";
+				}
 			}
-			text = $"You beat {npc.Name}! +{gold} gold" + (cards.Count > 0 ? $", new cards: {string.Join(", ", cards)}." : ".");
+			text = $"You beat {npc.Name}! +{gold} gold" + (gained.Count > 0 ? $", new cards: {string.Join(", ", CountedNames(gained))}." : ".") + unlock;
 		}
 		else
 		{
-			PlayerProfile.AddGold(ConsolationGold);
-			text = $"{npc.Name} won this time. +{ConsolationGold} gold for the effort.";
+			int loss = System.Math.Min(LossGold(npc), PlayerProfile.Gold);
+			PlayerProfile.AddGold(-loss);
+			text = loss > 0 ? $"{npc.Name} won and takes {loss} gold from you." : $"{npc.Name} won - luckily your purse was already empty.";
 		}
 		PendingMessage = text;
 		return text;

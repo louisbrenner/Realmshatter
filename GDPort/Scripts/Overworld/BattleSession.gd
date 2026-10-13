@@ -6,7 +6,9 @@ extends RefCounted
 
 const BATTLE_SCENE := "res://Scenes/Main.tscn"
 const OVERWORLD_SCENE := "res://Scenes/Overworld.tscn"
-const CONSOLATION_GOLD := 10
+## Share of an NPC's gold reward the player loses on a defeat (at least MIN_LOSS_GOLD).
+const LOSS_DIVISOR := 4
+const MIN_LOSS_GOLD := 5
 
 ## The NPC being fought, or null outside a town battle.
 static var opponent: NpcData = null
@@ -52,17 +54,37 @@ static func build_player_deck() -> DeckData:
 static func describe_reward(npc: NpcData) -> String:
 	if npc == null:
 		return ""
+	var stake: String = " Defeat costs %d gold." % loss_gold(npc)
 	if PlayerProfile.has_defeated(npc.id):
-		return "Rematch reward: %d gold." % (npc.reward_gold / 2)
-	var names: Array[String] = []
-	for card: CardData in npc.reward_cards:
-		if card != null:
-			names.append(card.name)
+		return "Rematch reward: %d gold.%s" % [npc.reward_gold / 2, stake]
+	var names: Array[String] = _counted_names(npc.reward_cards)
 	if npc.reward_one_of.size() > 0:
 		names.append("one Legendary card you do not own yet")
 	if names.size() > 0:
-		return "Reward: %d gold + %s." % [npc.reward_gold, ", ".join(names)]
-	return "Reward: %d gold." % npc.reward_gold
+		return "Reward: %d gold + %s.%s" % [npc.reward_gold, ", ".join(names), stake]
+	return "Reward: %d gold.%s" % [npc.reward_gold, stake]
+
+
+## Gold the player loses when this NPC wins: a quarter of its reward, at least MIN_LOSS_GOLD.
+static func loss_gold(npc: NpcData) -> int:
+	return 0 if npc == null else maxi(MIN_LOSS_GOLD, npc.reward_gold / LOSS_DIVISOR)
+
+
+## "Ember Imp x2, Fireball" - card names with their copy counts, in list order.
+static func _counted_names(cards: Array) -> Array[String]:
+	var order: Array[String] = []
+	var counts: Dictionary = {}
+	for card: CardData in cards:
+		if card == null:
+			continue
+		if not counts.has(card.name):
+			order.append(card.name)
+			counts[card.name] = 0
+		counts[card.name] += 1
+	var result: Array[String] = []
+	for n: String in order:
+		result.append("%s x%d" % [n, counts[n]] if counts[n] > 1 else n)
+	return result
 
 
 ## A random card of the NPC's reward_one_of list that the player does not own yet (any, if all are owned).
@@ -106,21 +128,30 @@ static func complete(won: bool) -> String:
 		var first: bool = not PlayerProfile.has_defeated(npc.id)
 		var gold: int = npc.reward_gold if first else npc.reward_gold / 2
 		PlayerProfile.add_gold(gold)
-		var cards: Array[String] = []
+		var gained: Array[CardData] = []
+		var unlock: String = ""
 		if first:
+			# reward_cards may list a card several times: one copy per entry.
 			for card: CardData in npc.reward_cards:
 				if card != null:
 					PlayerProfile.add_card(card)
-					cards.append(card.name)
+					gained.append(card)
 			var pick: CardData = _pick_one_of(npc)
 			if pick != null:
 				PlayerProfile.add_card(pick)
-				cards.append(pick.name)
+				gained.append(pick)
 			PlayerProfile.mark_defeated(npc.id)
-		var tail: String = (", new cards: %s." % ", ".join(cards)) if cards.size() > 0 else "."
-		text = ("You beat %s! +%d gold" % [npc.name, gold]) + tail
+			if npc.clan != Clan.NONE and npc.id.begins_with(ShopUnlocks.id_prefix(npc.clan)):
+				if ShopUnlocks.leader_defeated(npc.clan):
+					unlock = " Every %s card is now sold in the shops!" % ClanInfo.display_name(npc.clan)
+				else:
+					unlock = " New %s cards are now sold in the shops." % ClanInfo.display_name(npc.clan)
+		var tail: String = (", new cards: %s." % ", ".join(_counted_names(gained))) if gained.size() > 0 else "."
+		text = ("You beat %s! +%d gold" % [npc.name, gold]) + tail + unlock
 	else:
-		PlayerProfile.add_gold(CONSOLATION_GOLD)
-		text = "%s won this time. +%d gold for the effort." % [npc.name, CONSOLATION_GOLD]
+		var loss: int = mini(loss_gold(npc), PlayerProfile.gold)
+		PlayerProfile.add_gold(-loss)
+		text = ("%s won and takes %d gold from you." % [npc.name, loss]) if loss > 0 \
+			else "%s won - luckily your purse was already empty." % npc.name
 	pending_message = text
 	return text

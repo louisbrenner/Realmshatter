@@ -1,27 +1,29 @@
-[gd_resource type="Resource" script_class="DeckData" load_steps=18 format=3]
+[gd_resource type="Resource" script_class="DeckData" load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/DeckData.cs" id="1_deck"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
-[ext_resource type="Resource" path="res://Resources/Cards/RockSlinger.tres" id="c_RockSlinger"]
-[ext_resource type="Resource" path="res://Resources/Cards/BatteringRam.tres" id="c_BatteringRam"]
-[ext_resource type="Resource" path="res://Resources/Cards/Thornback.tres" id="c_Thornback"]
-[ext_resource type="Resource" path="res://Resources/Cards/StoneGolem.tres" id="c_StoneGolem"]
-[ext_resource type="Resource" path="res://Resources/Cards/MountainColossus.tres" id="c_MountainColossus"]
-[ext_resource type="Resource" path="res://Resources/Cards/QuarryHauler.tres" id="c_QuarryHauler"]
-[ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
 [ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="c_Lancer"]
-[ext_resource type="Resource" path="res://Resources/Cards/Raider.tres" id="c_Raider"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaSurge.tres" id="c_ManaSurge"]
 [ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
-[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
-[ext_resource type="Resource" path="res://Resources/Cards/Rockslide.tres" id="c_Rockslide"]
+[ext_resource type="Resource" path="res://Resources/Cards/StonePathfinder.tres" id="c_StonePathfinder"]
+[ext_resource type="Resource" path="res://Resources/Cards/RockSlinger.tres" id="c_RockSlinger"]
+[ext_resource type="Resource" path="res://Resources/Cards/Thornback.tres" id="c_Thornback"]
+[ext_resource type="Resource" path="res://Resources/Cards/BatteringRam.tres" id="c_BatteringRam"]
+[ext_resource type="Resource" path="res://Resources/Cards/QuarryHauler.tres" id="c_QuarryHauler"]
+[ext_resource type="Resource" path="res://Resources/Cards/RichVein.tres" id="c_RichVein"]
+[ext_resource type="Resource" path="res://Resources/Cards/StoneGolem.tres" id="c_StoneGolem"]
+[ext_resource type="Resource" path="res://Resources/Cards/BoulderCatapult.tres" id="c_BoulderCatapult"]
 [ext_resource type="Resource" path="res://Resources/Cards/Stoneskin.tres" id="c_Stoneskin"]
-[ext_resource type="Resource" path="res://Resources/Cards/StoneWall.tres" id="c_StoneWall"]
-[ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
+[ext_resource type="Resource" path="res://Resources/Cards/Gale.tres" id="c_Gale"]
+[ext_resource type="Resource" path="res://Resources/Cards/Rockslide.tres" id="c_Rockslide"]
+[ext_resource type="Resource" path="res://Resources/Cards/MountainColossus.tres" id="c_MountainColossus"]
+[ext_resource type="Resource" path="res://Resources/Cards/Stonemason.tres" id="c_Stonemason"]
+[ext_resource type="Resource" path="res://Resources/Cards/SiegeEngineer.tres" id="c_SiegeEngineer"]
 
 [resource]
 script = ExtResource("1_deck")
 Name = "Holt's Mountain"
-Cards = Array[ExtResource("2_card")]([ExtResource("c_RockSlinger"), ExtResource("c_RockSlinger"), ExtResource("c_RockSlinger"), ExtResource("c_BatteringRam"), ExtResource("c_BatteringRam"), ExtResource("c_BatteringRam"), ExtResource("c_Thornback"), ExtResource("c_Thornback"), ExtResource("c_StoneGolem"), ExtResource("c_StoneGolem"), ExtResource("c_MountainColossus"), ExtResource("c_QuarryHauler"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_Raider"), ExtResource("c_Raider"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Rockslide"), ExtResource("c_Rockslide"), ExtResource("c_Rockslide"), ExtResource("c_Stoneskin"), ExtResource("c_Stoneskin"), ExtResource("c_StoneWall"), ExtResource("c_StoneWall"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry")])
+Cards = Array[ExtResource("2_card")]([ExtResource("c_Lancer"), ExtResource("c_Lancer"), ExtResource("c_ManaSurge"), ExtResource("c_ManaSurge"), ExtResource("c_Miner"), ExtResource("c_StonePathfinder"), ExtResource("c_RockSlinger"), ExtResource("c_RockSlinger"), ExtResource("c_Thornback"), ExtResource("c_Thornback"), ExtResource("c_BatteringRam"), ExtResource("c_BatteringRam"), ExtResource("c_QuarryHauler"), ExtResource("c_QuarryHauler"), ExtResource("c_QuarryHauler"), ExtResource("c_RichVein"), ExtResource("c_RichVein"), ExtResource("c_StoneGolem"), ExtResource("c_StoneGolem"), ExtResource("c_BoulderCatapult"), ExtResource("c_BoulderCatapult"), ExtResource("c_Stoneskin"), ExtResource("c_Stoneskin"), ExtResource("c_Gale"), ExtResource("c_Rockslide"), ExtResource("c_MountainColossus"), ExtResource("c_Stonemason"), ExtResource("c_Stonemason"), ExtResource("c_SiegeEngineer"), ExtResource("c_SiegeEngineer")])
 Description = "A champion's deck of the Stone Bastion."
 AccentColor = Color(0.66, 0.6, 0.5, 1)
 Showcase = ExtResource("c_StoneGolem")

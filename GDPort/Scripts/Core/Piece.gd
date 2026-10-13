@@ -143,6 +143,11 @@ var effective_movement: int:
 var effective_attack: int:
 	get:
 		return maxi(0, base_stats.attack + bonus_attack + _sum_delta(func(e: SpellEffect) -> int: return e.attack_delta))
+## Area of its attacks (CardData.attack_area; SINGLE = a normal attack).
+var attack_area: int:
+	get:
+		return source.attack_area if source != null else AreaShape.SINGLE
+
 var effective_range: int:
 	get:
 		return maxi(0, base_stats.range + _sum_delta(func(e: SpellEffect) -> int: return e.range_delta))

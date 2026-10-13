@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Pyre Offering"
+Description = "Feed the flames - they give back twice over."
+CardType = 1
+Role = 1
+ApCost = 1
+AttackDelta = 1
+ApGain = 2
+Clan = 1
+Rarity = 0
+Tint = Color(1, 0.5, 0.2, 1)

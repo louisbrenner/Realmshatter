@@ -1,7 +1,8 @@
 class_name TileEffect
 extends RefCounted
 ## A map effect on one tile. It expires at the END of turn expiry_turn (like spells): an effect created in
-## turn T with duration D has expiry_turn = T + D (D = 2 lasts until the end of the creator's next turn).
+## turn T with duration D has expiry_turn = T + D - 1, so it lasts D turns counting its creation turn (an even D
+## gives both players the same number of turns with it; D = 4 ends after the opponent's second turn).
 
 ## expiry_turn of map effects that never expire (lava fields and springs of the map generator).
 ## C# int.MaxValue / 4.

@@ -107,6 +107,37 @@ public partial class BoardAnimator : Node
 	/// <summary>Owner color for a player index.</summary>
 	public Color GetOwnerColor(int playerIndex) => playerIndex == 0 ? Player0Color : Player1Color;
 
+	/// <summary>True while all piece tokens are turned 180 degrees (hotseat: board seen from player 1's side).</summary>
+	public bool Flipped { get; private set; }
+
+	/// <summary>
+	/// Turns every piece token (portrait, badges, buildings) 180 degrees so it reads upright for the player on the
+	/// other side; use together with CameraRig.SetFlipped and its TweenDuration. New views spawn already turned.
+	/// </summary>
+	public void SetFlipped(bool flipped, float duration)
+	{
+		if (flipped == Flipped)
+		{
+			return;
+		}
+		Flipped = flipped;
+		float yaw = flipped ? Mathf.Pi : 0f;
+		foreach (PieceView view in _views.Values)
+		{
+			if (!IsInstanceValid(view))
+			{
+				continue;
+			}
+			if (duration <= 0f)
+			{
+				view.Rotation = new Vector3(0f, yaw, 0f);
+				continue;
+			}
+			view.CreateTween().TweenProperty(view, "rotation:y", yaw, duration)
+				.SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.InOut);
+		}
+	}
+
 	/// <summary>Creates (or returns the existing) view for a piece and places it on its tile.</summary>
 	public PieceView SpawnView(Piece piece)
 	{
@@ -132,6 +163,7 @@ public partial class BoardAnimator : Node
 		Board.AddChild(view);
 		view.Setup(piece, GetOwnerColor(piece.OwnerIndex));
 		view.GlobalPosition = Board.GridToWorld(piece.Position);
+		view.Rotation = new Vector3(0f, Flipped ? Mathf.Pi : 0f, 0f);
 		_views[piece.Id] = view;
 		return view;
 	}

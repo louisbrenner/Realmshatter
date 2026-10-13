@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+Name = "Shrinekeeper"
+Description = "Tends Dawn Shrines whose light mends twice as fast."
+CardType = 0
+Role = 1
+Class = 7
+ApCost = 2
+Movement = 4
+Attack = 2
+Hp = 3
+Range = 2
+Shield = 0
+ApBonus = 0
+Clan = 2
+Rarity = 0
+Keywords = 272
+Tint = Color(1, 0.92, 0.65, 1)

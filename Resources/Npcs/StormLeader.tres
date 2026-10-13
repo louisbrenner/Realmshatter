@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcStormLeader.tres" id="3_deck"]
 [ext_resource type="Resource" path="res://Resources/Cards/ThunderTitan.tres" id="r_ThunderTitan"]
+[ext_resource type="Resource" path="res://Resources/Cards/StaticCharge.tres" id="r_StaticCharge"]
+[ext_resource type="Resource" path="res://Resources/Cards/StormCaller.tres" id="r_StormCaller"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,9 +19,9 @@ Position = Vector2(480, 215)
 Greeting = "I am Raijin, Storm Lord of the Circuit. My lightning never strikes the same place once. Ready?"
 RematchLine = "The storm is restless. Again?"
 DefeatLine = "You rode the storm. The Thunder Titan is yours to command."
-VictoryLine = "Thunder answers only to me. Come back when you hear it."
+VictoryLine = "Thunder answers only to me. Your gold, too, it seems."
 RewardGold = 150
-RewardCards = Array[ExtResource("2_card")]([ExtResource("r_ThunderTitan")])
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_ThunderTitan"), ExtResource("r_ThunderTitan"), ExtResource("r_StaticCharge"), ExtResource("r_StaticCharge"), ExtResource("r_StormCaller"), ExtResource("r_StormCaller")])
 BonusApPerTurn = 1
 RequiresDefeated = Array[String](["storm_initiate", "storm_adept", "storm_champion"])
 LockedLine = "Prove yourself against the three duelists of this hall first - then I will face you."

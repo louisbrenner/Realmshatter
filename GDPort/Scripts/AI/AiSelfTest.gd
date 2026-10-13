@@ -107,6 +107,15 @@ static func _run_game(seed_value: int, max_turns: int, sb: PackedStringArray, de
 	# Spells cast are consumed; destroyed units go to the graveyard (Undying: back to the deck); pieces on board are counted live.
 	var played: Array[int] = [0, 0]
 	var last_vp: Array[int] = [0, 0]
+	# AP gained during the own turn (AP spells, Plunder kills) is added back in the AP accounting.
+	# (A 1-element box: GDScript lambdas capture locals by value.)
+	var gained_now: Array[int] = [0]
+	var count_gains := func(events: Array) -> void:
+		for e: ResolutionEvent in events:
+			if e.type == ResolutionEventType.AP_GAINED and not e.is_secondary and e.player_index == state.current_player_index:
+				gained_now[0] += e.amount
+	controller.action_resolved.connect(count_gains)
+	controller.spell_resolved.connect(count_gains)
 
 	controller.start_game()
 
@@ -114,6 +123,7 @@ static func _run_game(seed_value: int, max_turns: int, sb: PackedStringArray, de
 		var current: int = state.current_player_index
 		var turn_before: int = state.turn_number
 		var ap_before: int = state.players[current].action_points
+		gained_now[0] = 0
 		if state.phase != GamePhase.MAIN:
 			errors.append("turn %d: turn did not start in Main phase (%s)" % [turn_before, GamePhase.name_of(state.phase)])
 
@@ -150,8 +160,8 @@ static func _run_game(seed_value: int, max_turns: int, sb: PackedStringArray, de
 					spent += -1
 				_:
 					spent += 0
-		if ap_before - spent != state.players[current].action_points:
-			errors.append("turn %d: AP accounting %d - %d != %d" % [turn_before, ap_before, spent, state.players[current].action_points])
+		if ap_before - spent + gained_now[0] != state.players[current].action_points:
+			errors.append("turn %d: AP accounting %d - %d + %d != %d" % [turn_before, ap_before, spent, gained_now[0], state.players[current].action_points])
 		var converted: int = state.players[current].vp_converted_this_turn
 		var convert_actions: int = 0
 		for a: AiAction in actions:

@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcStoneInitiate.tres" id="3_deck"]
 [ext_resource type="Resource" path="res://Resources/Cards/StonePathfinder.tres" id="r_StonePathfinder"]
+[ext_resource type="Resource" path="res://Resources/Cards/Stoneskin.tres" id="r_Stoneskin"]
+[ext_resource type="Resource" path="res://Resources/Cards/RockSlinger.tres" id="r_RockSlinger"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ Position = Vector2(240, 470)
 Greeting = "They call me Pebble. I am small, but I do not roll over!"
 RematchLine = "Rolling back for more?"
 DefeatLine = "Oof. Flattened. Good duel!"
-VictoryLine = "Small stones start landslides!"
+VictoryLine = "Small stones start landslides! And small coins make big piles."
 RewardGold = 50
-RewardCards = Array[ExtResource("2_card")]([ExtResource("r_StonePathfinder")])
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_StonePathfinder"), ExtResource("r_StonePathfinder"), ExtResource("r_Stoneskin"), ExtResource("r_RockSlinger")])

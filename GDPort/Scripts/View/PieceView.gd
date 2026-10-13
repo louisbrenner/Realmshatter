@@ -166,6 +166,8 @@ func setup(piece: Piece, owner_color_value: Color) -> void:
 	_portrait_mat.set_shader_parameter("role", role)
 	_portrait_mat.set_shader_parameter("glyph", ClassVisuals.art_glyph(piece.source))
 	_portrait_mat.set_shader_parameter("seed", piece.id * 0.37)
+	# Area attackers: outward marks in the area's shape around the attack crest.
+	(_attack_badge.material_override as ShaderMaterial).set_shader_parameter("area", piece.attack_area)
 	_ring_mat.albedo_color = owner_color_value
 	_ring_mat.emission = owner_color_value
 	_name_label.text = piece.source.name if piece.source != null else "#%d" % piece.id

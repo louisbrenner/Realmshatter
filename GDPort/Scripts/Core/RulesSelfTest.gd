@@ -55,6 +55,7 @@ static func run() -> String:
 	_run_section(r, "Tile spells"); _test_tile_spells(r)
 	_run_section(r, "Keyword Burning"); _test_burning(r)
 	_run_section(r, "Keyword Frost"); _test_frost(r)
+	_run_section(r, "Area attacks"); _test_area_attack(r)
 	_run_section(r, "Keyword Push"); _test_push_keyword(r)
 	_run_section(r, "Keyword Pierce"); _test_pierce(r)
 	_run_section(r, "Keyword Mending"); _test_mending(r)
@@ -64,6 +65,7 @@ static func run() -> String:
 	_run_section(r, "Deathrattles"); _test_deathrattles(r)
 	_run_section(r, "First-hit effects"); _test_first_hit(r)
 	_run_section(r, "Buildings + turrets"); _test_buildings(r)
+	_run_section(r, "Clan buildings"); _test_clan_buildings(r)
 	_run_section(r, "Auras"); _test_auras(r)
 	_run_section(r, "Spell cast radius"); _test_spell_range(r)
 	_run_section(r, "Push spell"); _test_push_spell(r)
@@ -172,7 +174,7 @@ static func _count(events: Array, type: int) -> int:
 	return n
 
 
-static func _place(state: GameState, type: int, pos: Vector2i, duration: int = 2) -> void:
+static func _place(state: GameState, type: int, pos: Vector2i, duration: int = 3) -> void:
 	OrderResolver.apply_tile_effect(state, type, pos, duration, 0, "Test", -1, _no_events())
 
 
@@ -393,9 +395,9 @@ static func _test_terrain(r: Report) -> void:
 	var state: GameState = tc.state
 	var walker := _spawn_ready(state, _unit("Walker", 3), 0, _g(5, 12))
 	state.board.set_terrain(_g(5, 11), TerrainType.WATER)
-	r.check(state.board.move_cost(_g(5, 11)) == 2, "entering water costs 2 movement")
+	r.check(state.board.move_cost(_g(5, 11)) == 3, "entering water costs 3 movement")
 	var reach: Array[Vector2i] = tc.get_valid_move_targets(walker)
-	r.check(reach.has(_g(5, 10)) and not reach.has(_g(5, 9)), "a river slows a straight crossing (3 movement: water + 1 tile)")
+	r.check(reach.has(_g(5, 11)) and not reach.has(_g(5, 10)), "a river slows a straight crossing (3 movement: the water tile only)")
 	state.board.set_terrain(_g(5, 11), TerrainType.BRIDGE)
 	r.check(state.board.move_cost(_g(5, 11)) == 1, "bridges cost normal movement")
 
@@ -762,7 +764,7 @@ static func _test_walls(r: Report) -> void:
 	var tc := _new_game()
 	var state: GameState = tc.state
 	var a := _spawn_ready(state, _unit("A", 2), 0, _g(4, 12))
-	r.check(OrderResolver.apply_tile_effect(state, TileEffectType.WALL, _g(4, 11), 2, 0, "Test", -1, _no_events()), "wall placed")
+	r.check(OrderResolver.apply_tile_effect(state, TileEffectType.WALL, _g(4, 11), 3, 0, "Test", -1, _no_events()), "wall placed")
 	var targets: Array[Vector2i] = tc.get_valid_move_targets(a)
 	r.check(not targets.has(_g(4, 11)) and not targets.has(_g(4, 10)), "wall is impassable")
 	r.check(not OrderResolver.apply_tile_effect(state, TileEffectType.WALL, a.position, 2, 0, "Test", -1, _no_events()), "no wall on an occupied tile")
@@ -795,7 +797,7 @@ static func _test_tile_spells(r: Report) -> void:
 	r.check(e1.current_hp == 2 and not e2.is_alive and f.current_hp == 3, "area damage hits enemies only")
 	# (5, 8) is a crown tile and stays clean; the rest of the cross turns to lava.
 	var lava: TileEffect = state.board.get_tile_effect(_g(4, 8))
-	r.check(lava != null and lava.expiry_turn == state.turn_number + 4 and state.board.get_tile_effect(_g(5, 8)) == null,
+	r.check(lava != null and lava.expiry_turn == state.turn_number + 3 and state.board.get_tile_effect(_g(5, 8)) == null,
 		"lava lasts the card's duration (never on the crown field)")
 
 
@@ -806,7 +808,34 @@ static func _test_burning(r: Report) -> void:
 	var en := _spawn_ready(state, _unit("En", 2, 1, 3), 1, _g(5, 9))
 	tc.act(a, null, _g(5, 9))
 	r.check(en.current_hp == 2 and state.board.get_tile_effect_type(_g(5, 9)) == TileEffectType.LAVA, "Burning hit leaves lava")
-	r.check(state.board.get_tile_effect(_g(5, 9)).expiry_turn == state.turn_number + state.config.burning_lava_duration, "lava duration = BurningLavaDuration")
+	r.check(state.board.get_tile_effect(_g(5, 9)).expiry_turn == state.turn_number + state.config.burning_lava_duration - 1, "lava duration = BurningLavaDuration (creation turn counts)")
+
+
+static func _test_area_attack(r: Report) -> void:
+	var tc := _new_game()
+	var state: GameState = tc.state
+	var mortar_card := _unit("Mortar", 2, 2, 3, 3)
+	mortar_card.attack_area = AreaShape.PLUS
+	var mortar := _spawn_ready(state, mortar_card, 0, _g(5, 12))
+	var center := _spawn_ready(state, _unit("C", 2, 1, 3), 1, _g(5, 9))
+	var left := _spawn_ready(state, _unit("L", 2, 1, 3), 1, _g(4, 9))
+	var up := _spawn_ready(state, _unit("U", 2, 1, 3), 1, _g(5, 8))
+	var friend := _spawn_ready(state, _unit("F", 2, 1, 3), 0, _g(6, 9))
+	var outside := _spawn_ready(state, _unit("O", 2, 1, 3), 1, _g(7, 9))
+	tc.act(mortar, null, _g(5, 9))
+	r.check(center.current_hp == 1 and left.current_hp == 1 and up.current_hp == 1, "a cross attack hits the target and its neighbours with full damage")
+	r.check(friend.current_hp == 1, "area attacks hit friendly pieces too")
+	r.check(outside.current_hp == 3 and mortar.current_hp == mortar.max_hp, "pieces outside the area and the attacker are untouched")
+
+	var tc2 := _new_game()
+	var state2: GameState = tc2.state
+	var line_card := _unit("Line", 2, 1)
+	line_card.attack_area = AreaShape.COLUMN3
+	var line := _spawn_ready(state2, line_card, 0, _g(5, 10))
+	var front := _spawn_ready(state2, _unit("Front", 2, 1, 3), 1, _g(5, 9))
+	var back := _spawn_ready(state2, _unit("Back", 2, 1, 3), 1, _g(5, 8))
+	tc2.act(line, null, _g(5, 9))
+	r.check(front.current_hp == 2 and back.current_hp == 2 and line.current_hp == line.max_hp, "an adjacent area attacker never hits itself")
 
 
 static func _test_frost(r: Report) -> void:
@@ -1004,6 +1033,37 @@ static func _classed(name: String, cls: int, clan: int = Clan.NONE, kw: int = Ke
 	return c
 
 
+static func _test_clan_buildings(r: Report) -> void:
+	var tc := _new_game()
+	var state: GameState = tc.state
+	var engineer := _spawn_ready(state, _classed("Engineer", UnitClass.ARCHER, Clan.FIRE, Keyword.BUILDER), 0, _g(5, 12))
+	tc.build(engineer, _tiles([_g(5, 11)]), null)
+	var turret: Piece = state.board.get_piece_at(_g(5, 11))
+	r.check(turret != null and turret.source.clan == Clan.FIRE and turret.source.name == "Ember Turret" and turret.building == BuildingType.TURRET,
+		"a Fire builder raises the Fire version of its building (Ember Turret)")
+	r.check(BuildingInfo.get_card(BuildingType.TURRET).clan == Clan.NONE and BuildingInfo.display_name(BuildingType.TURRET, Clan.NONE) == "Turret",
+		"neutral builders still raise plain buildings")
+
+	# Finished: at the owner's turn start it pulses the clan aura (Fire: 1 damage to adjacent enemies).
+	turret.under_construction = false
+	var enemy := _spawn_ready(state, _unit("Enemy", 2, 1, 5), 1, _g(6, 10))
+	var far := _spawn_ready(state, _unit("Far", 2, 1, 5), 1, _g(9, 6))
+	tc.end_turn()
+	tc.end_turn()
+	r.check(enemy.current_hp == 4 and far.current_hp == 5 and _has(tc.last_turn_start_events, ResolutionEventType.AURA_PULSE, turret.id),
+		"a finished Ember Turret burns adjacent enemies at its owner's turn start")
+
+	# Stone: allies next to a Granite building gain Shield.
+	var wall: Piece = state.spawn_building(BuildingType.BARRICADE, 0, _g(2, 12), 0, -1, Clan.STONE)
+	wall.under_construction = false
+	var ally := _spawn_ready(state, _unit("Ally"), 0, _g(2, 13))
+	tc.end_turn()
+	tc.end_turn()
+	r.check(wall.source.name == "Granite Barricade" and ally.current_shield >= 1, "a Granite Barricade shields adjacent allies")
+	r.check(tc.get_building_range_tiles(BuildingType.BARRICADE, _g(2, 12), 1, Clan.STONE).size() == 8
+		and tc.get_building_range_tiles(BuildingType.BARRICADE, _g(2, 12), 1).size() == 0, "clan buildings show their aura tiles as range")
+
+
 static func _test_buildings(r: Report) -> void:
 	var tc := _new_game()
 	var state: GameState = tc.state
@@ -1011,23 +1071,21 @@ static func _test_buildings(r: Report) -> void:
 	r.check(tc.get_build_type(archer) == BuildingType.TURRET, "Archers build Turrets")
 	var ev: Variant = tc.build(archer, _tiles([_g(5, 11)]), null)
 	var turret: Piece = state.board.get_piece_at(_g(5, 11))
-	r.check(ev != null and turret != null and turret.is_building and turret.under_construction and state.players[0].action_points == 1,
-		"building started (2 AP), unfinished")
+	r.check(ev != null and turret != null and turret.is_building and turret.under_construction and state.players[0].action_points == 2,
+		"building started (1 AP), unfinished")
 	r.check(archer.constructing_id == turret.id and not tc.can_act(archer, _g(4, 12), null), "the builder cannot move while building")
 	r.check(not tc.can_command(turret), "buildings cannot be commanded")
 	tc.end_turn()
-	tc.end_turn()
-	r.check(turret.under_construction, "still unfinished after one own turn")
-	tc.end_turn()
+	r.check(turret.under_construction, "still unfinished during the opponent's turn")
 	tc.end_turn()
 	r.check(not turret.under_construction and archer.constructing_id == -1 and _has(tc.last_turn_start_events, ResolutionEventType.BUILDING_COMPLETED, turret.id),
-		"finished at the start of the second own turn, builder freed")
+		"a Turret is finished at the start of the next own turn, builder freed")
 	r.check(state.players[0].victory_points == 0, "buildings do not score")
 
-	# A unit busy building does not score either, until its building is finished.
+	# A unit busy building does not score either, until its building is finished (Mana Wells take two own turns).
 	var tz := _new_game()
 	var zs: GameState = tz.state
-	var zone_builder := _spawn_ready(zs, _classed("ZoneBuilder", UnitClass.ARCHER, Clan.NONE, Keyword.BUILDER), 0, _g(4, 6))
+	var zone_builder := _spawn_ready(zs, _classed("ZoneBuilder", UnitClass.WORKER, Clan.NONE, Keyword.BUILDER), 0, _g(4, 6))
 	var zone_runner := _spawn_ready(zs, _unit("Runner"), 0, _g(7, 6))
 	tz.build(zone_builder, _tiles([_g(4, 5)]), null)
 	tz.end_turn()
@@ -1071,7 +1129,7 @@ static func _test_buildings(r: Report) -> void:
 	var move_build: Variant = tc.build(mover, _tiles([_g(5, 11)]), _g(5, 12))
 	var placed: Piece = state.board.get_piece_at(_g(5, 11))
 	r.check(move_build != null and mover.position == _g(5, 12) and placed != null and placed.building == BuildingType.TURRET
-		and _has(move_build, ResolutionEventType.MOVED, mover.id) and state.players[0].action_points == 1,
+		and _has(move_build, ResolutionEventType.MOVED, mover.id) and state.players[0].action_points == 2,
 		"a Builder can move and then build (pays only the building's AP)")
 	r.check(not tc.can_command(mover), "moving + building uses the unit's action")
 
@@ -1166,8 +1224,10 @@ static func _test_town(r: Report) -> void:
 		ok = ok and npc.reward_cards.size() > 0
 		if ok:
 			by_id[npc.id] = npc
+			var has_epic: bool = false
 			for c: CardData in npc.reward_cards:
-				epic_rewards += 1 if c.rarity == CardRarity.EPIC else 0
+				has_epic = has_epic or c.rarity == CardRarity.EPIC
+			epic_rewards += 1 if has_epic and npc.id.ends_with("_leader") else 0
 			var copies: Dictionary = {}
 			for c: CardData in npc.deck.cards:
 				copies[c] = int(copies.get(c, 0)) + 1

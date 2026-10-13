@@ -140,6 +140,20 @@ public static class AiSelfTest
 			// Spells cast are consumed; destroyed units go to the graveyard (Undying: back to the deck); pieces on board are counted live.
 			int[] played = { 0, 0 };
 			int[] lastVp = { 0, 0 };
+			// AP gained during the own turn (AP spells, Plunder kills) is added back in the AP accounting.
+			int gainedNow = 0;
+			void CountGains(IReadOnlyList<ResolutionEvent> events)
+			{
+				foreach (ResolutionEvent e in events)
+				{
+					if (e.Type == ResolutionEventType.ApGained && !e.IsSecondary && e.PlayerIndex == state.CurrentPlayerIndex)
+					{
+						gainedNow += e.Amount;
+					}
+				}
+			}
+			controller.ActionResolved += CountGains;
+			controller.SpellResolved += CountGains;
 
 			controller.StartGame();
 
@@ -148,6 +162,7 @@ public static class AiSelfTest
 				int current = state.CurrentPlayerIndex;
 				int turnBefore = state.TurnNumber;
 				int apBefore = state.Players[current].ActionPoints;
+				gainedNow = 0;
 				if (state.Phase != GamePhase.Main)
 				{
 					errors.Add($"turn {turnBefore}: turn did not start in Main phase ({state.Phase})");
@@ -195,9 +210,9 @@ public static class AiSelfTest
 						_ => 0,
 					};
 				}
-				if (apBefore - spent != state.Players[current].ActionPoints)
+				if (apBefore - spent + gainedNow != state.Players[current].ActionPoints)
 				{
-					errors.Add($"turn {turnBefore}: AP accounting {apBefore} - {spent} != {state.Players[current].ActionPoints}");
+					errors.Add($"turn {turnBefore}: AP accounting {apBefore} - {spent} + {gainedNow} != {state.Players[current].ActionPoints}");
 				}
 				int converted = state.Players[current].VpConvertedThisTurn;
 				int convertActions = actions.FindAll(a => a.Kind == AiActionKind.ConvertVp).Count;

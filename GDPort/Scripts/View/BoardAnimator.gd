@@ -107,6 +107,27 @@ func get_owner_color(player_index: int) -> Color:
 	return player0_color if player_index == 0 else player1_color
 
 
+## True while all piece tokens are turned 180 degrees (hotseat: board seen from player 1's side).
+var flipped: bool = false
+
+
+## Turns every piece token (portrait, badges, buildings) 180 degrees so it reads upright for the player on the
+## other side; use together with CameraRig.set_flipped and its tween_duration. New views spawn already turned.
+func set_flipped(value: bool, duration: float) -> void:
+	if value == flipped:
+		return
+	flipped = value
+	var yaw: float = PI if value else 0.0
+	for v: Variant in _views.values():
+		if not is_instance_valid(v):
+			continue
+		var view := v as PieceView
+		if duration <= 0.0:
+			view.rotation = Vector3(0.0, yaw, 0.0)
+			continue
+		view.create_tween().tween_property(view, "rotation:y", yaw, duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+
+
 ## Creates (or returns the existing) view for a piece and places it on its tile.
 func spawn_view(piece: Piece) -> PieceView:
 	if piece == null:
@@ -126,6 +147,7 @@ func spawn_view(piece: Piece) -> PieceView:
 	board.add_child(view)
 	view.setup(piece, get_owner_color(piece.owner_index))
 	view.global_position = board.grid_to_world(piece.position)
+	view.rotation = Vector3(0.0, PI if flipped else 0.0, 0.0)
 	_views[piece.id] = view
 	return view
 

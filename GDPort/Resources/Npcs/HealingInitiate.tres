@@ -1,8 +1,10 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.gd" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcHealingInitiate.tres" id="3_deck"]
+[ext_resource type="Resource" path="res://Resources/Cards/DawnRanger.tres" id="r_DawnRanger"]
+[ext_resource type="Resource" path="res://Resources/Cards/Blessing.tres" id="r_Blessing"]
 [ext_resource type="Resource" path="res://Resources/Cards/Acolyte.tres" id="r_Acolyte"]
 
 [resource]
@@ -17,6 +19,6 @@ position = Vector2(240, 470)
 greeting = "Welcome, traveller! May I test you? Gently, of course."
 rematch_line = "The light welcomes you back."
 defeat_line = "You fought with grace. Bless you."
-victory_line = "Oh! I am sorry - shall I heal your pride?"
+victory_line = "Oh! I am sorry - shall I heal your pride? The temple thanks you for your donation."
 reward_gold = 50
-reward_cards = Array[ExtResource("2_card")]([ExtResource("r_Acolyte")])
+reward_cards = Array[ExtResource("2_card")]([ExtResource("r_DawnRanger"), ExtResource("r_DawnRanger"), ExtResource("r_Blessing"), ExtResource("r_Acolyte")])

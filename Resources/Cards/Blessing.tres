@@ -5,12 +5,12 @@
 [resource]
 script = ExtResource("1")
 Name = "Blessing"
-Description = "+2 HP and 1 Shield until the end of your next turn."
+Description = "+2 HP and 2 Shield until the end of your next turn."
 CardType = 1
 Role = 0
 ApCost = 1
 HpDelta = 2
-ShieldDelta = 1
+ShieldDelta = 2
 Clan = 2
 Rarity = 0
 Tint = Color(1, 0.9, 0.5, 1)

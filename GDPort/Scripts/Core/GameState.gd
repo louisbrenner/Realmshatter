@@ -108,8 +108,8 @@ func spawn_piece(card: CardData, owner_index: int, pos: Vector2i) -> Piece:
 
 
 ## Places an unfinished building (finished at the start of turn complete_turn) for its builder.
-func spawn_building(type: int, owner_index: int, pos: Vector2i, complete_turn: int, builder_id: int) -> Piece:
-	var b: Piece = spawn_piece(BuildingInfo.get_card(type), owner_index, pos)
+func spawn_building(type: int, owner_index: int, pos: Vector2i, complete_turn: int, builder_id: int, clan: int = Clan.NONE) -> Piece:
+	var b: Piece = spawn_piece(BuildingInfo.get_card(type, clan), owner_index, pos)
 	if b != null:
 		b.under_construction = complete_turn > turn_number
 		b.complete_turn = complete_turn

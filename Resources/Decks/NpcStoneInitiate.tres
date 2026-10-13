@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DeckData" load_steps=16 format=3]
+[gd_resource type="Resource" script_class="DeckData" load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/DeckData.cs" id="1_deck"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
@@ -7,19 +7,20 @@
 [ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
 [ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
 [ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
-[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
 [ext_resource type="Resource" path="res://Resources/Cards/Pilgrim.tres" id="c_Pilgrim"]
 [ext_resource type="Resource" path="res://Resources/Cards/BoneKnight.tres" id="c_BoneKnight"]
-[ext_resource type="Resource" path="res://Resources/Cards/StonePathfinder.tres" id="c_StonePathfinder"]
-[ext_resource type="Resource" path="res://Resources/Cards/StoneWall.tres" id="c_StoneWall"]
-[ext_resource type="Resource" path="res://Resources/Cards/Stoneskin.tres" id="c_Stoneskin"]
-[ext_resource type="Resource" path="res://Resources/Cards/Gale.tres" id="c_Gale"]
+[ext_resource type="Resource" path="res://Resources/Cards/ArcaneApprentice.tres" id="c_ArcaneApprentice"]
 [ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
+[ext_resource type="Resource" path="res://Resources/Cards/Weaken.tres" id="c_Weaken"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaSurge.tres" id="c_ManaSurge"]
+[ext_resource type="Resource" path="res://Resources/Cards/StonePathfinder.tres" id="c_StonePathfinder"]
+[ext_resource type="Resource" path="res://Resources/Cards/RockSlinger.tres" id="c_RockSlinger"]
+[ext_resource type="Resource" path="res://Resources/Cards/Stoneskin.tres" id="c_Stoneskin"]
 
 [resource]
 script = ExtResource("1_deck")
 Name = "Pebble's Pile"
-Cards = Array[ExtResource("2_card")]([ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_Pilgrim"), ExtResource("c_Pilgrim"), ExtResource("c_BoneKnight"), ExtResource("c_BoneKnight"), ExtResource("c_StonePathfinder"), ExtResource("c_StonePathfinder"), ExtResource("c_StonePathfinder"), ExtResource("c_StoneWall"), ExtResource("c_StoneWall"), ExtResource("c_Stoneskin"), ExtResource("c_Stoneskin"), ExtResource("c_Stoneskin"), ExtResource("c_Gale"), ExtResource("c_Gale"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry")])
+Cards = Array[ExtResource("2_card")]([ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Miner"), ExtResource("c_Pilgrim"), ExtResource("c_Pilgrim"), ExtResource("c_BoneKnight"), ExtResource("c_BoneKnight"), ExtResource("c_ArcaneApprentice"), ExtResource("c_ArcaneApprentice"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_Weaken"), ExtResource("c_ManaSurge"), ExtResource("c_StonePathfinder"), ExtResource("c_StonePathfinder"), ExtResource("c_StonePathfinder"), ExtResource("c_RockSlinger"), ExtResource("c_RockSlinger"), ExtResource("c_RockSlinger"), ExtResource("c_Stoneskin"), ExtResource("c_Stoneskin"), ExtResource("c_Stoneskin")])
 Description = "A beginner's deck of the Stone Bastion."
 AccentColor = Color(0.66, 0.6, 0.5, 1)
 Showcase = ExtResource("c_StonePathfinder")

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DeckData" load_steps=16 format=3]
+[gd_resource type="Resource" script_class="DeckData" load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/DeckData.gd" id="1_deck"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.gd" id="2_card"]
@@ -7,19 +7,20 @@
 [ext_resource type="Resource" path="res://Resources/Cards/Guardian.tres" id="c_Guardian"]
 [ext_resource type="Resource" path="res://Resources/Cards/Scout.tres" id="c_Scout"]
 [ext_resource type="Resource" path="res://Resources/Cards/Miner.tres" id="c_Miner"]
-[ext_resource type="Resource" path="res://Resources/Cards/Merchant.tres" id="c_Merchant"]
+[ext_resource type="Resource" path="res://Resources/Cards/Pilgrim.tres" id="c_Pilgrim"]
 [ext_resource type="Resource" path="res://Resources/Cards/BoneKnight.tres" id="c_BoneKnight"]
-[ext_resource type="Resource" path="res://Resources/Cards/EmberStalker.tres" id="c_EmberStalker"]
-[ext_resource type="Resource" path="res://Resources/Cards/EmberImp.tres" id="c_EmberImp"]
+[ext_resource type="Resource" path="res://Resources/Cards/ArcaneApprentice.tres" id="c_ArcaneApprentice"]
 [ext_resource type="Resource" path="res://Resources/Cards/BattleCry.tres" id="c_BattleCry"]
 [ext_resource type="Resource" path="res://Resources/Cards/Weaken.tres" id="c_Weaken"]
-[ext_resource type="Resource" path="res://Resources/Cards/Pilgrim.tres" id="c_Pilgrim"]
-[ext_resource type="Resource" path="res://Resources/Cards/ArcaneApprentice.tres" id="c_ArcaneApprentice"]
+[ext_resource type="Resource" path="res://Resources/Cards/ManaSurge.tres" id="c_ManaSurge"]
+[ext_resource type="Resource" path="res://Resources/Cards/EmberStalker.tres" id="c_EmberStalker"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameArcher.tres" id="c_FlameArcher"]
+[ext_resource type="Resource" path="res://Resources/Cards/FlameWall.tres" id="c_FlameWall"]
 
 [resource]
 script = ExtResource("1_deck")
 name = "Pip's Kindling"
-cards = Array[ExtResource("2_card")]([ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Miner"), ExtResource("c_Merchant"), ExtResource("c_BoneKnight"), ExtResource("c_BoneKnight"), ExtResource("c_EmberStalker"), ExtResource("c_EmberStalker"), ExtResource("c_EmberStalker"), ExtResource("c_EmberImp"), ExtResource("c_EmberImp"), ExtResource("c_EmberImp"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_Weaken"), ExtResource("c_Weaken"), ExtResource("c_Pilgrim"), ExtResource("c_Pilgrim"), ExtResource("c_ArcaneApprentice"), ExtResource("c_ArcaneApprentice")])
+cards = Array[ExtResource("2_card")]([ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Swordsman"), ExtResource("c_Archer"), ExtResource("c_Archer"), ExtResource("c_Guardian"), ExtResource("c_Guardian"), ExtResource("c_Scout"), ExtResource("c_Scout"), ExtResource("c_Miner"), ExtResource("c_Miner"), ExtResource("c_Pilgrim"), ExtResource("c_Pilgrim"), ExtResource("c_BoneKnight"), ExtResource("c_BoneKnight"), ExtResource("c_ArcaneApprentice"), ExtResource("c_ArcaneApprentice"), ExtResource("c_BattleCry"), ExtResource("c_BattleCry"), ExtResource("c_Weaken"), ExtResource("c_ManaSurge"), ExtResource("c_EmberStalker"), ExtResource("c_EmberStalker"), ExtResource("c_EmberStalker"), ExtResource("c_FlameArcher"), ExtResource("c_FlameArcher"), ExtResource("c_FlameArcher"), ExtResource("c_FlameWall"), ExtResource("c_FlameWall"), ExtResource("c_FlameWall")])
 description = "A beginner's deck of the Ember Legion."
 accent_color = Color(1, 0.45, 0.15, 1)
-showcase = ExtResource("c_EmberImp")
+showcase = ExtResource("c_FlameArcher")

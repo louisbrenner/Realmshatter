@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="NpcData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="NpcData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Scripts/Data/NpcData.cs" id="1_npc"]
 [ext_resource type="Script" path="res://Scripts/Data/CardData.cs" id="2_card"]
 [ext_resource type="Resource" path="res://Resources/Decks/NpcSellsword.tres" id="3_deck"]
 [ext_resource type="Resource" path="res://Resources/Cards/Raider.tres" id="r_Raider"]
+[ext_resource type="Resource" path="res://Resources/Cards/Lancer.tres" id="r_Lancer"]
+[ext_resource type="Resource" path="res://Resources/Cards/BoneKnight.tres" id="r_BoneKnight"]
 
 [resource]
 script = ExtResource("1_npc")
@@ -17,6 +19,6 @@ Position = Vector2(1350, 540)
 Greeting = "Coin or glory, I fight for both. Fancy a duel, stranger?"
 RematchLine = "Another round? My blade is still sharp."
 DefeatLine = "Hah! You fight like a clan champion. Here, you earned it."
-VictoryLine = "Steel beats talk. Every time."
+VictoryLine = "Steel beats talk. Every time. And the winner gets paid."
 RewardGold = 80
-RewardCards = Array[ExtResource("2_card")]([ExtResource("r_Raider")])
+RewardCards = Array[ExtResource("2_card")]([ExtResource("r_Raider"), ExtResource("r_Raider"), ExtResource("r_Lancer"), ExtResource("r_Lancer"), ExtResource("r_BoneKnight")])

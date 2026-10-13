@@ -23,8 +23,9 @@ public partial class Hud : CanvasLayer
 	/// <summary>The player clicked the Build button of a selected Builder.</summary>
 
 
-	private const int HumanPlayer = 0;
-	private const int AiPlayer = 1;
+	/// <summary>Player shown in the own (bottom) window; the other one fills the opponent window.</summary>
+	private int HumanPlayer => ViewPlayer;
+	private int AiPlayer => 1 - ViewPlayer;
 	private const float HintSideMargin = 236f;
 	private const int HintFontSize = 15;
 	private const int HintMinFontSize = 13;
@@ -35,6 +36,12 @@ public partial class Hud : CanvasLayer
 	[Export] public float MinScale { get; set; } = 0.7f;
 	/// <summary>Plays a turn banner automatically when UpdateState sees a new turn.</summary>
 	[Export] public bool AutoTurnBanner { get; set; } = true;
+
+	/// <summary>Player index whose hand, AP and points fill the own window (0 except in hotseat matches).</summary>
+	public int ViewPlayer { get; private set; }
+
+	/// <summary>Display names of both players for hotseat matches; null = the default "You" / "AI" wording.</summary>
+	public string[] PlayerNames { get; private set; }
 
 	private Control _root;
 	private TurnIndicator _turnIndicator;
@@ -348,7 +355,8 @@ public partial class Hud : CanvasLayer
 		_lastBannerKey = key;
 		bool human = player == HumanPlayer;
 		Sfx.Play(human ? SfxId.TurnStart : SfxId.TurnEnemy);
-		_bannerTask = _turnBanner.Play(human ? "YOUR TURN" : "ENEMY TURN", $"Turn {turnNumber}", HudStyle.Accent(player));
+		string title = PlayerNames != null ? $"{PlayerNames[player].ToUpperInvariant()}'S TURN" : (human ? "YOUR TURN" : "ENEMY TURN");
+		_bannerTask = _turnBanner.Play(title, $"Turn {turnNumber}", HudStyle.Accent(player));
 		return _bannerTask;
 	}
 
@@ -513,13 +521,14 @@ public partial class Hud : CanvasLayer
 		_lastVp[player] = vp;
 	}
 
-	private static string PhaseCaption(GameState state)
+	private string PhaseCaption(GameState state)
 	{
 		bool human = state.CurrentPlayerIndex == HumanPlayer;
+		string other = PlayerNames != null ? PlayerNames[AiPlayer] : "AI";
 		return state.Phase switch
 		{
-			GamePhase.Draft => human ? "Choose a card" : "AI drafts",
-			GamePhase.Main => human ? "Your move" : "AI is planning",
+			GamePhase.Draft => human ? "Choose a card" : $"{other} drafts",
+			GamePhase.Main => human ? "Your move" : $"{other} is planning",
 			GamePhase.Resolving => "Ending turn",
 			GamePhase.GameOver => "Game over",
 			_ => "",
@@ -572,16 +581,48 @@ public partial class Hud : CanvasLayer
 		_tickerLabel.AddThemeFontSizeOverride("font_size", 15);
 		_tickerLabel.AddThemeConstantOverride("outline_size", 4);
 
-		GetNode<PanelContainer>("Root/AiPanel").AddThemeStyleboxOverride("panel", HudStyle.WoodPanel(HudStyle.EnemyRed, 8));
-		GetNode<PanelContainer>("Root/PlayerPanel").AddThemeStyleboxOverride("panel", HudStyle.WoodPanel(HudStyle.PlayerBlue, 8));
-		StyleHeader(GetNode<Label>("Root/AiPanel/VBox/Header/NameLabel"), HudStyle.EnemyRed);
-		StyleHeader(GetNode<Label>("Root/PlayerPanel/VBox/Header/NameLabel"), HudStyle.PlayerBlue);
+		StylePanels();
 		StyleVp(_aiVpLabel);
 		StyleVp(_playerVpLabel);
 
 		_viewButton.AddThemeFontSizeOverride("font_size", 14);
 		_cancelButton.AddThemeFontSizeOverride("font_size", 14);
 		_restartButton.AddThemeFontSizeOverride("font_size", 20);
+	}
+
+	/// <summary>
+	/// Hotseat: shows 'viewPlayer' in the own window (hand, AP, points, VP conversion) and the other player in
+	/// the opponent window, both in their own colours and with the given names (index 0 / 1).
+	/// </summary>
+	public void SetViewPlayer(int viewPlayer, string[] playerNames)
+	{
+		ViewPlayer = Mathf.Clamp(viewPlayer, 0, 1);
+		PlayerNames = playerNames;
+		_lastVp[0] = -1;
+		_lastVp[1] = -1;
+		StylePanels();
+		_turnIndicator.SetLabels(playerNames != null ? "P1" : "YOU", playerNames != null ? "P2" : "AI");
+		if (playerNames != null)
+		{
+			GetNode<Label>("Root/PlayerPanel/VBox/Header/NameLabel").Text = playerNames[ViewPlayer].ToUpperInvariant();
+			GetNode<Label>("Root/AiPanel/VBox/Header/NameLabel").Text = playerNames[1 - ViewPlayer].ToUpperInvariant();
+		}
+		_lastState = null;
+	}
+
+	/// <summary>Own window in the view player's colour, opponent window in the other player's.</summary>
+	private void StylePanels()
+	{
+		Color own = HudStyle.Accent(HumanPlayer);
+		Color enemy = HudStyle.Accent(AiPlayer);
+		GetNode<PanelContainer>("Root/AiPanel").AddThemeStyleboxOverride("panel", HudStyle.WoodPanel(enemy, 8));
+		GetNode<PanelContainer>("Root/PlayerPanel").AddThemeStyleboxOverride("panel", HudStyle.WoodPanel(own, 8));
+		StyleHeader(GetNode<Label>("Root/AiPanel/VBox/Header/NameLabel"), enemy);
+		StyleHeader(GetNode<Label>("Root/PlayerPanel/VBox/Header/NameLabel"), own);
+		_playerCoins.Accent = own;
+		_aiCoins.Accent = enemy;
+		_playerCoins.QueueRedraw();
+		_aiCoins.QueueRedraw();
 	}
 
 	private static void StyleHeader(Label label, Color accent)
